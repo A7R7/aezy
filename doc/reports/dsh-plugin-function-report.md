@@ -10,9 +10,9 @@ DeepSeek Harness（DSH）不是“核心程序加若干插件”，而是由 ven
 
 ## 审计口径
 
-本报告基于官方上游 `dsh-v0.1.0-rc.7`（`99f6f02f`），交叉读取了 [架构说明](../../docs/architecture.md)、[包分组](../../packages/README.md)、[base bundle](../../packages/bundle/base/cordis.patch.yml)、[Web bundle](../../packages/bundle/web-app/cordis.patch.yml)、[headless bundle](../../packages/bundle/headless/cordis.patch.yml)、package manifest、package README 和关键入口源码。
+本报告基于只读参考树中的官方上游 `dsh-v0.1.0-rc.7`（`99f6f02f`），交叉读取了 [架构说明](../../reference/deepseek-harness/docs/architecture.md)、[包分组](../../reference/deepseek-harness/packages/README.md)、[base bundle](../../reference/deepseek-harness/packages/bundle/base/cordis.patch.yml)、[Web bundle](../../reference/deepseek-harness/packages/bundle/web-app/cordis.patch.yml)、[headless bundle](../../reference/deepseek-harness/packages/bundle/headless/cordis.patch.yml)、package manifest、package README 和关键入口源码。
 
-“包”“插件”“默认实例”必须分开：仓库有 219 个 `packages/*/*` workspace 包，全部依赖 Cordis，但其中包含运行时插件、浏览器插件、bundle、SDK/协议、纯 UI 组件、工具库、示例与测试支持。39 个包声明 `dsh.client`，3 个包声明 `dsh.bundle`；三个 shipped patch 直接引用 125 个不同的第一方包根。完整逐包清单见 [DSH 第一方包与插件逐项清单](dsh-first-party-package-inventory.md)。
+“包”“插件”“默认实例”必须分开：DSH 参考树有 219 个 `packages/*/*` workspace 包，全部依赖 Cordis，但其中包含运行时插件、浏览器插件、bundle、SDK/协议、纯 UI 组件、工具库、示例与测试支持。39 个包声明 `dsh.client`，3 个包声明 `dsh.bundle`；三个 shipped patch 直接引用 125 个不同的第一方包根。完整逐包清单见 [DSH 第一方包与插件逐项清单](dsh-first-party-package-inventory.md)。
 
 本报告把“内置”定义为 shipped profile 通过 base、web-app 或 headless patch 直接挂载或覆盖的条目；把“第一方”定义为本仓库 `@deepseek-ai/dsh-*` workspace 包，包括默认未挂载的可选能力；`vendor/`、测试 fixture、示例 `cordis.yml` 和社区 marketplace 不计入逐插件判断。
 
@@ -111,6 +111,6 @@ Web 最大短板不是聊天页，而是项目工作台：没有 repository/file
 
 ## 实施边界
 
-第一阶段不要删除 package、重写 Agent Loop 或建立第二套状态库。创建 `aezy-base`/`aezy-web` patch 层，覆盖 shipped rows 的 `disabled` 与 config；先跑通“打开项目 → 发起任务 → 读改代码 → shell/build/test → approval → diff/review → 继续 thread”的真实链路，再决定哪些 DSH package 能被永久移除。
+第一阶段不要删除 package、重写 Agent Loop 或建立第二套状态库。在参考树外创建 `aezy-base`/`aezy-web` bundle 与 patch 层，覆盖 shipped rows 的 `disabled` 与 config；先跑通“打开项目 → 发起任务 → 读改代码 → shell/build/test → approval → diff/review → 继续 thread”的真实链路。DSH 参考树保持原样，Aezy 不永久移除或修改其中的 package。
 
 逐包事实以 [第一方清单](dsh-first-party-package-inventory.md) 和各 package README 为准；本报告的保留/禁用判断是 Aezy 产品决策，不是对上游 package 质量的排名。

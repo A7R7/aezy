@@ -156,7 +156,7 @@ Cloud Mode 不能用现有 E2B POC 贴标签；Automations 不能用 Session-loc
 
 ## 推荐的 Aezy 实施顺序
 
-1. 新建精简 `aezy-base` 与 `aezy-web` bundle，只保留插件报告列出的 P0 runtime/UI，其他行通过 patch 禁用。
+1. 在 DSH 参考树外新建精简 `aezy-base` 与 `aezy-web` bundle，只保留插件报告列出的 P0 runtime/UI，其他行通过 patch 禁用。
 2. 用 fork 自身跑通真实任务：打开 workspace、创建/恢复 Session、steer、读改代码、build/test、approval、查看 trajectory。
 3. 加入 Project/Repository/Environment + Git status/diff/revert；以一次真实跨文件改动作为验收。
 4. 加入 Worktree 和统一 terminal/job lifecycle；用两个并行任务验证隔离和 handoff。
@@ -166,14 +166,14 @@ Cloud Mode 不能用现有 E2B POC 贴标签；Automations 不能用 Session-loc
 
 ## 主要源码依据
 
-- [DSH 架构与 Turn flow](../../docs/architecture.md)
-- [Agent lifecycle](../../docs/agent-lifecycle.md)
-- [Web Client package map](../../packages/client/README.md)
-- [Client runtime：Workspace/Session、queue、fork、model selection](../../packages/client/runtime/README.md)
-- [Conversation：queue/steer、approval、Todo、compaction](../../packages/client/ui-conversation/README.md)
-- [Workspace/Session sidebar](../../packages/client/ui-workspace/README.md)
-- [Session persistence/query](../../packages/session/README.md)
-- [Sandbox 与 approval](../../packages/sandbox/README.md)
-- [Subagent capability](../../packages/subagent/README.md)
-- [Schedule 的 Session-local 限制](../../packages/schedule/schedule/README.md)
+- [DSH 架构与 Turn flow](../../reference/deepseek-harness/docs/architecture.md)
+- [Agent lifecycle](../../reference/deepseek-harness/docs/agent-lifecycle.md)
+- [Web Client package map](../../reference/deepseek-harness/packages/client/README.md)
+- [Client runtime：Workspace/Session、queue、fork、model selection](../../reference/deepseek-harness/packages/client/runtime/README.md)
+- [Conversation：queue/steer、approval、Todo、compaction](../../reference/deepseek-harness/packages/client/ui-conversation/README.md)
+- [Workspace/Session sidebar](../../reference/deepseek-harness/packages/client/ui-workspace/README.md)
+- [Session persistence/query](../../reference/deepseek-harness/packages/session/README.md)
+- [Sandbox 与 approval](../../reference/deepseek-harness/packages/sandbox/README.md)
+- [Subagent capability](../../reference/deepseek-harness/packages/subagent/README.md)
+- [Schedule 的 Session-local 限制](../../reference/deepseek-harness/packages/schedule/schedule/README.md)
 - [插件功能主报告](dsh-plugin-function-report.md)
