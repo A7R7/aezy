@@ -4,7 +4,9 @@
 
 DSH 已经有一套相当完整的 Agent runtime，但还不是一套完整的 Codex-like 编程工作台。它在 Session/Turn、streaming、queue/steer、文件与 shell 工具、sandbox/approval、compaction、Plan/Goal/Todo、subagent、workflow 和 trajectory 上有真实实现；缺口主要位于项目/执行环境、Git、文件与终端工作台、浏览器验证、统一任务控制面和桌面集成。
 
-因此 Aezy 不应先重写 Agent Loop。最短路径是保留 DSH runtime，先补齐 Project + Execution Environment、Worktree、Git/Diff、文件浏览/预览、Integrated Terminal、权限规则/Network Policy 和 Activity/Usage 控制面。Cloud、Computer Use、远控、自动化和完整 Desktop Shell 属于后续增强，不应阻塞本地编程闭环。
+因此 Aezy 不应先重写 Agent Loop。最短路径是保留 DSH runtime，先建立最小外置 bundle/profile，再按 **Project/Repository/Local Environment + Git/Diff/change ledger/revert → Approval Rules + Network Policy → Worktree/Handoff** 的顺序补齐 Aezy 自有产品域。文件浏览、`@file`、用户 Integrated Terminal、Activity 和 Browser 改为按真实 dogfood 痛点推进；Cloud、Computer Use、远控、自动化和完整 Desktop Shell 不阻塞本地编程闭环。
+
+DSH 已有 seam 或详细 proposed note 的 Task Surface、Side Session、Recallable Compaction、Subagent/Job 状态、PTY backend、MCP/ACP transport 与 profile/settings 最后一公里，不进入 Aezy 的近期重型内核计划。Aezy 只做当前 profile 所需的薄装配和状态透传，并在每个里程碑前重新检查 upstream。详细所有权与等待门槛见 [Aezy 上游等待边界与实施路线图](aezy-upstream-ownership-roadmap.md)。
 
 ## 评估口径
 
@@ -135,18 +137,18 @@ DSH 已经有一套相当完整的 Agent runtime，但还不是一套完整的 C
 
 ### P0：完整本地 Harness 的最低闭环
 
-DSH 已满足 P0 的大部分 runtime 条件：Session/Turn、streaming、stop/queue/steer、文件读写、shell/job、Local Mode、模型选择、sandbox/approval、instructions。真正阻塞 Aezy 的 P0 新工作有六项：
+DSH 已满足 P0 的大部分 runtime 条件：Session/Turn、streaming、stop/queue/steer、文件读写、shell/job、Local Mode、模型选择、sandbox/approval、instructions。真正由 Aezy 立即拥有的 P0 新工作有四项：
 
 1. 把 Workspace 扩展为 Project/Repository/Execution Environment，所有 Session、shell、Git 和 sandbox 都指向同一个权威环境。
 2. 建立结构化 file-change ledger 和 patch/diff/revert 闭环，而不是只依赖工具文本与 shell。
 3. 建立 Git status/diff/revert 的受控 service 与 UI；它是用户验证 Agent 修改的基础，不应被推迟到 PR 集成阶段。
 4. 扩充 approval rules，并把 network policy 独立出来；否则自治执行要么频繁打断，要么只能给过宽权限。
-5. 暴露 context/token/compaction 状态，使长任务的行为可解释、可控制。
-6. 建立统一 execution status，让 command、job、tool、subagent 和 cancellation 都能确定地进入 settled/quiescent 状态。
+
+Context/token 展示和统一 execution status 仍然重要，但 compaction、Session projection、Subagent/Job 与 PTY lifecycle 是 DSH 高概率继续完善的已有 seam。Aezy 在 M0-M3 只消费现有事实并做薄投影，不建立第二套内核；只有真实任务证明这些 seam 阻塞首批垂直切片时才重新评估。
 
 ### P1：达到 Codex 级日常开发效率
 
-P1 包括 Worktree 与 handoff、file tree/preview/`@file`、Integrated Terminal、完整 Git stage/commit/branch、Code Review、Plan/Goal/Todo 收敛、Skills/Plugins/MCP、subagent topology、Activity/Status/Usage、Browser + browser interaction、notifications 和统一 Search。
+P1 包括 Worktree 与 handoff、file tree/preview/`@file`、Integrated Terminal、完整 Git stage/commit/branch、Code Review、Plan/Goal/Todo 收敛、Skills/Plugins/MCP、subagent topology、Activity/Status/Usage、Browser + browser interaction、notifications 和统一 Search。P1 是重要性集合，不等于同时开工的路线图：Worktree/Handoff 在 M3 由 Aezy 实现；文件树、用户终端、Activity 和 Browser 进入 dogfood 驱动队列；MCP transport、Subagent/Job 内核和 Task Surface 尽量等待上游。
 
 其中 Worktree 与 Git 应早于 Parallel Subagent 大规模启用；否则多个 Agent 共享 checkout，会把冲突处理推给模型和用户。Browser 应在前端开发成为 Aezy 真实 dogfood 场景时进入同一阶段，而不是等 Desktop Shell。
 
@@ -158,13 +160,13 @@ Cloud Mode 不能用现有 E2B POC 贴标签；Automations 不能用 Session-loc
 
 ## 推荐的 Aezy 实施顺序
 
-1. 在 DSH 参考树外新建精简 `aezy-base` 与 `aezy-web` bundle，只保留插件报告列出的 P0 runtime/UI，其他行通过 patch 禁用。
-2. 用 Aezy 外置插件组合自身跑通真实任务：打开 workspace、创建/恢复 Session、steer、读改代码、build/test、approval、查看 trajectory。
-3. 加入 Project/Repository/Environment + Git status/diff/revert；以一次真实跨文件改动作为验收。
-4. 加入 Worktree 和统一 terminal/job lifecycle；用两个并行任务验证隔离和 handoff。
-5. 加入 file tree/preview/`@file`、Git stage/commit/branch 和 code review；以 Aezy 自己的提交工作流 dogfood。
-6. 加入 approval rules、network policy、context/usage 和 Activity View；再扩大自治时长与 subagent 并发。
-7. 之后按真实需求启用 MCP、Browser、notifications、PR/Cloud/Remote/Desktop 等 P1/P2 bundle。
+1. **M0：外置 composition。** 在参考树外新建精简 `aezy-base` 与 `aezy-web` bundle/profile，只保留 P0 runtime/UI，其他行通过 patch 禁用；用它自身跑通 workspace、Session create/resume、queue/steer、读改代码、build/test、approval 和 trajectory。
+2. **M1：Workspace & Changes。** 加入 Project/Repository/Local Environment、Git status/diff、turn-scoped change ledger 和安全 revert；以 Aezy 自身的一次真实跨文件改动、部分撤销和刷新恢复作为验收。
+3. **M2：权限边界。** 加入 Approval Rules、规则查看/撤销、独立 Network Policy 和审计；在此之前不扩大无人值守执行时长。
+4. **M3：隔离与 Handoff。** 加入 Worktree environment、Local/Worktree Handoff 和冲突拒绝；用两个并行真实任务验证 checkout 隔离，再扩大并行 Subagent 默认使用。
+5. **M4：dogfood 驱动入口。** 根据可复现痛点逐个选择 file tree/preview、`@file`、用户 Integrated Terminal、Activity/Status/Usage/Notifications 或 Browser；不把它们捆成一次重写 Web 工作台。
+6. **等待/薄集成轨。** Profile/settings、Subagent/Job、PTY backend、MCP/ACP、Compaction/Recall、Task Surface 和 Side Session 只做当前版本必要的薄装配；新 RC 到来或 seam 真实阻塞 M0-M3 时再评估。
+7. **M5：本地闭环之后。** 再评估 Git stage/commit/branch、Code Review、MCP 管理、PR/Cloud/Remote/Automations/Computer Use/Desktop 等扩展产品面。
 
 ## 主要源码依据
 

@@ -21,3 +21,4 @@ DSH 更新以新的已审核上游 revision 整体替换参考树。Aezy 插件�
 - [DSH 内置与第一方插件功能报告](doc/reports/dsh-plugin-function-report.md)
 - [DSH 第一方包与插件逐项清单](doc/reports/dsh-first-party-package-inventory.md)
 - [DSH Web 与 Codex Desktop 功能差距报告](doc/reports/dsh-web-vs-codex-desktop-gap-report.md)
+- [Aezy 上游等待边界与实施路线图](doc/reports/aezy-upstream-ownership-roadmap.md)

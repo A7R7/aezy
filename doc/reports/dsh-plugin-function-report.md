@@ -43,7 +43,7 @@ DeepSeek Harness（DSH）不是“核心程序加若干插件”，而是由 ven
 
 默认 profile 已挂载 sandboxed Bash/PowerShell、文件读写/搜索、job 控制和本地 subprocess，但 persistent terminal、LSP 和 E2B 都未默认挂载。这个默认选择基本正确：Aezy P0 保留本地文件、shell、后台 job 和 sandbox；PTY 在形成可靠的交互式命令生命周期后进入 P1；LSP 是有价值的可选增强；E2B 在 Cloud Mode 产品边界明确前继续禁用。
 
-需要补强三点：统一 command/job/terminal 的生命周期和 UI；把 network 权限从 filesystem/sandbox 中独立出来；让每次文件修改和命令执行都能归属到 turn、展示结构化结果并支持精确撤销。
+Aezy 需要立即补强 network 权限和 turn-scoped 文件变更/revert；但不应在近期另写 command/job/terminal 生命周期内核。DSH 已有 Job 与 PTY seam，且 Windows ConPTY 被明确列为上游 roadmap 工作。Aezy 当前只消费现有 shell/job，用户 Terminal UI 在真实 dogfood 需要时做薄 Web 集成，PTY backend 与跨平台稳定性尽量等待上游。
 
 ### Session、持久化、查询与工作区
 
@@ -51,7 +51,7 @@ DeepSeek Harness（DSH）不是“核心程序加若干插件”，而是由 ven
 
 DSH Web 已支持 Workspace 列表、Session 持久化、resume、fork、rename、archive、标题/工作区搜索、流式状态和跨 tab 同步。全文 Session 搜索后端虽然随 base 挂载，但 shipped 配置使用 `openAt: never`，所以 Web 默认只按标题与 workspace 搜索；模型侧 `tool-session-query` 也未默认挂载。
 
-Aezy 应保留 JSONL 作为权威 Session 日志、保留 projection/cache 与 workspace 实体，并尽快启用有边界的 Session FTS。SQLite Session persistence 与通用 storage 可以先保留为可选 provider；telemetry backend 继续默认禁用。Workspace 目前只表示一个目录，尚不等价于 Codex 的多 repository project、Local/Worktree/Cloud execution binding，需要新建明确的 Project/Execution Environment 域。
+Aezy 应保留 JSONL 作为权威 Session 日志、保留 projection/cache 与 workspace 实体。SQLite Session persistence、Session FTS 与通用 storage 可以先保留为可选 provider；telemetry backend 继续默认禁用。Recallable Compaction 已有详细上游 proposed note，Aezy 不建立第二套摘要、历史读取或索引内核。Workspace 目前只表示一个目录，尚不等价于 Codex 的多 repository project、Local/Worktree/Cloud execution binding，因此 Project/Repository/Local Environment 仍是 Aezy 立即拥有的产品域。
 
 ### 权限、人机交互与运行控制
 
@@ -65,7 +65,7 @@ Plan、Goal、Todo 都应保留，但收敛语义：Plan 是只读调查与用�
 
 `subagent/*` 已有同进程 spawn/fork、DSH SDK 子进程、ACP、Claude Code、Codex provider，以及 delegation/control/report 工具；`workflow/*` 提供 worker-thread JavaScript orchestration 和 Ralph loop；`schedule/*` 提供 Session-local durable reminder；`acp/*` 与 `sdk/*` 提供进程外控制协议。
 
-Subagent seam、同进程 spawn/fork、continuation 和 Web 子会话导航属于 P0/P1 Harness 能力，应保留并统一到用户可见的 task topology。Workflow engine 能复用 subagent，但允许模型执行编排脚本，Ralph 又引入独立循环策略；两者都不是单 Agent coding 闭环的前置条件，默认禁用更安全。Schedule 只在原 Session 存活时准点运行，没有独立调度服务、通知或运行历史，不应被宣传为完整 Automations。
+Subagent seam、同进程 spawn/fork、continuation 和 Web 子会话导航属于 P0/P1 Harness 能力，应保留。DSH 很可能继续完善 Subagent + Job 状态和 UI，并已有 Task Surface 与 Interactive Side Session proposed notes；Aezy 当前只做 Worktree 隔离所需的薄状态投影，不建立第二套通用 Task/Side Session 生命周期。Workflow engine 能复用 subagent，但允许模型执行编排脚本，Ralph 又引入独立循环策略；两者都不是单 Agent coding 闭环的前置条件，默认禁用更安全。Schedule 只在原 Session 存活时准点运行，没有独立调度服务、通知或运行历史，不应被宣传为完整 Automations。
 
 ACP/JSON-RPC SDK 是未来 CLI、IDE、远控和测试的重要稳定边界，应保留但不进入默认 Web 产品面。Claude Code/Codex subagent provider 与 hook bridge属于互操作能力，不是 Aezy 自身闭环所必需，继续 opt-in。
 
@@ -73,7 +73,7 @@ ACP/JSON-RPC SDK 是未来 CLI、IDE、远控和测试的重要稳定边界，�
 
 `llm/*` 提供 provider-neutral stream、DeepSeek adapters、retry 和 token meter；`web/*` 提供 search/fetch seam 及 DeepSeek/Exa/Perplexity/HTTP providers；`skill/*` 提供 filesystem skill registry、catalog 和模型加载工具；`mcp/*` 把 MCP server tools 注册进 `ctx.tools`；`extensions/*` 允许 Agent 检查并挂载模型编写的 Cordis 插件。
 
-模型 seam、retry、token meter、skills 和匿名 HTTP fetch/search 都应保留。MCP client 是完整 Harness 的重要扩展入口，但当前未默认装配，且还需要明确的 server lifecycle、authentication、resource/prompt 支持、tool-search 和权限 UI，适合作为 P1 集成而不是 P0 默认。
+模型 seam、retry、token meter、skills 和匿名 HTTP fetch/search 都应保留。MCP client 是完整 Harness 的重要扩展入口，但当前未默认装配，且还需要 authentication、resource/prompt、tool-search 和权限 UI。DSH 很可能继续完善 MCP/ACP rich content、transport 与 reconnect；Aezy 近期只提供必要的 bundle 配置和权限薄层，不 fork transport 或重连状态机，也不把 MCP 管理列入 M0-M3。
 
 动态 Cordis 自修改能力让模型在运行中定义 Host/Client 双面插件，权限面和故障面远大于普通 coding tool。Aezy 默认禁用 `cordis-host-runner`、`cordis-client-runner`、`ui-cordis` 与 `tool-cordis`；保留源码作为高级实验能力，直到插件签名、隔离、审计、回滚和用户授权完整。
 
@@ -97,12 +97,11 @@ Web 最大短板不是聊天页，而是项目工作台：没有 repository/file
 ### P0/P1：在现有 seam 上补强
 
 - 新增 Codex-like patch/diff 工具与 turn-scoped file-change ledger，支持可视化、精确 revert 和验证回执。
-- 增加 Project、Repository、Execution Environment 与 Worktree 域，把 cwd 从一个字符串提升为可管理执行上下文。
-- 增加 Git read/write service 与 Web UI，先 status/diff/branch，再 stage/revert/commit，最后 push/PR/review。
-- 统一 foreground command、background job、persistent terminal 和 dev server 生命周期，并给 Web 提供用户可交互终端。
+- 先增加 Project、Repository、Local Environment，再于权限边界完成后增加 Worktree/Handoff，把 cwd 从一个字符串提升为可管理执行上下文。
+- 增加 Git service 与 Web UI；M1 只做 status/diff/revert，stage/commit/branch 与 push/PR/review 后移。
 - 扩充 approval 为一次允许、规则允许、拒绝与撤销；独立 filesystem/process/network/external-tool 权限。
-- 让 Session FTS、context/token usage、task activity 和 subagent topology 成为默认可见控制面。
-- 把 MCP 补成可管理、可鉴权、可审计的完整扩展入口。
+- 文件树、`@file`、用户终端、Activity/Status/Usage 与 Browser 按真实 dogfood 痛点逐项增加，不捆绑成一次 Web 重写。
+- 对 Profile/settings、Subagent/Job、PTY、MCP/ACP、Compaction/Recall、Task Surface 和 Side Session 只做薄装配并等待上游，不复制其内核。
 
 ### 默认禁用但保留源码
 
@@ -114,5 +113,7 @@ Web 最大短板不是聊天页，而是项目工作台：没有 repository/file
 ## 实施边界
 
 第一阶段不要删除 package、重写 Agent Loop 或建立第二套状态库。在参考树外创建 `aezy-base`/`aezy-web` bundle 与 patch 层，覆盖 shipped rows 的 `disabled` 与 config；先跑通“打开项目 → 发起任务 → 读改代码 → shell/build/test → approval → diff/review → 继续 thread”的真实链路。DSH 参考树保持原样，Aezy 不永久移除或修改其中的 package。
+
+具体所有权、等待触发器与 M0-M5 交付门槛见 [Aezy 上游等待边界与实施路线图](aezy-upstream-ownership-roadmap.md)。上游 “remove repository plugin” 指移除重复的第三方插件分发路径，不是 Git Repository 产品域；Aezy 仍统一通过 `dsh plugin`、installable profile bundle 与 `cordis.patch.yml` 交付外置能力。
 
 逐包事实以 [第一方清单](dsh-first-party-package-inventory.md) 和各 package README 为准；本报告的保留/禁用判断是 Aezy 产品决策，不是对上游 package 质量的排名。
