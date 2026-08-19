@@ -7,7 +7,9 @@ Aezy 是基于 DeepSeek Harness（DSH）公开扩展机制构建的独立编程 
 - `reference/deepseek-harness/`：只读 DSH 上游参考源码，当前固定在 `dsh-v0.1.0-rc.7`（`99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`）。
 - `reference/dsh.lock.json`：DSH 来源、revision、Git tree 和本地参考路径的机器可读锁定记录。
 - `doc/`：Aezy 的功能基线、DSH 插件审计和 Codex Desktop 差距报告。
-- 后续 Aezy 源码将放在根目录的独立插件、bundle 和应用目录中，不写入 `reference/deepseek-harness/`。
+- `packages/aezy-base/`、`packages/aezy-web/`：Aezy 的外置 composition 与默认 Agent preset。
+- `packages/aezy-project/`：M1 Project/Repository/Local Environment、Git Changes、turn ledger 与安全 revert 插件。
+- Aezy 源码只放在参考树外的独立插件、bundle 和应用目录中，不写入 `reference/deepseek-harness/`。
 
 ## 扩展边界
 
@@ -26,7 +28,7 @@ pnpm run test:m0
 pnpm run aezy:web -- --host 127.0.0.1 --port 3080
 ```
 
-`profile:sync` 通过 DSH 的 `plugin --profile` 路径安装两个 Aezy 外置 bundle，并在它们之间叠加当前 DSH 安装自带的 Web bundle，将 profile 固定为：
+`profile:sync` 通过 DSH 的 `plugin --profile` 路径安装两个 Aezy 外置 bundle 和 `@aezy/project` 普通插件依赖，并在两个 bundle 之间叠加当前 DSH 安装自带的 Web bundle，将 profile 固定为：
 
 ```text
 @deepseek-ai/dsh-base
@@ -36,6 +38,19 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3080
 ```
 
 首次真实 Agent turn 需要在 Web 的 Models 设置中配置可用 provider。`test:m0` 不使用模型 mock；它验证发布版 DSH CLI、完整 profile composition、Aezy 禁用策略、默认 preset、真实 Web Host/frontend，以及 Workspace/Session/preset Remote API 链路。当前签收状态见 [M0 里程碑记录](doc/milestones/m0.md)。
+
+## M1：Workspace & Changes
+
+`@aezy/project` 使用公开 `ctx.webServer`、`session/event`、`dsh.client` 和 `conversation.view` seam 提供结构化 repository status/diff、Local Environment 信息、持久 turn-scoped change ledger，以及有 fingerprint 冲突拒绝和 Undo receipt 的安全单文件 revert。它不修改 DSH API Proxy、SessionEvent 内核或参考树。
+
+```bash
+pnpm run build:m1
+pnpm run test:m1
+# 已启动独立 Aezy 测试 Host 时：
+pnpm run test:m1:http
+```
+
+M1 核心实现已经通过真实 DSH Host HTTP 垂直验证；配置真实模型的跨文件 Agent Turn、浏览器部分撤销与刷新恢复仍是最终签收项。当前状态和 fail-closed 边界见 [M1 里程碑记录](doc/milestones/m1.md)。
 
 ## 研究资料
 

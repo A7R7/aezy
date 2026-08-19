@@ -25,6 +25,19 @@ window.__ModuleLoader__.load({
 			if (!response.ok) throw new Error(body.error ?? `Aezy Project request failed (${response.status})`);
 			return body;
 		}
+		async function mutate(path, body) {
+			const response = await fetch(path, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"X-Aezy-Client": "web"
+				},
+				body: JSON.stringify(body)
+			});
+			const value = await response.json();
+			if (!response.ok) throw new Error(value.error ?? `Aezy Project request failed (${response.status})`);
+			return value;
+		}
 		function statusLabel(file) {
 			if (file.conflict) return "UU";
 			if (file.kind === "untracked") return "??";
@@ -60,25 +73,33 @@ window.__ModuleLoader__.load({
 				})]
 			});
 		}
-		function ChangesView({ cwd }) {
+		function ChangesView({ cwd, sessionId }) {
 			const [project, setProject] = (0, react.useState)(null);
+			const [ledger, setLedger] = (0, react.useState)(null);
 			const [selected, setSelected] = (0, react.useState)(null);
 			const [diff, setDiff] = (0, react.useState)(null);
 			const [loading, setLoading] = (0, react.useState)(false);
+			const [mutating, setMutating] = (0, react.useState)(false);
+			const [undoReceipt, setUndoReceipt] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
 			const refresh = (0, react.useCallback)(async () => {
 				setLoading(true);
 				setError(null);
 				try {
-					const next = await request("/aezy/api/project", { cwd });
+					const [next, nextLedger] = await Promise.all([request("/aezy/api/project", { cwd }), request("/aezy/api/project/ledger", {
+						cwd,
+						sessionId
+					})]);
 					setProject(next);
+					setLedger(nextLedger);
+					setUndoReceipt((current) => current ?? nextLedger.receipts.filter((receipt) => receipt.status === "committed").sort((left, right) => right.createdAt - left.createdAt)[0]?.id ?? null);
 					setSelected((current) => current !== null && next.files.some((file) => file.path === current) ? current : next.files[0]?.path ?? null);
 				} catch (reason) {
 					setError(reason instanceof Error ? reason.message : String(reason));
 				} finally {
 					setLoading(false);
 				}
-			}, [cwd]);
+			}, [cwd, sessionId]);
 			(0, react.useEffect)(() => {
 				refresh();
 			}, [refresh]);
@@ -107,6 +128,65 @@ window.__ModuleLoader__.load({
 				const movement = [project.repository.ahead > 0 ? `↑${project.repository.ahead}` : "", project.repository.behind > 0 ? `↓${project.repository.behind}` : ""].filter(Boolean).join(" ");
 				return movement === "" ? name : `${name} ${movement}`;
 			}, [project]);
+			const ledgerByPath = (0, react.useMemo)(() => {
+				const entries = /* @__PURE__ */ new Map();
+				for (const turn of ledger?.turns ?? []) for (const file of turn.files) entries.set(file.path, {
+					turn,
+					file
+				});
+				return entries;
+			}, [ledger]);
+			const selectedLedger = selected === null ? void 0 : ledgerByPath.get(selected);
+			const canRevert = diff !== null && selectedLedger?.file.revertable === true && selectedLedger.file.afterFingerprint === diff.fingerprint;
+			const revertSelected = (0, react.useCallback)(async () => {
+				if (diff === null || selectedLedger === void 0 || !canRevert) return;
+				if (!window.confirm(`Revert ${diff.file.path} to its state before Turn ${selectedLedger.turn.turn}? You can undo this action until the file changes again.`)) return;
+				setMutating(true);
+				setError(null);
+				try {
+					const result = await mutate("/aezy/api/project/revert", {
+						cwd,
+						sessionId,
+						turn: selectedLedger.turn.turn,
+						path: diff.file.path,
+						expectedFingerprint: diff.fingerprint
+					});
+					setUndoReceipt(result.receiptId);
+					await refresh();
+				} catch (reason) {
+					setError(reason instanceof Error ? reason.message : String(reason));
+				} finally {
+					setMutating(false);
+				}
+			}, [
+				canRevert,
+				cwd,
+				diff,
+				refresh,
+				selectedLedger,
+				sessionId
+			]);
+			const undoLastRevert = (0, react.useCallback)(async () => {
+				if (undoReceipt === null) return;
+				setMutating(true);
+				setError(null);
+				try {
+					await mutate("/aezy/api/project/undo", {
+						cwd,
+						receiptId: undoReceipt
+					});
+					setUndoReceipt(null);
+					await refresh();
+				} catch (reason) {
+					setError(reason instanceof Error ? reason.message : String(reason));
+				} finally {
+					setMutating(false);
+				}
+			}, [
+				cwd,
+				refresh,
+				undoReceipt
+			]);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 				style: {
 					height: "100%",
@@ -154,6 +234,13 @@ window.__ModuleLoader__.load({
 												fontSize: 12
 											},
 											children: [project.files.length, " changed"]
+										}),
+										ledger !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+											style: {
+												color: palette.muted,
+												fontSize: 12
+											},
+											children: [ledger.turns.length, " recorded turns"]
 										})
 									]
 								}),
@@ -213,6 +300,39 @@ window.__ModuleLoader__.load({
 						},
 						children: error
 					}),
+					undoReceipt !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						style: {
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "space-between",
+							gap: 12,
+							marginTop: 14,
+							padding: 10,
+							border: `1px solid ${palette.border}`,
+							borderRadius: 7,
+							background: palette.elevated
+						},
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							style: {
+								color: palette.muted,
+								fontSize: 12
+							},
+							children: "File reverted with a recoverable receipt."
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							onClick: () => void undoLastRevert(),
+							disabled: mutating,
+							style: {
+								padding: "5px 9px",
+								borderRadius: 6,
+								border: `1px solid ${palette.border}`,
+								background: palette.panel,
+								color: palette.text,
+								cursor: mutating ? "wait" : "pointer"
+							},
+							children: "Undo"
+						})]
+					}),
 					project?.repository.clean === true && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						style: {
 							padding: "44px 0",
@@ -242,7 +362,7 @@ window.__ModuleLoader__.load({
 								style: {
 									width: "100%",
 									display: "grid",
-									gridTemplateColumns: "30px minmax(0, 1fr)",
+									gridTemplateColumns: "30px minmax(0, 1fr) auto",
 									gap: 8,
 									padding: "9px 10px",
 									border: 0,
@@ -252,36 +372,70 @@ window.__ModuleLoader__.load({
 									textAlign: "left",
 									cursor: "pointer"
 								},
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									style: {
-										color: file.conflict ? "#fb7185" : palette.accent,
-										fontFamily: "monospace",
-										fontSize: 11
-									},
-									children: statusLabel(file)
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									title: file.path,
-									style: {
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-										fontFamily: "monospace",
-										fontSize: 12
-									},
-									children: file.path
-								})]
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										style: {
+											color: file.conflict ? "#fb7185" : palette.accent,
+											fontFamily: "monospace",
+											fontSize: 11
+										},
+										children: statusLabel(file)
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										title: file.path,
+										style: {
+											overflow: "hidden",
+											textOverflow: "ellipsis",
+											whiteSpace: "nowrap",
+											fontFamily: "monospace",
+											fontSize: 12
+										},
+										children: file.path
+									}),
+									ledgerByPath.has(file.path) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										title: ledgerByPath.get(file.path)?.turn.concurrent ? "Observed while another Session was active in this repository" : "Latest observed Agent turn",
+										style: {
+											color: ledgerByPath.get(file.path)?.turn.concurrent ? "#fbbf24" : palette.muted,
+											fontSize: 10
+										},
+										children: ["T", ledgerByPath.get(file.path)?.turn.turn]
+									})
+								]
 							}, file.path))
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("main", {
 							style: { minWidth: 0 },
 							children: [
-								selected !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
+								selected !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									style: {
-										margin: 0,
-										fontFamily: "monospace",
-										fontSize: 14,
-										overflowWrap: "anywhere"
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "space-between",
+										gap: 12
 									},
-									children: selected
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
+										style: {
+											margin: 0,
+											fontFamily: "monospace",
+											fontSize: 14,
+											overflowWrap: "anywhere"
+										},
+										children: selected
+									}), selectedLedger !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+										type: "button",
+										onClick: () => void revertSelected(),
+										disabled: !canRevert || mutating,
+										title: canRevert ? `Restore the state before Turn ${selectedLedger.turn.turn}` : "The file changed after this ledger entry or the recorded state is unsupported",
+										style: {
+											padding: "5px 9px",
+											flex: "0 0 auto",
+											borderRadius: 6,
+											border: `1px solid ${canRevert ? "#b45309" : palette.border}`,
+											background: palette.elevated,
+											color: canRevert ? "#fbbf24" : palette.muted,
+											cursor: canRevert && !mutating ? "pointer" : "not-allowed"
+										},
+										children: ["Revert T", selectedLedger.turn.turn]
+									})]
 								}),
 								diff === null && selected !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 									style: {

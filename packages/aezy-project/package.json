@@ -20,7 +20,7 @@
     }
   },
   "files": [
-    "src/index.js",
+    "src/*.js",
     "lib/client.js",
     "lib/client.js.map",
     "README.md"

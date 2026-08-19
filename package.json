@@ -13,7 +13,8 @@
     "profile:dump": "node scripts/run-profile.mjs --dump-config",
     "aezy:web": "node scripts/run-profile.mjs",
     "test:m0": "node scripts/verify-m0.mjs",
-    "test:m1": "node --test packages/aezy-project/tests/*.test.mjs"
+    "test:m1": "node --test packages/aezy-project/tests/*.test.mjs",
+    "test:m1:http": "node scripts/verify-m1-http.mjs"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.1.0-rc.7",

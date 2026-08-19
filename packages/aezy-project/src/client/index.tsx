@@ -41,6 +41,35 @@ type DiffView = {
   fingerprint: string
 }
 
+type LedgerFile = {
+  path: string
+  change: 'created-or-dirtied' | 'restored-or-removed' | 'modified'
+  beforeFingerprint: string | null
+  afterFingerprint: string | null
+  revertable: boolean
+}
+
+type LedgerTurn = {
+  turn: number
+  startedAt: number
+  endedAt: number
+  reason: { kind: string }
+  concurrent: boolean
+  files: LedgerFile[]
+}
+
+type LedgerView = {
+  sessionId: string
+  turns: LedgerTurn[]
+  receipts: Array<{
+    id: string
+    turn: number
+    path: string
+    status: string
+    createdAt: number
+  }>
+}
+
 type Snapshot<T> = { getSnapshot(): T; subscribe(listener: () => void): () => void }
 type SessionsState = { byId: Record<string, { cwd?: string }> }
 type ClientContext = {
@@ -77,6 +106,20 @@ async function request<T>(path: string, params: Record<string, string>): Promise
   return body
 }
 
+async function mutate<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Aezy-Client': 'web',
+    },
+    body: JSON.stringify(body),
+  })
+  const value = await response.json() as T & { error?: string }
+  if (!response.ok) throw new Error(value.error ?? `Aezy Project request failed (${response.status})`)
+  return value
+}
+
 function statusLabel(file: FileRow): string {
   if (file.conflict) return 'UU'
   if (file.kind === 'untracked') return '??'
@@ -91,19 +134,29 @@ function CodeDiff({ title, text }: { title: string; text: string }) {
   </section>
 }
 
-function ChangesView({ cwd }: ChangesProps) {
+function ChangesView({ cwd, sessionId }: ChangesProps) {
   const [project, setProject] = useState<ProjectView | null>(null)
+  const [ledger, setLedger] = useState<LedgerView | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [diff, setDiff] = useState<DiffView | null>(null)
   const [loading, setLoading] = useState(false)
+  const [mutating, setMutating] = useState(false)
+  const [undoReceipt, setUndoReceipt] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const next = await request<ProjectView>('/aezy/api/project', { cwd })
+      const [next, nextLedger] = await Promise.all([
+        request<ProjectView>('/aezy/api/project', { cwd }),
+        request<LedgerView>('/aezy/api/project/ledger', { cwd, sessionId }),
+      ])
       setProject(next)
+      setLedger(nextLedger)
+      setUndoReceipt(current => current ?? nextLedger.receipts
+        .filter(receipt => receipt.status === 'committed')
+        .sort((left, right) => right.createdAt - left.createdAt)[0]?.id ?? null)
       setSelected(current => current !== null && next.files.some(file => file.path === current)
         ? current
         : next.files[0]?.path ?? null)
@@ -112,7 +165,7 @@ function ChangesView({ cwd }: ChangesProps) {
     } finally {
       setLoading(false)
     }
-  }, [cwd])
+  }, [cwd, sessionId])
 
   useEffect(() => { void refresh() }, [refresh])
 
@@ -139,6 +192,57 @@ function ChangesView({ cwd }: ChangesProps) {
     return movement === '' ? name : `${name} ${movement}`
   }, [project])
 
+  const ledgerByPath = useMemo(() => {
+    const entries = new Map<string, { turn: LedgerTurn; file: LedgerFile }>()
+    for (const turn of ledger?.turns ?? []) {
+      for (const file of turn.files) entries.set(file.path, { turn, file })
+    }
+    return entries
+  }, [ledger])
+
+  const selectedLedger = selected === null ? undefined : ledgerByPath.get(selected)
+  const canRevert = diff !== null
+    && selectedLedger?.file.revertable === true
+    && selectedLedger.file.afterFingerprint === diff.fingerprint
+
+  const revertSelected = useCallback(async () => {
+    if (diff === null || selectedLedger === undefined || !canRevert) return
+    const confirmed = window.confirm(`Revert ${diff.file.path} to its state before Turn ${selectedLedger.turn.turn}? You can undo this action until the file changes again.`)
+    if (!confirmed) return
+    setMutating(true)
+    setError(null)
+    try {
+      const result = await mutate<{ receiptId: string }>('/aezy/api/project/revert', {
+        cwd,
+        sessionId,
+        turn: selectedLedger.turn.turn,
+        path: diff.file.path,
+        expectedFingerprint: diff.fingerprint,
+      })
+      setUndoReceipt(result.receiptId)
+      await refresh()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setMutating(false)
+    }
+  }, [canRevert, cwd, diff, refresh, selectedLedger, sessionId])
+
+  const undoLastRevert = useCallback(async () => {
+    if (undoReceipt === null) return
+    setMutating(true)
+    setError(null)
+    try {
+      await mutate('/aezy/api/project/undo', { cwd, receiptId: undoReceipt })
+      setUndoReceipt(null)
+      await refresh()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setMutating(false)
+    }
+  }, [cwd, refresh, undoReceipt])
+
   return <div style={{ height: '100%', overflow: 'auto', padding: '18px 22px', background: palette.panel, color: palette.text }}>
     <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, paddingBottom: 14, borderBottom: `1px solid ${palette.border}` }}>
       <div style={{ minWidth: 0 }}>
@@ -146,6 +250,7 @@ function ChangesView({ cwd }: ChangesProps) {
           <strong style={{ fontSize: 15 }}>{project?.project.name ?? 'Repository'}</strong>
           {project !== null && <span style={{ color: palette.accent, fontFamily: 'monospace', fontSize: 12 }}>{branch}</span>}
           {project !== null && <span style={{ color: palette.muted, fontSize: 12 }}>{project.files.length} changed</span>}
+          {ledger !== null && <span style={{ color: palette.muted, fontSize: 12 }}>{ledger.turns.length} recorded turns</span>}
         </div>
         <div title={project?.project.root} style={{ marginTop: 4, color: palette.muted, fontFamily: 'monospace', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project?.project.root ?? cwd}</div>
         {project !== null && <div style={{ marginTop: 5, color: palette.muted, fontSize: 11 }}>
@@ -158,6 +263,11 @@ function ChangesView({ cwd }: ChangesProps) {
 
     {error !== null && <div role="alert" style={{ marginTop: 14, padding: 10, border: '1px solid #b45309', borderRadius: 7, color: '#fbbf24' }}>{error}</div>}
 
+    {undoReceipt !== null && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 14, padding: 10, border: `1px solid ${palette.border}`, borderRadius: 7, background: palette.elevated }}>
+      <span style={{ color: palette.muted, fontSize: 12 }}>File reverted with a recoverable receipt.</span>
+      <button type="button" onClick={() => void undoLastRevert()} disabled={mutating} style={{ padding: '5px 9px', borderRadius: 6, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, cursor: mutating ? 'wait' : 'pointer' }}>Undo</button>
+    </div>}
+
     {project?.repository.clean === true && <div style={{ padding: '44px 0', textAlign: 'center', color: palette.muted }}>Working tree clean</div>}
 
     {project !== null && project.files.length > 0 && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(210px, 30%) minmax(0, 1fr)', gap: 18, marginTop: 16, alignItems: 'start' }}>
@@ -166,14 +276,18 @@ function ChangesView({ cwd }: ChangesProps) {
           key={file.path}
           type="button"
           onClick={() => setSelected(file.path)}
-          style={{ width: '100%', display: 'grid', gridTemplateColumns: '30px minmax(0, 1fr)', gap: 8, padding: '9px 10px', border: 0, borderBottom: `1px solid ${palette.border}`, background: selected === file.path ? palette.elevated : 'transparent', color: palette.text, textAlign: 'left', cursor: 'pointer' }}
+          style={{ width: '100%', display: 'grid', gridTemplateColumns: '30px minmax(0, 1fr) auto', gap: 8, padding: '9px 10px', border: 0, borderBottom: `1px solid ${palette.border}`, background: selected === file.path ? palette.elevated : 'transparent', color: palette.text, textAlign: 'left', cursor: 'pointer' }}
         >
           <span style={{ color: file.conflict ? '#fb7185' : palette.accent, fontFamily: 'monospace', fontSize: 11 }}>{statusLabel(file)}</span>
           <span title={file.path} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 12 }}>{file.path}</span>
+          {ledgerByPath.has(file.path) && <span title={ledgerByPath.get(file.path)?.turn.concurrent ? 'Observed while another Session was active in this repository' : 'Latest observed Agent turn'} style={{ color: ledgerByPath.get(file.path)?.turn.concurrent ? '#fbbf24' : palette.muted, fontSize: 10 }}>T{ledgerByPath.get(file.path)?.turn.turn}</span>}
         </button>)}
       </nav>
       <main style={{ minWidth: 0 }}>
-        {selected !== null && <h2 style={{ margin: 0, fontFamily: 'monospace', fontSize: 14, overflowWrap: 'anywhere' }}>{selected}</h2>}
+        {selected !== null && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <h2 style={{ margin: 0, fontFamily: 'monospace', fontSize: 14, overflowWrap: 'anywhere' }}>{selected}</h2>
+          {selectedLedger !== undefined && <button type="button" onClick={() => void revertSelected()} disabled={!canRevert || mutating} title={canRevert ? `Restore the state before Turn ${selectedLedger.turn.turn}` : 'The file changed after this ledger entry or the recorded state is unsupported'} style={{ padding: '5px 9px', flex: '0 0 auto', borderRadius: 6, border: `1px solid ${canRevert ? '#b45309' : palette.border}`, background: palette.elevated, color: canRevert ? '#fbbf24' : palette.muted, cursor: canRevert && !mutating ? 'pointer' : 'not-allowed' }}>Revert T{selectedLedger.turn.turn}</button>}
+        </div>}
         {diff === null && selected !== null && <div style={{ padding: '24px 0', color: palette.muted }}>Loading diff…</div>}
         {diff?.binary === true && <div style={{ padding: '24px 0', color: palette.muted }}>Binary or oversized file; textual diff unavailable.</div>}
         {diff?.truncated === true && <div style={{ marginTop: 10, color: '#fbbf24', fontSize: 12 }}>Diff truncated at the Aezy safety limit.</div>}
