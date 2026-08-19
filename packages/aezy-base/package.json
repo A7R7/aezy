@@ -1,0 +1,21 @@
+{
+  "name": "@aezy/base",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Aezy core policy overlay for the published DSH base bundle",
+  "type": "module",
+  "files": [
+    "cordis.patch.yml",
+    "presets",
+    "README.md"
+  ],
+  "exports": {
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

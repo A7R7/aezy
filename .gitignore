@@ -12,3 +12,5 @@ node_modules/
 
 # Local generated/interactive visualizations (kept for convenient inspection).
 .local/visualizations/
+.local/dsh/
+.local/pnpm-store/

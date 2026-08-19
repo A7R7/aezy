@@ -1,0 +1,48 @@
+# Aezy browser policy over @deepseek-ai/dsh-web-app. The profile order is
+# dsh-base -> aezy/base -> dsh-web-app -> aezy/web, so this is the final shipped
+# bundle layer before a user's own profile patch.
+
+- id: tools
+  config:
+    mode: native
+
+- id: agent-presets
+  config:
+    default: aezy
+    includeUserRoot: true
+
+- id: client-hmr
+  disabled: true
+
+- id: code-runtime
+  disabled: true
+
+- id: message-feedback
+  disabled: true
+
+- id: ui-message-feedback
+  disabled: true
+
+- id: cordis-host-runner
+  disabled: true
+
+- id: cordis-client-runner
+  disabled: true
+
+- id: ui-cordis
+  disabled: true
+
+- id: ui-workflow-run
+  disabled: true
+
+- id: plugin-inventory
+  disabled: true
+
+- id: ui-settings-plugin-inventory
+  disabled: true
+
+- id: ui-settings-plugins
+  disabled: true
+
+- id: ui-agent-preset
+  disabled: true

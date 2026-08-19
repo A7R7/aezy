@@ -1,0 +1,12 @@
+packages:
+  - packages/*
+
+storeDir: .local/pnpm-store
+saveExact: true
+
+allowBuilds:
+  '@deepseek-ai/dsh-subprocess-local': true
+  '@google/genai': false
+  koffi: false
+  node-pty: false
+  protobufjs: false

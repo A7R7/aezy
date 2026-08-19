@@ -1,0 +1,3 @@
+name: Aezy
+description: 精简的 Codex-like 编程 Agent，保留本地编码闭环、计划、目标、Skills、后台任务和受控 Subagent。
+order: 0

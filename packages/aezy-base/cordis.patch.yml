@@ -1,0 +1,20 @@
+# Aezy host-plane policy over @deepseek-ai/dsh-base. Rows remain available in
+# the published DSH packages and are disabled here instead of being removed.
+
+- id: session-telemetry-otel
+  disabled: true
+
+- id: command-feedback
+  disabled: true
+
+- id: skill-badge
+  disabled: true
+
+- id: workflow-worker-thread
+  disabled: true
+
+- id: tool-workflow
+  disabled: true
+
+- id: tool-ralph
+  disabled: true

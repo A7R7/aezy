@@ -15,6 +15,28 @@ Aezy 只依赖 DSH 发布的 package、服务、事件、slot、Remote API 和 p
 
 DSH 更新以新的已审核上游 revision 整体替换参考树。Aezy 插件通过端到端测试证明与所支持 DSH revision 的兼容性。
 
+## M0：运行 Aezy profile
+
+Aezy 当前固定使用 DSH `0.1.0-rc.7`。本地安装和 profile 状态写入已忽略的 `.local/`，提交中只保留外置 bundle、Agent preset、同步脚本和兼容性元数据。
+
+```bash
+pnpm install
+pnpm run profile:sync
+pnpm run test:m0
+pnpm run aezy:web -- --host 127.0.0.1 --port 3080
+```
+
+`profile:sync` 通过 DSH 的 `plugin --profile` 路径安装两个 Aezy 外置 bundle，并在它们之间叠加当前 DSH 安装自带的 Web bundle，将 profile 固定为：
+
+```text
+@deepseek-ai/dsh-base
+→ @aezy/base
+→ @deepseek-ai/dsh-web-app
+→ @aezy/web
+```
+
+首次真实 Agent turn 需要在 Web 的 Models 设置中配置可用 provider。`test:m0` 不使用模型 mock；它验证发布版 DSH CLI、完整 profile composition、Aezy 禁用策略、默认 preset、真实 Web Host/frontend，以及 Workspace/Session/preset Remote API 链路。当前签收状态见 [M0 里程碑记录](doc/milestones/m0.md)。
+
 ## 研究资料
 
 - [Codex Desktop / Harness 功能表](doc/codex-functions.md)
