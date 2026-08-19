@@ -9,3 +9,6 @@ lib/
 node_modules/
 *.log
 .DS_Store
+
+# Local generated/interactive visualizations (kept for convenient inspection).
+.local/visualizations/
