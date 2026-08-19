@@ -46,3 +46,10 @@
 
 - id: ui-agent-preset
   disabled: true
+
+# Aezy-owned M1 vertical slice. Its Node half exposes a bounded same-origin
+# repository read API; its browser half contributes the Changes view through
+# the existing DSH client-module and conversation-slot seams.
+- insert:
+    - id: aezy-project
+      name: '@aezy/project'

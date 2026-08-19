@@ -21,6 +21,7 @@ const profileDir = join(dshHome, 'profiles', profileName)
 const profileManifestPath = join(profileDir, 'package.json')
 const baseBundle = join(repoRoot, 'packages', 'aezy-base')
 const webBundle = join(repoRoot, 'packages', 'aezy-web')
+const projectPlugin = join(repoRoot, 'packages', 'aezy-project')
 
 let install = true
 if (existsSync(profileManifestPath)) {
@@ -28,8 +29,10 @@ if (existsSync(profileManifestPath)) {
   const dependencies = current.dependencies || {}
   install = !('@aezy/base' in dependencies)
     || !('@aezy/web' in dependencies)
+    || !('@aezy/project' in dependencies)
     || !existsSync(join(profileDir, 'node_modules', '@aezy', 'base', 'package.json'))
     || !existsSync(join(profileDir, 'node_modules', '@aezy', 'web', 'package.json'))
+    || !existsSync(join(profileDir, 'node_modules', '@aezy', 'project', 'package.json'))
 }
 
 if (install) {
@@ -38,6 +41,7 @@ if (install) {
     'plugin', '--profile', profileName, 'add',
     baseBundle,
     webBundle,
+    projectPlugin,
   ], { stdio: 'inherit', env: dshEnv() })
   void result
 }

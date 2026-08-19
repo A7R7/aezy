@@ -16,5 +16,8 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
+  },
+  "dependencies": {
+    "@aezy/project": "workspace:*"
   }
 }

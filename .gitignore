@@ -6,6 +6,9 @@
 coverage/
 dist/
 lib/
+!packages/aezy-project/lib/
+!packages/aezy-project/lib/client.js
+!packages/aezy-project/lib/client.js.map
 node_modules/
 *.log
 .DS_Store
@@ -13,4 +16,5 @@ node_modules/
 # Local generated/interactive visualizations (kept for convenient inspection).
 .local/visualizations/
 .local/dsh/
+.local/dsh-*/
 .local/pnpm-store/
