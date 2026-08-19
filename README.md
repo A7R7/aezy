@@ -19,7 +19,7 @@ DSH 更新以新的已审核上游 revision 整体替换参考树。Aezy 插件�
 
 ## M0：运行 Aezy profile
 
-Aezy 当前固定使用 DSH `0.1.0-rc.7`。本地安装和 profile 状态写入已忽略的 `.local/`，提交中只保留外置 bundle、Agent preset、同步脚本和兼容性元数据。
+Aezy 当前固定使用 DSH `0.1.0-rc.7`。依赖缓存写入仓库中已忽略的 `.local/pnpm-store/`；包含凭据、设置、profile 和 session 的运行状态默认写入 `~/.aezy/dsh/`，以确保 DSH 能在 WSL 的原生 Linux 文件系统上执行 owner-only 权限校验。可用 `DSH_HOME` 显式覆盖该位置。首次运行会从旧的 `.local/dsh/` 复制现有状态，但不会复制必须重新生成的 profile `node_modules`。
 
 ```bash
 pnpm install

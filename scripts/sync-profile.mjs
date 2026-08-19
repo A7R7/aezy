@@ -5,11 +5,14 @@ import {
   dshBin,
   dshEnv,
   dshHome,
+  legacyDshHome,
+  prepareDshHome,
   profileName,
   repoRoot,
   runDsh,
 } from './lib/profile.mjs'
 
+const { migratedLegacyHome } = prepareDshHome()
 const compatibility = JSON.parse(readFileSync(compatibilityPath, 'utf8'))
 const version = runDsh(['--version']).stdout.trim()
 if (version !== compatibility.packageVersion) {
@@ -61,6 +64,7 @@ for (const file of ['agent.cordis.yml', 'preset.yml']) {
 
 process.stdout.write([
   `Aezy profile synced with DSH ${version}.`,
+  ...(migratedLegacyHome ? [`Migrated legacy DSH state from ${legacyDshHome}.`] : []),
   `DSH_HOME=${dshHome}`,
   `profile=${profileManifestPath}`,
   `preset=${presetTarget}`,

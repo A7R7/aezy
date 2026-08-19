@@ -6,6 +6,8 @@
 coverage/
 dist/
 lib/
+!scripts/lib/
+!scripts/lib/**
 !packages/aezy-project/lib/
 !packages/aezy-project/lib/client.js
 !packages/aezy-project/lib/client.js.map
