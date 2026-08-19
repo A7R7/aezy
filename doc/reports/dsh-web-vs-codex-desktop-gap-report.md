@@ -23,6 +23,8 @@ DSH 已经有一套相当完整的 Agent runtime，但还不是一套完整的 C
 
 “可以让模型运行 `git`/`ssh`/`gh`”不等于具备 Git、Remote Host 或 PR 产品能力。产品能力还要求受控参数、权限、状态模型、错误恢复、UI 和持久化。
 
+矩阵中的 Aezy 行动全部指向参考树外的 plugin、bundle、profile patch、adapter 或应用；“部分”和“缺失”描述上游现状，不表示应直接修改 DSH package。
+
 矩阵结果是 22 项已有、25 项部分、25 项缺失；按 Harness 重要性分为 21 项 P0、31 项 P1、16 项 P2 和 4 项 P3。数量不是路线图分值：一个 P0 域通常需要多个表中能力共同闭环，已有项也可能需要为 Aezy 收敛或补强。
 
 ## 72 项逐项矩阵
@@ -157,7 +159,7 @@ Cloud Mode 不能用现有 E2B POC 贴标签；Automations 不能用 Session-loc
 ## 推荐的 Aezy 实施顺序
 
 1. 在 DSH 参考树外新建精简 `aezy-base` 与 `aezy-web` bundle，只保留插件报告列出的 P0 runtime/UI，其他行通过 patch 禁用。
-2. 用 fork 自身跑通真实任务：打开 workspace、创建/恢复 Session、steer、读改代码、build/test、approval、查看 trajectory。
+2. 用 Aezy 外置插件组合自身跑通真实任务：打开 workspace、创建/恢复 Session、steer、读改代码、build/test、approval、查看 trajectory。
 3. 加入 Project/Repository/Environment + Git status/diff/revert；以一次真实跨文件改动作为验收。
 4. 加入 Worktree 和统一 terminal/job lifecycle；用两个并行任务验证隔离和 handoff。
 5. 加入 file tree/preview/`@file`、Git stage/commit/branch 和 code review；以 Aezy 自己的提交工作流 dogfood。

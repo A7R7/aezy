@@ -2,6 +2,8 @@
 
 > 自动生成的研究附录。数据源是只读参考树 `reference/deepseek-harness/packages/*/*/package.json` 与三个 shipped bundle patch；基线为 `dsh-v0.1.0-rc.7`（`99f6f02f`）。不要把“包”与“默认运行中的插件实例”混为一谈。
 
+本清单只描述上游 DSH。Aezy 通过包的公开发布入口和扩展接口消费这些能力，不从参考树相对导入源码，也不在清单所指路径中实现修复。
+
 共 219 个第一方 workspace 包，其中 39 个声明 `dsh.client`，3 个声明 `dsh.bundle`，125 个包根在 shipped patch 中被直接引用。
 
 默认层标记：`B` = base patch，`W` = web-app patch，`H` = headless patch，`—` = 未被三个 shipped patch 直接按包名挂载。标记只说明 patch 引用；后续层仍可覆盖或禁用前层条目。

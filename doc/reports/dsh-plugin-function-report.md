@@ -16,6 +16,8 @@ DeepSeek Harness（DSH）不是“核心程序加若干插件”，而是由 ven
 
 本报告把“内置”定义为 shipped profile 通过 base、web-app 或 headless patch 直接挂载或覆盖的条目；把“第一方”定义为本仓库 `@deepseek-ai/dsh-*` workspace 包，包括默认未挂载的可选能力；`vendor/`、测试 fixture、示例 `cordis.yml` 和社区 marketplace 不计入逐插件判断。
 
+本报告中的“保留”表示 Aezy 外置 bundle 继续组合相应 DSH package，“禁用”表示 Aezy profile patch 覆盖相应配置行，“补强”表示在参考树外新增 Aezy plugin、adapter 或应用。任何建议都不授权修改 `reference/deepseek-harness/`。
+
 ## 装配模型
 
 | 层 | 实际作用 | 审计结果 |
