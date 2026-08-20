@@ -73,6 +73,8 @@ dsh plugin --profile <name> add <package-or-git-spec>
 
 ### M0：外置 composition 与真实 profile dogfood
 
+**状态：Complete（2026-08-20）。**
+
 交付：
 
 - 在参考树外建立最小 `aezy-base`、`aezy-web` 和 profile patch；
@@ -85,6 +87,8 @@ dsh plugin --profile <name> add <package-or-git-spec>
 
 ### M1：Workspace & Changes——第一个产品垂直切片
 
+**状态：Complete（2026-08-20）。** 真实 rc.8 模型跨文件 Turn、Changes UI diff、部分撤销、刷新恢复和 Undo 已按 [M1 签收记录](../milestones/m1.md) 完成；下一主里程碑是 M2。
+
 交付：
 
 - Project / Repository / Local Environment 最小模型；
@@ -92,7 +96,7 @@ dsh plugin --profile <name> add <package-or-git-spec>
 - Git repository discovery、branch/HEAD、staged/unstaged/untracked/conflict status；
 - repository/file/overall diff；
 - turn-scoped file-change ledger；
-- 安全 file/turn revert 与冲突拒绝；
+- 安全单文件 revert、receipt Undo 与冲突拒绝；
 - Web repo header、Changes 列表和 diff view。
 
 完成门槛：Aezy 在自身仓库中完成跨文件修改、真实 build/test、查看逐文件 diff、撤销其中一部分、刷新/恢复 Session 后保持一致，并能确认只读参考树未变化。

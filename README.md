@@ -60,7 +60,7 @@ pnpm run test:m1
 pnpm run test:m1:http
 ```
 
-M1 核心实现已经通过真实 DSH Host HTTP 垂直验证；配置真实模型的跨文件 Agent Turn、浏览器部分撤销与刷新恢复仍是最终签收项。当前状态和 fail-closed 边界见 [M1 里程碑记录](doc/milestones/m1.md)。
+M1 已完成签收：真实 rc.8 模型在 Aezy Workspace 中完成跨文件 Turn，随后通过实际 Web `Changes` 查看 diff、部分撤销、整页刷新恢复和 receipt Undo。签收证据、Session id 和 fail-closed 边界见 [M1 里程碑记录](doc/milestones/m1.md)。
 
 ## 研究资料
 

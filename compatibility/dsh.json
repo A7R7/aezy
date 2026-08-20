@@ -11,6 +11,10 @@
     "@deepseek-ai/dsh-web-app",
     "@aezy/web"
   ],
+  "plugins": [
+    "@aezy/brand",
+    "@aezy/project"
+  ],
   "policy": {
     "referenceTree": "read-only",
     "consumePublishedPackagesOnly": true,

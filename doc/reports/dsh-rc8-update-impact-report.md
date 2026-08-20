@@ -133,9 +133,9 @@ rc.8 新增未进入默认 bundle 的：
 
 ## Aezy 重新排序后的行动
 
-1. **立即完成 rc.8 基线和 Aezy 品牌 occupant。** 保持新版 renderer/reference/settings，外置覆盖 `ui-brand-official`，遵守品牌边界。
-2. **继续完成 M1 dogfood 签收。** rc.8 没有替代 repository status/diff、turn ledger 或安全 revert；当前实现已通过 rc.8 HTTP 验证。
-3. **M2 仍是 Approval Rules + Network Policy。** 不把 Codex/Claude provider 的非交互权限选项误认为 Harness 通用安全策略。
+1. **rc.8 基线和 Aezy 品牌 occupant：已完成。** 新版 renderer/reference/settings 保持启用；外置 `@aezy/brand` 覆盖 `ui-brand-official`，没有修改上游品牌包。
+2. **M1 dogfood：已完成。** 真实 rc.8 模型跨文件 Turn、Changes UI diff、部分撤销、刷新恢复和 receipt Undo 已签收。
+3. **下一主里程碑是 M2：Approval Rules + Network Policy。** 不把 Codex/Claude provider 的非交互权限选项误认为 Harness 通用安全策略。
 4. **M3 仍是 Worktree + Handoff。** Experimental Agent Teams 共享 checkout，恰好证明隔离仍必须由 Aezy 产品域承担。
 5. **薄接入上游 `@file/@session`、Windows PTY 和可选 product subagent bundle。** 不复制其协议或状态机；按真实平台/权限测试后启用。
 6. **继续等待 Task Surface、Side Sessions、Recallable Compaction 和 MCP reconnect。** rc.8 没有改变这些所有权边界。
@@ -147,9 +147,10 @@ rc.8 新增未进入默认 bundle 的：
 - `pnpm peers check`：无 peer dependency 问题；React/ReactDOM 按上游 rc.8 Web 基线固定为 18.3.1；
 - `pnpm store status`：untouched；
 - M1 build：通过；
-- M1 unit tests：6/6 通过；
+- M1 unit tests：7/7 通过；
 - M0 真实 composition/Web/Workspace/Session/preset smoke：通过；
-- 3090 Web：HTTP 200；
-- boot manifest：同时包含 `@aezy/project`、`dsh-client-ui-renderer`、`dsh-client-ui-reference`、`dsh-client-ui-brand-official`；
+- 3091 签收 Web：HTTP 200；
+- boot manifest：包含 `@aezy/project`、`@aezy/brand`、`dsh-client-ui-renderer` 和 `dsh-client-ui-reference`，不再加载已禁用的 `dsh-client-ui-brand-official`；
 - M1 真实 HTTP ledger/revert/undo/request fence：通过；
+- M1 真实模型与浏览器 Changes/revert/refresh/Undo：通过；
 - 默认 Session persistence：仍为 JSONL，没有触发 SQLite schema 17 迁移风险。
