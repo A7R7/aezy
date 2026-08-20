@@ -8,12 +8,17 @@ window.__ModuleLoader__.load({
 		let react_jsx_runtime = require("react/jsx-runtime");
 		//#region src/client/index.tsx
 		const palette = {
-			panel: "var(--color-bg, #111827)",
-			elevated: "var(--color-bg-elevated, #182233)",
-			border: "var(--color-border, #334155)",
-			text: "var(--color-text, #e5e7eb)",
-			muted: "var(--color-text-secondary, #94a3b8)",
-			accent: "var(--color-primary, #60a5fa)"
+			panel: "var(--dsw-alias-bg-base, #ffffff)",
+			elevated: "var(--dsw-alias-bg-module-platform, #f9fafb)",
+			interactive: "var(--dsw-alias-interactive-bg-hover, rgba(38, 49, 72, 0.06))",
+			button: "var(--dsw-alias-button-elevated-fill, #ffffff)",
+			code: "var(--dsw-alias-markdown-code-block, #f9fafb)",
+			border: "var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.1))",
+			text: "var(--dsw-alias-label-primary, #0f1115)",
+			muted: "var(--dsw-alias-label-tertiary, #81858c)",
+			accent: "var(--dsw-alias-state-business-primary, #4d6bfe)",
+			warning: "var(--dsw-alias-state-warn-label, #b45309)",
+			error: "var(--dsw-alias-state-error-primary, #dc1313)"
 		};
 		async function request(path, params) {
 			const query = new URLSearchParams(params);
@@ -63,7 +68,7 @@ window.__ModuleLoader__.load({
 						overflow: "auto",
 						fontSize: 12,
 						lineHeight: 1.55,
-						background: palette.elevated,
+						background: palette.code,
 						border: `1px solid ${palette.border}`,
 						borderRadius: 8,
 						color: palette.text,
@@ -282,7 +287,7 @@ window.__ModuleLoader__.load({
 								padding: "6px 10px",
 								borderRadius: 6,
 								border: `1px solid ${palette.border}`,
-								background: palette.elevated,
+								background: palette.button,
 								color: palette.text,
 								cursor: loading ? "wait" : "pointer"
 							},
@@ -294,9 +299,9 @@ window.__ModuleLoader__.load({
 						style: {
 							marginTop: 14,
 							padding: 10,
-							border: "1px solid #b45309",
+							border: `1px solid ${palette.error}`,
 							borderRadius: 7,
-							color: "#fbbf24"
+							color: palette.error
 						},
 						children: error
 					}),
@@ -326,7 +331,7 @@ window.__ModuleLoader__.load({
 								padding: "5px 9px",
 								borderRadius: 6,
 								border: `1px solid ${palette.border}`,
-								background: palette.panel,
+								background: palette.button,
 								color: palette.text,
 								cursor: mutating ? "wait" : "pointer"
 							},
@@ -367,7 +372,7 @@ window.__ModuleLoader__.load({
 									padding: "9px 10px",
 									border: 0,
 									borderBottom: `1px solid ${palette.border}`,
-									background: selected === file.path ? palette.elevated : "transparent",
+									background: selected === file.path ? palette.interactive : "transparent",
 									color: palette.text,
 									textAlign: "left",
 									cursor: "pointer"
@@ -375,7 +380,7 @@ window.__ModuleLoader__.load({
 								children: [
 									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 										style: {
-											color: file.conflict ? "#fb7185" : palette.accent,
+											color: file.conflict ? palette.error : palette.accent,
 											fontFamily: "monospace",
 											fontSize: 11
 										},
@@ -395,7 +400,7 @@ window.__ModuleLoader__.load({
 									ledgerByPath.has(file.path) && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 										title: ledgerByPath.get(file.path)?.turn.concurrent ? "Observed while another Session was active in this repository" : "Latest observed Agent turn",
 										style: {
-											color: ledgerByPath.get(file.path)?.turn.concurrent ? "#fbbf24" : palette.muted,
+											color: ledgerByPath.get(file.path)?.turn.concurrent ? palette.warning : palette.muted,
 											fontSize: 10
 										},
 										children: ["T", ledgerByPath.get(file.path)?.turn.turn]
@@ -429,9 +434,9 @@ window.__ModuleLoader__.load({
 											padding: "5px 9px",
 											flex: "0 0 auto",
 											borderRadius: 6,
-											border: `1px solid ${canRevert ? "#b45309" : palette.border}`,
-											background: palette.elevated,
-											color: canRevert ? "#fbbf24" : palette.muted,
+											border: `1px solid ${canRevert ? palette.warning : palette.border}`,
+											background: palette.button,
+											color: canRevert ? palette.warning : palette.muted,
 											cursor: canRevert && !mutating ? "pointer" : "not-allowed"
 										},
 										children: ["Revert T", selectedLedger.turn.turn]
@@ -454,7 +459,7 @@ window.__ModuleLoader__.load({
 								diff?.truncated === true && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 									style: {
 										marginTop: 10,
-										color: "#fbbf24",
+										color: palette.warning,
 										fontSize: 12
 									},
 									children: "Diff truncated at the Aezy safety limit."

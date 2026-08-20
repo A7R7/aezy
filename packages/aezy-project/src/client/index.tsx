@@ -87,12 +87,17 @@ type ChangesProps = {
 }
 
 const palette = {
-  panel: 'var(--color-bg, #111827)',
-  elevated: 'var(--color-bg-elevated, #182233)',
-  border: 'var(--color-border, #334155)',
-  text: 'var(--color-text, #e5e7eb)',
-  muted: 'var(--color-text-secondary, #94a3b8)',
-  accent: 'var(--color-primary, #60a5fa)',
+  panel: 'var(--dsw-alias-bg-base, #ffffff)',
+  elevated: 'var(--dsw-alias-bg-module-platform, #f9fafb)',
+  interactive: 'var(--dsw-alias-interactive-bg-hover, rgba(38, 49, 72, 0.06))',
+  button: 'var(--dsw-alias-button-elevated-fill, #ffffff)',
+  code: 'var(--dsw-alias-markdown-code-block, #f9fafb)',
+  border: 'var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.1))',
+  text: 'var(--dsw-alias-label-primary, #0f1115)',
+  muted: 'var(--dsw-alias-label-tertiary, #81858c)',
+  accent: 'var(--dsw-alias-state-business-primary, #4d6bfe)',
+  warning: 'var(--dsw-alias-state-warn-label, #b45309)',
+  error: 'var(--dsw-alias-state-error-primary, #dc1313)',
 }
 
 async function request<T>(path: string, params: Record<string, string>): Promise<T> {
@@ -130,7 +135,7 @@ function CodeDiff({ title, text }: { title: string; text: string }) {
   if (text === '') return null
   return <section style={{ marginTop: 16 }}>
     <h3 style={{ margin: '0 0 8px', fontSize: 12, color: palette.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>{title}</h3>
-    <pre style={{ margin: 0, padding: 14, overflow: 'auto', fontSize: 12, lineHeight: 1.55, background: palette.elevated, border: `1px solid ${palette.border}`, borderRadius: 8, color: palette.text, whiteSpace: 'pre' }}>{text}</pre>
+    <pre style={{ margin: 0, padding: 14, overflow: 'auto', fontSize: 12, lineHeight: 1.55, background: palette.code, border: `1px solid ${palette.border}`, borderRadius: 8, color: palette.text, whiteSpace: 'pre' }}>{text}</pre>
   </section>
 }
 
@@ -258,14 +263,14 @@ function ChangesView({ cwd, sessionId }: ChangesProps) {
           {project.environment.packageManager ? ` · ${project.environment.packageManager}` : ''}
         </div>}
       </div>
-      <button type="button" onClick={() => void refresh()} disabled={loading} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${palette.border}`, background: palette.elevated, color: palette.text, cursor: loading ? 'wait' : 'pointer' }}>{loading ? 'Refreshing…' : 'Refresh'}</button>
+      <button type="button" onClick={() => void refresh()} disabled={loading} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${palette.border}`, background: palette.button, color: palette.text, cursor: loading ? 'wait' : 'pointer' }}>{loading ? 'Refreshing…' : 'Refresh'}</button>
     </header>
 
-    {error !== null && <div role="alert" style={{ marginTop: 14, padding: 10, border: '1px solid #b45309', borderRadius: 7, color: '#fbbf24' }}>{error}</div>}
+    {error !== null && <div role="alert" style={{ marginTop: 14, padding: 10, border: `1px solid ${palette.error}`, borderRadius: 7, color: palette.error }}>{error}</div>}
 
     {undoReceipt !== null && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 14, padding: 10, border: `1px solid ${palette.border}`, borderRadius: 7, background: palette.elevated }}>
       <span style={{ color: palette.muted, fontSize: 12 }}>File reverted with a recoverable receipt.</span>
-      <button type="button" onClick={() => void undoLastRevert()} disabled={mutating} style={{ padding: '5px 9px', borderRadius: 6, border: `1px solid ${palette.border}`, background: palette.panel, color: palette.text, cursor: mutating ? 'wait' : 'pointer' }}>Undo</button>
+      <button type="button" onClick={() => void undoLastRevert()} disabled={mutating} style={{ padding: '5px 9px', borderRadius: 6, border: `1px solid ${palette.border}`, background: palette.button, color: palette.text, cursor: mutating ? 'wait' : 'pointer' }}>Undo</button>
     </div>}
 
     {project?.repository.clean === true && <div style={{ padding: '44px 0', textAlign: 'center', color: palette.muted }}>Working tree clean</div>}
@@ -276,21 +281,21 @@ function ChangesView({ cwd, sessionId }: ChangesProps) {
           key={file.path}
           type="button"
           onClick={() => setSelected(file.path)}
-          style={{ width: '100%', display: 'grid', gridTemplateColumns: '30px minmax(0, 1fr) auto', gap: 8, padding: '9px 10px', border: 0, borderBottom: `1px solid ${palette.border}`, background: selected === file.path ? palette.elevated : 'transparent', color: palette.text, textAlign: 'left', cursor: 'pointer' }}
+          style={{ width: '100%', display: 'grid', gridTemplateColumns: '30px minmax(0, 1fr) auto', gap: 8, padding: '9px 10px', border: 0, borderBottom: `1px solid ${palette.border}`, background: selected === file.path ? palette.interactive : 'transparent', color: palette.text, textAlign: 'left', cursor: 'pointer' }}
         >
-          <span style={{ color: file.conflict ? '#fb7185' : palette.accent, fontFamily: 'monospace', fontSize: 11 }}>{statusLabel(file)}</span>
+          <span style={{ color: file.conflict ? palette.error : palette.accent, fontFamily: 'monospace', fontSize: 11 }}>{statusLabel(file)}</span>
           <span title={file.path} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 12 }}>{file.path}</span>
-          {ledgerByPath.has(file.path) && <span title={ledgerByPath.get(file.path)?.turn.concurrent ? 'Observed while another Session was active in this repository' : 'Latest observed Agent turn'} style={{ color: ledgerByPath.get(file.path)?.turn.concurrent ? '#fbbf24' : palette.muted, fontSize: 10 }}>T{ledgerByPath.get(file.path)?.turn.turn}</span>}
+          {ledgerByPath.has(file.path) && <span title={ledgerByPath.get(file.path)?.turn.concurrent ? 'Observed while another Session was active in this repository' : 'Latest observed Agent turn'} style={{ color: ledgerByPath.get(file.path)?.turn.concurrent ? palette.warning : palette.muted, fontSize: 10 }}>T{ledgerByPath.get(file.path)?.turn.turn}</span>}
         </button>)}
       </nav>
       <main style={{ minWidth: 0 }}>
         {selected !== null && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <h2 style={{ margin: 0, fontFamily: 'monospace', fontSize: 14, overflowWrap: 'anywhere' }}>{selected}</h2>
-          {selectedLedger !== undefined && <button type="button" onClick={() => void revertSelected()} disabled={!canRevert || mutating} title={canRevert ? `Restore the state before Turn ${selectedLedger.turn.turn}` : 'The file changed after this ledger entry or the recorded state is unsupported'} style={{ padding: '5px 9px', flex: '0 0 auto', borderRadius: 6, border: `1px solid ${canRevert ? '#b45309' : palette.border}`, background: palette.elevated, color: canRevert ? '#fbbf24' : palette.muted, cursor: canRevert && !mutating ? 'pointer' : 'not-allowed' }}>Revert T{selectedLedger.turn.turn}</button>}
+          {selectedLedger !== undefined && <button type="button" onClick={() => void revertSelected()} disabled={!canRevert || mutating} title={canRevert ? `Restore the state before Turn ${selectedLedger.turn.turn}` : 'The file changed after this ledger entry or the recorded state is unsupported'} style={{ padding: '5px 9px', flex: '0 0 auto', borderRadius: 6, border: `1px solid ${canRevert ? palette.warning : palette.border}`, background: palette.button, color: canRevert ? palette.warning : palette.muted, cursor: canRevert && !mutating ? 'pointer' : 'not-allowed' }}>Revert T{selectedLedger.turn.turn}</button>}
         </div>}
         {diff === null && selected !== null && <div style={{ padding: '24px 0', color: palette.muted }}>Loading diff…</div>}
         {diff?.binary === true && <div style={{ padding: '24px 0', color: palette.muted }}>Binary or oversized file; textual diff unavailable.</div>}
-        {diff?.truncated === true && <div style={{ marginTop: 10, color: '#fbbf24', fontSize: 12 }}>Diff truncated at the Aezy safety limit.</div>}
+        {diff?.truncated === true && <div style={{ marginTop: 10, color: palette.warning, fontSize: 12 }}>Diff truncated at the Aezy safety limit.</div>}
         {diff !== null && !diff.binary && diff.staged === '' && diff.worktree === '' && <div style={{ padding: '24px 0', color: palette.muted }}>No textual diff.</div>}
         {diff !== null && <>
           <CodeDiff title="Staged" text={diff.staged} />

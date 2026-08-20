@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
+import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 test('built client bundle registers and mounts the Changes view', async () => {
@@ -45,4 +46,13 @@ test('built client bundle registers and mounts the Changes view', async () => {
   assert.equal(registration.options.label(), 'Changes')
   assert.deepEqual(registration.options.inject('session'), { cwd: '/repo', sessionId: 'session' })
   assert.equal(typeof registration.component, 'function')
+})
+
+test('built Changes view consumes DSH theme aliases without dark-only fallbacks', async () => {
+  const bundle = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+  assert.match(bundle, /--dsw-alias-bg-base/)
+  assert.match(bundle, /--dsw-alias-bg-module-platform/)
+  assert.match(bundle, /--dsw-alias-markdown-code-block/)
+  assert.match(bundle, /--dsw-alias-label-primary/)
+  assert.doesNotMatch(bundle, /--color-bg/)
 })
