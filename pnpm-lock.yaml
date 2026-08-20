@@ -62,6 +62,24 @@ importers:
         specifier: ^18.2.0
         version: 18.3.1
 
+  packages/aezy-security:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: ^4.0.1
+        version: 4.0.1(@deepseek-ai/cordis-plugin-include@1.0.6)(@deepseek-ai/cordis-plugin-loader@1.0.2)
+      '@deepseek-ai/dsh-client-runtime':
+        specifier: 0.1.0-rc.8
+        version: 0.1.0-rc.8(0e60b9f95af714a85e67a98df3af0bfd)
+      '@deepseek-ai/dsh-client-ui-conversation':
+        specifier: 0.1.0-rc.8
+        version: 0.1.0-rc.8(69f512d5d94bef85ee1384e69b5079f1)
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: 0.1.0-rc.8
+        version: 0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+
   packages/aezy-web:
     dependencies:
       '@aezy/brand':
@@ -70,6 +88,9 @@ importers:
       '@aezy/project':
         specifier: workspace:*
         version: link:../aezy-project
+      '@aezy/security':
+        specifier: workspace:*
+        version: link:../aezy-security
 
 packages:
 

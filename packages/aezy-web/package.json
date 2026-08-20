@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@aezy/brand": "workspace:*",
-    "@aezy/project": "workspace:*"
+    "@aezy/project": "workspace:*",
+    "@aezy/security": "workspace:*"
   }
 }

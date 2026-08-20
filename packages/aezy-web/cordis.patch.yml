@@ -56,6 +56,12 @@
     - id: aezy-brand
       name: '@aezy/brand'
 
+# Aezy-owned M2 execution boundary. It must be registered before product
+# plugins so its pre-execute policy and shared audit service are available.
+- insert:
+    - id: aezy-security
+      name: '@aezy/security'
+
 # Aezy-owned M1 vertical slice. Its Node half exposes a bounded same-origin
 # repository read API; its browser half contributes the Changes view through
 # the existing DSH client-module and conversation-slot seams.

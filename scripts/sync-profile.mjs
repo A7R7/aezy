@@ -25,6 +25,7 @@ const profileManifestPath = join(profileDir, 'package.json')
 const baseBundle = join(repoRoot, 'packages', 'aezy-base')
 const webBundle = join(repoRoot, 'packages', 'aezy-web')
 const brandPlugin = join(repoRoot, 'packages', 'aezy-brand')
+const securityPlugin = join(repoRoot, 'packages', 'aezy-security')
 const projectPlugin = join(repoRoot, 'packages', 'aezy-project')
 
 let install = true
@@ -34,10 +35,12 @@ if (existsSync(profileManifestPath)) {
   install = !('@aezy/base' in dependencies)
     || !('@aezy/web' in dependencies)
     || !('@aezy/brand' in dependencies)
+    || !('@aezy/security' in dependencies)
     || !('@aezy/project' in dependencies)
     || !existsSync(join(profileDir, 'node_modules', '@aezy', 'base', 'package.json'))
     || !existsSync(join(profileDir, 'node_modules', '@aezy', 'web', 'package.json'))
     || !existsSync(join(profileDir, 'node_modules', '@aezy', 'brand', 'package.json'))
+    || !existsSync(join(profileDir, 'node_modules', '@aezy', 'security', 'package.json'))
     || !existsSync(join(profileDir, 'node_modules', '@aezy', 'project', 'package.json'))
 }
 
@@ -48,6 +51,7 @@ if (install) {
     baseBundle,
     webBundle,
     brandPlugin,
+    securityPlugin,
     projectPlugin,
   ], { stdio: 'inherit', env: dshEnv() })
   void result
