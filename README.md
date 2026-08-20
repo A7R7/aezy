@@ -8,6 +8,7 @@ Aezy 是基于 DeepSeek Harness（DSH）公开扩展机制构建的独立编程 
 - `reference/dsh.lock.json`：DSH 来源、revision、Git tree 和本地参考路径的机器可读锁定记录。
 - `doc/`：Aezy 的功能基线、DSH 插件审计和 Codex Desktop 差距报告。
 - `packages/aezy-base/`、`packages/aezy-web/`：Aezy 的外置 composition 与默认 Agent preset。
+- `packages/aezy-brand/`：占据 DSH 通用品牌 slots 的最薄文字品牌插件；暂以字母 `A` 作为图形占位。
 - `packages/aezy-project/`：M1 Project/Repository/Local Environment、Git Changes、turn ledger 与安全 revert 插件。
 - Aezy 源码只放在参考树外的独立插件、bundle 和应用目录中，不写入 `.local/deepseek-harness/`。
 
@@ -37,7 +38,7 @@ pnpm run test:m0
 pnpm run aezy:web -- --host 127.0.0.1 --port 3080
 ```
 
-`profile:sync` 通过 DSH 的 `plugin --profile` 路径安装两个 Aezy 外置 bundle 和 `@aezy/project` 普通插件依赖，并在两个 bundle 之间叠加当前 DSH 安装自带的 Web bundle，将 profile 固定为：
+`profile:sync` 通过 DSH 的 `plugin --profile` 路径安装两个 Aezy 外置 bundle、`@aezy/brand` 与 `@aezy/project` 普通插件依赖，并在两个 bundle 之间叠加当前 DSH 安装自带的 Web bundle，将 profile 固定为：
 
 ```text
 @deepseek-ai/dsh-base

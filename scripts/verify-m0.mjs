@@ -40,6 +40,7 @@ async function rpc(port, method, payload) {
 const dump = runDsh(['--profile', profileName, '--dump-default-config']).stdout
 invariant(dump.includes('@aezy/base'), 'Composed config does not include @aezy/base')
 invariant(dump.includes('@aezy/web'), 'Composed config does not include @aezy/web')
+invariant(dump.includes('@aezy/brand'), 'Composed config does not include @aezy/brand')
 invariant(dump.indexOf('@aezy/base') < dump.indexOf('@aezy/web'), 'Aezy bundle order is invalid')
 
 for (const id of [
@@ -56,7 +57,11 @@ for (const id of [
   'ui-settings-plugin-inventory',
   'ui-settings-plugins',
   'ui-agent-preset',
+  'ui-brand-official',
 ]) assertDisabled(dump, id)
+
+const brandRow = row(dump, 'aezy-brand')
+invariant(brandRow.includes("name: '@aezy/brand'"), 'Aezy brand occupant is not composed')
 
 const presetRow = row(dump, 'agent-presets')
 invariant(/\n    default: aezy(?:\n|$)/.test(presetRow), 'Aezy must be the default Agent preset')
@@ -117,6 +122,11 @@ try {
   invariant(response?.ok, `Aezy Web did not become ready on port ${port}\n${output}`)
   const html = await response.text()
   invariant(/<!doctype html>/i.test(html), 'Aezy Web root did not serve the DSH frontend')
+  invariant(html.includes('"id":"@aezy/brand"'), 'Aezy Web did not load the Aezy brand occupant')
+  invariant(
+    !html.includes('"id":"@deepseek-ai/dsh-client-ui-brand-official"'),
+    'Aezy Web still loads the disabled official DSH brand occupant',
+  )
 
   const host = await rpc(port, 'host.describe', {})
   invariant(typeof host === 'object' && host !== null, 'host.describe returned no host information')

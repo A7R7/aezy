@@ -47,6 +47,15 @@
 - id: ui-agent-preset
   disabled: true
 
+# The official package remains installed through dsh-web-app, but Aezy owns
+# the visible product identity through the generic rc.8 brand slots.
+- id: ui-brand-official
+  disabled: true
+
+- insert:
+    - id: aezy-brand
+      name: '@aezy/brand'
+
 # Aezy-owned M1 vertical slice. Its Node half exposes a bounded same-origin
 # repository read API; its browser half contributes the Changes view through
 # the existing DSH client-module and conversation-slot seams.
