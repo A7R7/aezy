@@ -1,11 +1,12 @@
-import { realpathSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { existsSync, realpathSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 
 export const NETWORK_MODES = ['deny', 'ask', 'allow']
 export const RULE_EFFECTS = ['deny', 'ask', 'allow']
 export const RULE_SCOPES = ['global', 'repository']
 
-const DIRECT_NETWORK_TOOL = /(?:^|[_.:/-])(web|http|https|fetch|search|browser|mcp|github|gitlab)(?:$|[_.:/-])/iu
+const DIRECT_NETWORK_TOOL = /(?:^|[_.:/-])(web|http|https|fetch|browser|mcp|github|gitlab)(?:$|[_.:/-])/iu
+const KNOWN_LOCAL_TOOL = /^(?:bash|pwsh|read|write|edit|read_image|glob|grep|str_replace_editor|job_(?:output|list|kill)|skill|get_goal|create_goal|update_goal|send_message|interrupt_agent|list_agents|subagent(?:_fork)?|ask_user_question|todo_write|exit_plan_mode|aezy\.project\.(?:revert|undo))$/u
 const NETWORK_EXECUTABLE = /^(?:curl|wget|ssh|scp|sftp|ftp|telnet|ping|dig|nslookup|nc|ncat|netcat|gh|aws|az|gcloud|kubectl|helm)$/iu
 const NETWORK_PACKAGE_ACTION = /^(?:add|install|update|upgrade|publish|deploy|login|logout|whoami|view|info|search|audit)$/iu
 const SAFE_EXECUTABLE = /^(?:pwd|ls|dir|cat|head|tail|wc|stat|test|true|false|echo|printf|rg|grep|sed|awk|find|cmp|diff)$/u
@@ -16,6 +17,17 @@ function canonicalPath(path) {
     return realpathSync(absolute)
   } catch {
     return absolute
+  }
+}
+
+function discoverRepositoryRoot(path) {
+  const origin = canonicalPath(path)
+  let current = origin
+  while (true) {
+    if (existsSync(join(current, '.git'))) return current
+    const parent = dirname(current)
+    if (parent === current) return origin
+    current = parent
   }
 }
 
@@ -90,7 +102,7 @@ function knownLocalShell(tokens) {
 
 /** Classify network exposure without claiming to be a shell parser. */
 export function classifyAction(toolName, args = {}, cwd = '.') {
-  const repositoryRoot = canonicalPath(cwd)
+  const repositoryRoot = discoverRepositoryRoot(cwd)
   const command = (toolName === 'bash' || toolName === 'pwsh') && typeof args.command === 'string'
     ? args.command.trim()
     : null
@@ -99,6 +111,7 @@ export function classifyAction(toolName, args = {}, cwd = '.') {
   if (DIRECT_NETWORK_TOOL.test(toolName)) network = 'required'
   else if (command !== null && obviousShellNetwork(command, commandTokens)) network = 'required'
   else if (command !== null && (commandTokens === null || !knownLocalShell(commandTokens))) network = 'possible'
+  else if (command === null && !KNOWN_LOCAL_TOOL.test(toolName)) network = 'possible'
   return {
     tool: toolName,
     command,
@@ -200,11 +213,11 @@ export function normalizeRule(input, cwd = '.') {
     scope,
     tool,
     ...commandPrefix === undefined ? {} : { commandPrefix },
-    ...scope === 'repository' ? { repositoryRoot: canonicalPath(cwd) } : {},
+    ...scope === 'repository' ? { repositoryRoot: discoverRepositoryRoot(cwd) } : {},
   }
 }
 
 export function canonicalRepositoryRoot(cwd) {
   if (typeof cwd !== 'string' || cwd.trim() === '' || cwd.includes('\0')) throw new Error('cwd is invalid')
-  return canonicalPath(cwd)
+  return discoverRepositoryRoot(cwd)
 }

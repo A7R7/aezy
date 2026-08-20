@@ -19,7 +19,8 @@
     "test:m1": "node --test packages/aezy-project/tests/*.test.mjs",
     "test:m1:http": "node scripts/verify-m1-http.mjs",
     "test:m2": "node --test packages/aezy-security/tests/*.test.mjs",
-    "test:m2:http": "node scripts/verify-m2-http.mjs"
+    "test:m2:http": "node scripts/verify-m2-http.mjs",
+    "dogfood:m2": "node scripts/dogfood-m2.mjs"
   },
   "devDependencies": {
     "@deepseek-ai/dsh": "0.1.0-rc.8",

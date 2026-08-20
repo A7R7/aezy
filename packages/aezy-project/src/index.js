@@ -9,7 +9,7 @@ const ROUTE = '/aezy/api/project'
 const MAX_BODY_BYTES = 32 * 1024
 
 export { describeDiff, describeProject, parsePorcelainV2, TurnLedger }
-export const inject = ['webServer', 'sessions']
+export const inject = ['webServer', 'sessions', 'aezySecurity']
 
 function json(res, status, value) {
   const body = JSON.stringify(value)
@@ -72,7 +72,7 @@ function query(url, name) {
   return url.searchParams.get(name)
 }
 
-function createHandler(ledger) {
+function createHandler(ledger, security, warn) {
   return async (req, res) => {
     if (!requireWebClient(req)) {
       json(res, 403, { error: 'This endpoint accepts only Aezy Web requests.' })
@@ -93,11 +93,29 @@ function createHandler(ledger) {
         return
       }
       if (req.method === 'POST' && url.pathname === `${ROUTE}/revert`) {
-        json(res, 200, await ledger.revert(await readJson(req)))
+        const body = await readJson(req)
+        const result = await ledger.revert(body)
+        await security.auditUserAction({
+          tool: 'aezy.project.revert',
+          cwd: body.cwd,
+          sessionId: body.sessionId,
+          turn: body.turn,
+          callId: result.receiptId,
+          explanation: 'Allowed by the user-confirmed Aezy Web revert action.',
+        }).catch(warn)
+        json(res, 200, result)
         return
       }
       if (req.method === 'POST' && url.pathname === `${ROUTE}/undo`) {
-        json(res, 200, await ledger.undo(await readJson(req)))
+        const body = await readJson(req)
+        const result = await ledger.undo(body)
+        await security.auditUserAction({
+          tool: 'aezy.project.undo',
+          cwd: body.cwd,
+          callId: body.receiptId,
+          explanation: 'Allowed by the explicit Aezy Web Undo action.',
+        }).catch(warn)
+        json(res, 200, result)
         return
       }
       json(res, 404, { error: 'Unknown Aezy Project endpoint.' })
@@ -111,10 +129,11 @@ function createHandler(ledger) {
 
 /** Register the M1 Project HTTP surface and turn observer on public DSH seams. */
 export function apply(ctx) {
+  const warn = error => ctx.logger.warn(error instanceof Error ? error : new Error(String(error)))
   const ledger = new TurnLedger({
-    warn: error => ctx.logger.warn(error instanceof Error ? error : new Error(String(error))),
+    warn,
   })
-  const handler = createHandler(ledger)
+  const handler = createHandler(ledger, ctx.aezySecurity, warn)
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',
     path: ROUTE,

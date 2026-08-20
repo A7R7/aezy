@@ -206,5 +206,19 @@ export function apply(ctx, config = {}) {
       const action = classifyAction(tool, args, cwd)
       return { action, verdict: evaluatePolicy(store.state, action) }
     },
+    auditUserAction: ({ tool, cwd, sessionId = null, turn = null, callId, explanation }) => {
+      const action = classifyAction(tool, {}, cwd)
+      return store.appendAudit(auditRecord({
+        action,
+        verdict: {
+          decision: 'allow',
+          source: 'user-confirmation',
+          explanation,
+        },
+        sessionId,
+        turn,
+        callId,
+      }))
+    },
   })
 }

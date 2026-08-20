@@ -231,6 +231,7 @@ function SecurityView({ cwd }: SecurityProps) {
             <time style={{ marginLeft: 'auto', color: palette.muted, fontSize: 10 }}>{new Date(record.time).toLocaleString()}</time>
           </div>
           {record.commandPreview !== undefined && <div style={{ marginTop: 5, padding: '5px 7px', borderRadius: 5, background: palette.interactive, color: palette.muted, fontFamily: 'monospace', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{record.commandPreview}</div>}
+          <div style={{ marginTop: 5, color: palette.muted, fontSize: 11 }}>{record.explanation}</div>
         </div>)}
       </div>
     </section>

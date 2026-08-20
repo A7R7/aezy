@@ -17,4 +17,6 @@ This boundary governs Agent-initiated tools, including shell tools and obvious
 network providers. It does not intercept DSH's model-provider/control-plane
 traffic and is not an OS-level egress sandbox. Since arbitrary shell programs
 can open sockets, unknown shell commands are conservatively classified as
-`possible` network access under Network `ask` or `deny`.
+`possible` network access under Network `ask` or `deny`. Unknown out-of-tree
+tools are classified the same way, so an MCP tool whose product name does not
+advertise its transport cannot silently bypass the default policy.

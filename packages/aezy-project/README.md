@@ -21,3 +21,7 @@ restores both worktree and index to the pre-Turn state, writes a recoverable
 receipt first, and offers Undo only while the post-revert fingerprint still
 matches. Symlinks, non-files, conflicts, renames, and files larger than the
 capture limit fail closed instead of taking a lossy path.
+
+In the Aezy Web composition, M2's `aezySecurity` service is a required runtime
+dependency. Successful user-confirmed Revert and Undo actions enter the shared
+Security audit projection without adding a second approval prompt.

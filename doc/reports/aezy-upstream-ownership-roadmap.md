@@ -105,6 +105,8 @@ M1 不包含 stage/commit/push/PR、Worktree、完整文件树、用户 PTY、�
 
 ### M2：可持续自治的权限边界
 
+**状态：Complete（2026-08-20）。** 外置 `@aezy/security` 已完成持久规则、global/repository Network Policy、Security Web view、匹配解释、审计、restart persistence 与真实模型 deny dogfood；详见 [M2 签收记录](../milestones/m2.md)。下一主里程碑是 M3 Worktree/Handoff。
+
 交付：
 
 - command/tool 规则的持久允许、一次允许、拒绝；
