@@ -1,6 +1,6 @@
 # Aezy repository instructions
 
-- `reference/deepseek-harness/` is a read-only snapshot of upstream DSH. Never edit, format, generate into, patch, or commit changes under that path.
+- `.local/deepseek-harness/` is a read-only snapshot of upstream DSH. Never edit, format, generate into, patch, or commit changes under that path.
 - Implement Aezy behavior only through out-of-tree plugins, bundles, profile patches, adapters, or applications outside the reference tree.
 - Consume DSH through its published package and extension interfaces. Do not import files from the reference tree by relative source path.
 - Update the reference tree only as one reviewed upstream revision replacement, and record the revision in the root README and compatibility metadata.

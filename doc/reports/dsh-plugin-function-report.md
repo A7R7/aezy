@@ -10,13 +10,13 @@ DeepSeek Harness（DSH）不是“核心程序加若干插件”，而是由 ven
 
 ## 审计口径
 
-本报告基于只读参考树中的官方上游 `dsh-v0.1.0-rc.7`（`99f6f02f`），交叉读取了 [架构说明](../../reference/deepseek-harness/docs/architecture.md)、[包分组](../../reference/deepseek-harness/packages/README.md)、[base bundle](../../reference/deepseek-harness/packages/bundle/base/cordis.patch.yml)、[Web bundle](../../reference/deepseek-harness/packages/bundle/web-app/cordis.patch.yml)、[headless bundle](../../reference/deepseek-harness/packages/bundle/headless/cordis.patch.yml)、package manifest、package README 和关键入口源码。
+本报告基于只读参考树中的官方上游 `dsh-v0.1.0-rc.7`（`99f6f02f`），交叉读取了 [架构说明](../../.local/deepseek-harness/docs/architecture.md)、[包分组](../../.local/deepseek-harness/packages/README.md)、[base bundle](../../.local/deepseek-harness/packages/bundle/base/cordis.patch.yml)、[Web bundle](../../.local/deepseek-harness/packages/bundle/web-app/cordis.patch.yml)、[headless bundle](../../.local/deepseek-harness/packages/bundle/headless/cordis.patch.yml)、package manifest、package README 和关键入口源码。
 
 “包”“插件”“默认实例”必须分开：DSH 参考树有 219 个 `packages/*/*` workspace 包，全部依赖 Cordis，但其中包含运行时插件、浏览器插件、bundle、SDK/协议、纯 UI 组件、工具库、示例与测试支持。39 个包声明 `dsh.client`，3 个包声明 `dsh.bundle`；三个 shipped patch 直接引用 125 个不同的第一方包根。完整逐包清单见 [DSH 第一方包与插件逐项清单](dsh-first-party-package-inventory.md)。
 
 本报告把“内置”定义为 shipped profile 通过 base、web-app 或 headless patch 直接挂载或覆盖的条目；把“第一方”定义为本仓库 `@deepseek-ai/dsh-*` workspace 包，包括默认未挂载的可选能力；`vendor/`、测试 fixture、示例 `cordis.yml` 和社区 marketplace 不计入逐插件判断。
 
-本报告中的“保留”表示 Aezy 外置 bundle 继续组合相应 DSH package，“禁用”表示 Aezy profile patch 覆盖相应配置行，“补强”表示在参考树外新增 Aezy plugin、adapter 或应用。任何建议都不授权修改 `reference/deepseek-harness/`。
+本报告中的“保留”表示 Aezy 外置 bundle 继续组合相应 DSH package，“禁用”表示 Aezy profile patch 覆盖相应配置行，“补强”表示在参考树外新增 Aezy plugin、adapter 或应用。任何建议都不授权修改 `.local/deepseek-harness/`。
 
 ## 装配模型
 

@@ -17,6 +17,7 @@ node_modules/
 
 # Local generated/interactive visualizations (kept for convenient inspection).
 .local/visualizations/
+.local/deepseek-harness/
 .local/dsh/
 .local/dsh-*/
 .local/pnpm-store/

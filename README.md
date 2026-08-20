@@ -4,12 +4,21 @@ Aezy 是基于 DeepSeek Harness（DSH）公开扩展机制构建的独立编程 
 
 ## 仓库布局
 
-- `reference/deepseek-harness/`：只读 DSH 上游参考源码，当前固定在 `dsh-v0.1.0-rc.7`（`99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`）。
+- `.local/deepseek-harness/`：只读 DSH 上游参考源码，当前固定在 `dsh-v0.1.0-rc.7`（`99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`）。
 - `reference/dsh.lock.json`：DSH 来源、revision、Git tree 和本地参考路径的机器可读锁定记录。
 - `doc/`：Aezy 的功能基线、DSH 插件审计和 Codex Desktop 差距报告。
 - `packages/aezy-base/`、`packages/aezy-web/`：Aezy 的外置 composition 与默认 Agent preset。
 - `packages/aezy-project/`：M1 Project/Repository/Local Environment、Git Changes、turn ledger 与安全 revert 插件。
-- Aezy 源码只放在参考树外的独立插件、bundle 和应用目录中，不写入 `reference/deepseek-harness/`。
+- Aezy 源码只放在参考树外的独立插件、bundle 和应用目录中，不写入 `.local/deepseek-harness/`。
+
+DSH 参考树不进入 Aezy 的 Git index，以免数千个上游文件拖慢日常 `status`、diff 和 IDE Git 集成；`reference/dsh.lock.json` 是其来源与 revision 的可提交真相源。新的 Aezy clone 如需恢复本地参考树，可执行：
+
+```bash
+git clone https://github.com/deepseek-ai/deepseek-harness.git .local/deepseek-harness
+git -C .local/deepseek-harness checkout --detach 99f6f02fecdb7dff40c3fbc9470f5907c29f74ca
+```
+
+恢复后应保持该目录只读使用；Aezy 构建和运行仍只消费发布到 npm 的 DSH package，不依赖本地参考树。
 
 ## 扩展边界
 

@@ -24,9 +24,9 @@
 
 三个 proposed 方向有比普通 backlog 更强的设计信号，但仍不得当作承诺：
 
-- [Task Surface](../../reference/deepseek-harness/.agents/notes/proposed/feature/2026-08-04-task-surface.zh.md) 已定义协议、持久化、Host/Client 边界和三阶段交付计划，是最成熟的 proposed 产品面。
-- [Interactive Side Sessions](../../reference/deepseek-harness/.agents/notes/proposed/feature/2026-07-08-interactive-side-sessions.md) 已有 fork、隔离、多轮对话和 merge-back spike，适合等待上游沿 Session 语义实现。
-- [Recallable Compaction](../../reference/deepseek-harness/.agents/notes/proposed/feature/2026-07-06-recallable-compaction.md) 已定义 checkpoint split、`history_read`、`history_search`、回放与缓存约定，属于 Session/compaction 内核，不应由 Aezy 另建历史系统。
+- [Task Surface](../../.local/deepseek-harness/.agents/notes/proposed/feature/2026-08-04-task-surface.zh.md) 已定义协议、持久化、Host/Client 边界和三阶段交付计划，是最成熟的 proposed 产品面。
+- [Interactive Side Sessions](../../.local/deepseek-harness/.agents/notes/proposed/feature/2026-07-08-interactive-side-sessions.md) 已有 fork、隔离、多轮对话和 merge-back spike，适合等待上游沿 Session 语义实现。
+- [Recallable Compaction](../../.local/deepseek-harness/.agents/notes/proposed/feature/2026-07-06-recallable-compaction.md) 已定义 checkpoint split、`history_read`、`history_search`、回放与缓存约定，属于 Session/compaction 内核，不应由 Aezy 另建历史系统。
 
 ## 能力所有权矩阵
 
@@ -53,7 +53,7 @@
 
 ## “remove repository plugin”的正确解释
 
-上游 2026-08-09 的 [移除专用 repository 插件路径](../../reference/deepseek-harness/.agents/notes/implemented/simplification/2026-08-09-remove-repository-plugin.zh.md) 删除的是一条与 profile composition bundle 重复的第三方插件分发路径：`.dsh-plugin` 格式、专用 repository cache、包装层和准备流程。
+上游 2026-08-09 的 [移除专用 repository 插件路径](../../.local/deepseek-harness/.agents/notes/implemented/simplification/2026-08-09-remove-repository-plugin.zh.md) 删除的是一条与 profile composition bundle 重复的第三方插件分发路径：`.dsh-plugin` 格式、专用 repository cache、包装层和准备流程。
 
 它没有删除、实现或否定 Git repository 产品域。相反，该决策明确把唯一外部扩展路线收敛为：
 
@@ -79,7 +79,7 @@ dsh plugin --profile <name> add <package-or-git-spec>
 - 用真实 DSH Host/Web 跑通 workspace、Session create/resume、queue/steer、文件读改、shell/job、approval、trajectory；
 - 固定 DSH revision 与 Aezy compatibility metadata。
 
-完成门槛：Aezy 自己通过该 profile 完成并验证一个真实小改动；没有 mock runtime，没有参考树源码导入，没有 `reference/deepseek-harness/` 修改。
+完成门槛：Aezy 自己通过该 profile 完成并验证一个真实小改动；没有 mock runtime，没有参考树源码导入，没有 `.local/deepseek-harness/` 修改。
 
 ### M1：Workspace & Changes——第一个产品垂直切片
 
