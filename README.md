@@ -4,7 +4,7 @@ Aezy 是基于 DeepSeek Harness（DSH）公开扩展机制构建的独立编程 
 
 ## 仓库布局
 
-- `.local/deepseek-harness/`：只读 DSH 上游参考源码，当前固定在 `dsh-v0.1.0-rc.7`（`99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`）。
+- `.local/deepseek-harness/`：只读 DSH 上游参考源码，当前固定在 `dsh-v0.1.0-rc.8`（`141eb6fef83422698aef7a981029e843e8161534`）。
 - `reference/dsh.lock.json`：DSH 来源、revision、Git tree 和本地参考路径的机器可读锁定记录。
 - `doc/`：Aezy 的功能基线、DSH 插件审计和 Codex Desktop 差距报告。
 - `packages/aezy-base/`、`packages/aezy-web/`：Aezy 的外置 composition 与默认 Agent preset。
@@ -15,7 +15,7 @@ DSH 参考树不进入 Aezy 的 Git index，以免数千个上游文件拖慢日
 
 ```bash
 git clone https://github.com/deepseek-ai/deepseek-harness.git .local/deepseek-harness
-git -C .local/deepseek-harness checkout --detach 99f6f02fecdb7dff40c3fbc9470f5907c29f74ca
+git -C .local/deepseek-harness checkout --detach 141eb6fef83422698aef7a981029e843e8161534
 ```
 
 恢复后应保持该目录只读使用；Aezy 构建和运行仍只消费发布到 npm 的 DSH package，不依赖本地参考树。
@@ -28,7 +28,7 @@ DSH 更新以新的已审核上游 revision 整体替换参考树。Aezy 插件�
 
 ## M0：运行 Aezy profile
 
-Aezy 当前固定使用 DSH `0.1.0-rc.7`。依赖缓存写入仓库中已忽略的 `.local/pnpm-store/`；包含凭据、设置、profile 和 session 的运行状态默认写入 `~/.aezy/dsh/`，以确保 DSH 能在 WSL 的原生 Linux 文件系统上执行 owner-only 权限校验。可用 `DSH_HOME` 显式覆盖该位置。首次运行会从旧的 `.local/dsh/` 复制现有状态，但不会复制必须重新生成的 profile `node_modules`。
+Aezy 当前固定使用 DSH `0.1.0-rc.8`。依赖缓存写入仓库中已忽略的 `.local/pnpm-store/`；包含凭据、设置、profile 和 session 的运行状态默认写入 `~/.aezy/dsh/`，以确保 DSH 能在 WSL 的原生 Linux 文件系统上执行 owner-only 权限校验。可用 `DSH_HOME` 显式覆盖该位置。首次运行会从旧的 `.local/dsh/` 复制现有状态，但不会复制必须重新生成的 profile `node_modules`。
 
 ```bash
 pnpm install
@@ -67,4 +67,5 @@ M1 核心实现已经通过真实 DSH Host HTTP 垂直验证；配置真实模�
 - [DSH 内置与第一方插件功能报告](doc/reports/dsh-plugin-function-report.md)
 - [DSH 第一方包与插件逐项清单](doc/reports/dsh-first-party-package-inventory.md)
 - [DSH Web 与 Codex Desktop 功能差距报告](doc/reports/dsh-web-vs-codex-desktop-gap-report.md)
+- [DSH v0.1.0-rc.8 更新与 Aezy 影响报告](doc/reports/dsh-rc8-update-impact-report.md)
 - [Aezy 上游等待边界与实施路线图](doc/reports/aezy-upstream-ownership-roadmap.md)

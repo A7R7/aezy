@@ -1,5 +1,7 @@
 # DSH Web 与 Codex Desktop 功能差距报告
 
+> 本报告的 72 项矩阵以 rc.7 为基线。rc.8 已补充 `@file/@session`、动态 Web renderer、Windows 持久 PowerShell 与多项 Subagent/Session 能力；差距变化和 Aezy 决策见 [rc.8 更新报告](dsh-rc8-update-impact-report.md)。Project/Git/ledger/Worktree/Approval Rules/Network Policy 等核心缺口仍成立。
+
 ## 结论
 
 DSH 已经有一套相当完整的 Agent runtime，但还不是一套完整的 Codex-like 编程工作台。它在 Session/Turn、streaming、queue/steer、文件与 shell 工具、sandbox/approval、compaction、Plan/Goal/Todo、subagent、workflow 和 trajectory 上有真实实现；缺口主要位于项目/执行环境、Git、文件与终端工作台、浏览器验证、统一任务控制面和桌面集成。

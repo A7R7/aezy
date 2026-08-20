@@ -17,7 +17,9 @@
     "test:m1:http": "node scripts/verify-m1-http.mjs"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh": "0.1.0-rc.7",
+    "@deepseek-ai/dsh": "0.1.0-rc.8",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "tsdown": "0.22.14",
     "typescript": "6.0.3",
     "unrun": "0.3.1"

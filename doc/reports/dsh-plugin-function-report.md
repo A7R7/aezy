@@ -1,5 +1,7 @@
 # DSH 内置与第一方插件功能报告
 
+> 本报告主体是 rc.7 的完整审计快照。当前 Aezy 基线已升级到 rc.8；新增/移除包、bundle 变化和路线影响见 [rc.8 更新报告](dsh-rc8-update-impact-report.md)。本文的架构结论仍有效，但数量和逐包名录不应当作 rc.8 的完整清单。
+
 ## 结论
 
 DeepSeek Harness（DSH）不是“核心程序加若干插件”，而是由 vendored Cordis 装配出来的一棵插件树；模型适配器、Session 日志、Agent Loop、工具注册、权限、Web Host 和浏览器 UI 都是可替换插件。Aezy 应保留这种可组合结构，但把默认产品面收敛成一套明确的 Codex-like 编程 Harness，而不是继续把所有实验能力堆进默认 profile。

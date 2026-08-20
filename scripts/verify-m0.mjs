@@ -89,7 +89,7 @@ const port = await new Promise((resolve, reject) => {
   })
 })
 
-const child = spawnDsh(['--profile', profileName, '--host', '127.0.0.1', '--port', String(port)])
+const child = spawnDsh(['--profile', profileName, '--host', '127.0.0.1', '--port', String(port), '--no-open'])
 let output = ''
 const startup = new Promise((resolve, reject) => {
   const append = chunk => {
