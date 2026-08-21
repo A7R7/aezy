@@ -26,7 +26,10 @@ window.__ModuleLoader__.load({
 					revertable: file.revertable === true,
 					additions: file.additions ?? null,
 					deletions: file.deletions ?? null,
-					binary: file.binary === true
+					binary: file.binary === true,
+					truncated: file.truncated === true,
+					status: file.status ?? (file.binary === true ? "binary" : "modified"),
+					oldPath: file.oldPath ?? null
 				}))
 			};
 		}
@@ -45,6 +48,33 @@ window.__ModuleLoader__.load({
 			success: "var(--dsw-alias-state-success-primary, #1a7f37)",
 			warning: "var(--dsw-alias-state-warn-label, #b45309)",
 			error: "var(--dsw-alias-state-error-primary, #dc1313)"
+		};
+		var ReviewController = class {
+			#target = null;
+			#listeners = /* @__PURE__ */ new Set();
+			getSnapshot = () => this.#target;
+			subscribe = (listener) => {
+				this.#listeners.add(listener);
+				return () => {
+					this.#listeners.delete(listener);
+				};
+			};
+			open(target) {
+				this.#target = target;
+				for (const listener of this.#listeners) listener();
+			}
+			select(path) {
+				if (this.#target === null || !this.#target.files.some((file) => file.path === path)) return;
+				this.open({
+					...this.#target,
+					path
+				});
+			}
+			close() {
+				if (this.#target === null) return;
+				this.#target = null;
+				for (const listener of this.#listeners) listener();
+			}
 		};
 		const ledgerRequests = /* @__PURE__ */ new Map();
 		function loadLedger(cwd, sessionId) {
@@ -86,10 +116,8 @@ window.__ModuleLoader__.load({
 				})]
 			});
 		}
-		function TurnChangedFiles({ matched, cwd, sessionId, openFile }) {
+		function TurnChangedFiles({ matched, cwd, sessionId, openReview }) {
 			const [summary, setSummary] = (0, react.useState)(void 0);
-			const [review, setReview] = (0, react.useState)(void 0);
-			const [reviewOpen, setReviewOpen] = (0, react.useState)(false);
 			const [receiptId, setReceiptId] = (0, react.useState)(null);
 			const [mutating, setMutating] = (0, react.useState)(false);
 			const [error, setError] = (0, react.useState)(null);
@@ -150,25 +178,24 @@ window.__ModuleLoader__.load({
 					setMutating(false);
 				}
 			};
-			const toggleReview = async () => {
-				if (reviewOpen) {
-					setReviewOpen(false);
-					return;
-				}
-				setReviewOpen(true);
-				if (review !== void 0) return;
-				setError(null);
-				try {
-					setReview(await request("/aezy/api/project/turn-review", {
-						cwd,
-						sessionId,
-						turn: String(summary.turn)
-					}));
-				} catch (reason) {
-					setReview(void 0);
-					setReviewOpen(false);
-					setError(reason instanceof Error ? reason.message : String(reason));
-				}
+			const openTurnReview = (path = summary.files[0]?.path) => {
+				if (path === void 0) return;
+				openReview({
+					source: "turn",
+					cwd,
+					sessionId,
+					turn: summary.turn,
+					path,
+					files: summary.files.map((file) => ({
+						path: file.path,
+						oldPath: file.oldPath,
+						additions: file.additions,
+						deletions: file.deletions,
+						binary: file.binary,
+						truncated: file.truncated,
+						status: file.status
+					}))
+				});
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				"data-aezy-turn-files": summary.turn,
@@ -227,10 +254,7 @@ window.__ModuleLoader__.load({
 								children: mutating ? "Working…" : receiptId === null ? "Undo" : "Redo"
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
-								onClick: () => {
-									toggleReview();
-								},
-								"aria-expanded": reviewOpen,
+								onClick: () => openTurnReview(),
 								style: {
 									border: 0,
 									borderRadius: 5,
@@ -240,7 +264,7 @@ window.__ModuleLoader__.load({
 									cursor: "pointer",
 									font: "inherit"
 								},
-								children: reviewOpen ? "Close review" : "Review"
+								children: "Review changes"
 							})]
 						})]
 					}),
@@ -281,22 +305,10 @@ window.__ModuleLoader__.load({
 								padding: "4px 12px",
 								borderBottom: `1px solid ${palette.border}`
 							},
-							children: [file.afterFingerprint === null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								title: `${file.path} (removed)`,
-								style: {
-									minWidth: 0,
-									overflow: "hidden",
-									textOverflow: "ellipsis",
-									whiteSpace: "nowrap",
-									color: palette.muted,
-									textDecoration: "line-through",
-									fontFamily: "monospace"
-								},
-								children: file.path
-							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
 								title: file.path,
-								onClick: () => openFile(file.openPath),
+								onClick: () => openTurnReview(file.path),
 								style: {
 									minWidth: 0,
 									overflow: "hidden",
@@ -305,13 +317,33 @@ window.__ModuleLoader__.load({
 									padding: 0,
 									border: 0,
 									background: "transparent",
-									color: palette.text,
+									color: file.afterFingerprint === null ? palette.muted : palette.text,
 									cursor: "pointer",
 									textAlign: "left",
 									fontFamily: "monospace",
-									fontSize: 12
+									fontSize: 12,
+									textDecoration: file.afterFingerprint === null ? "line-through" : void 0
 								},
-								children: file.path
+								children: [
+									file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : "",
+									file.path,
+									file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										style: {
+											marginLeft: 7,
+											color: palette.muted,
+											fontFamily: "inherit"
+										},
+										children: "binary"
+									}),
+									file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										style: {
+											marginLeft: 7,
+											color: palette.warning,
+											fontFamily: "inherit"
+										},
+										children: "truncated"
+									})
+								]
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
 								additions: file.additions,
 								deletions: file.deletions
@@ -325,78 +357,16 @@ window.__ModuleLoader__.load({
 							color: palette.error
 						},
 						children: error
-					}),
-					reviewOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						style: {
-							padding: 12,
-							background: palette.panel
-						},
-						children: [review === void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							style: { color: palette.muted },
-							children: "Loading Turn diff…"
-						}), review?.files.map((file) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-							style: { marginTop: 10 },
-							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									style: {
-										display: "flex",
-										justifyContent: "space-between",
-										gap: 12,
-										marginBottom: 6
-									},
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
-										style: {
-											minWidth: 0,
-											overflowWrap: "anywhere",
-											fontFamily: "monospace",
-											fontWeight: 500
-										},
-										children: file.path
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
-										additions: file.additions,
-										deletions: file.deletions
-									})]
-								}),
-								file.binary ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									style: { color: palette.muted },
-									children: "Binary or oversized file; textual review unavailable."
-								}) : file.diff === "" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									style: { color: palette.muted },
-									children: "No worktree line changes."
-								}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
-									style: {
-										margin: 0,
-										padding: 10,
-										maxHeight: 360,
-										overflow: "auto",
-										border: `1px solid ${palette.border}`,
-										borderRadius: 7,
-										background: palette.code,
-										color: palette.text,
-										fontSize: 11,
-										lineHeight: 1.5,
-										whiteSpace: "pre"
-									},
-									children: file.diff
-								}),
-								file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									style: {
-										marginTop: 5,
-										color: palette.warning
-									},
-									children: "Diff truncated at the Aezy review limit."
-								})
-							]
-						}, file.path))]
 					})
 				]
 			});
 		}
-		async function request(path, params) {
+		async function request(path, params, signal) {
 			const query = new URLSearchParams(params);
 			const response = await fetch(`${path}?${query}`, {
 				headers: { "X-Aezy-Client": "web" },
-				cache: "no-store"
+				cache: "no-store",
+				signal
 			});
 			const body = await response.json();
 			if (!response.ok) throw new Error(body.error ?? `Aezy Project request failed (${response.status})`);
@@ -420,37 +390,496 @@ window.__ModuleLoader__.load({
 			if (file.kind === "untracked") return "??";
 			return `${file.indexStatus}${file.worktreeStatus}`;
 		}
-		function CodeDiff({ title, text }) {
-			if (text === "") return null;
+		function statusName(status) {
+			return status[0].toUpperCase() + status.slice(1);
+		}
+		function StructuredPart({ part }) {
+			const [rawOpen, setRawOpen] = (0, react.useState)(false);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-				style: { marginTop: 16 },
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
-					style: {
-						margin: "0 0 8px",
-						fontSize: 12,
-						color: palette.muted,
-						textTransform: "uppercase",
-						letterSpacing: ".08em"
-					},
-					children: title
-				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
-					style: {
-						margin: 0,
-						padding: 14,
-						overflow: "auto",
-						fontSize: 12,
-						lineHeight: 1.55,
-						background: palette.code,
-						border: `1px solid ${palette.border}`,
-						borderRadius: 8,
-						color: palette.text,
-						whiteSpace: "pre"
-					},
-					children: text
-				})]
+				style: { borderBottom: `1px solid ${palette.border}` },
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						style: {
+							position: "sticky",
+							top: 70,
+							zIndex: 2,
+							padding: "7px 12px",
+							borderBottom: `1px solid ${palette.border}`,
+							background: palette.elevated,
+							color: palette.muted,
+							fontSize: 11,
+							fontWeight: 600,
+							letterSpacing: ".06em",
+							textTransform: "uppercase"
+						},
+						children: part.label
+					}),
+					part.state === "empty" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						style: {
+							padding: "28px 16px",
+							color: palette.muted,
+							textAlign: "center"
+						},
+						children: part.message ?? "No textual line changes."
+					}),
+					part.state === "fallback" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						style: { padding: 16 },
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							role: "status",
+							style: {
+								padding: 12,
+								border: `1px solid ${palette.warning}`,
+								borderRadius: 8,
+								color: palette.warning,
+								background: palette.elevated
+							},
+							children: ["Structured review stopped safely. ", part.message]
+						}), part.rawFallback !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							style: { marginTop: 10 },
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+								type: "button",
+								onClick: () => setRawOpen((value) => !value),
+								style: {
+									border: 0,
+									padding: 0,
+									background: "transparent",
+									color: palette.accent,
+									cursor: "pointer",
+									font: "inherit"
+								},
+								children: [rawOpen ? "Hide" : "Show", " bounded raw fallback"]
+							}), rawOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
+								style: {
+									margin: "10px 0 0",
+									padding: 12,
+									maxHeight: 360,
+									overflow: "auto",
+									border: `1px solid ${palette.border}`,
+									borderRadius: 7,
+									background: palette.code,
+									color: palette.text,
+									fontSize: 11,
+									lineHeight: 1.5,
+									whiteSpace: "pre"
+								},
+								children: part.rawFallback
+							})]
+						})]
+					}),
+					part.state === "structured" && part.hunks.map((hunk, hunkIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						style: {
+							position: "sticky",
+							top: 96,
+							zIndex: 1,
+							padding: "6px 12px",
+							borderBottom: `1px solid ${palette.border}`,
+							background: "var(--dsw-alias-bg-layer-2, #f3f5f8)",
+							color: palette.accent,
+							fontFamily: "var(--ds-font-family-code, monospace)",
+							fontSize: 11,
+							whiteSpace: "pre",
+							overflow: "hidden",
+							textOverflow: "ellipsis"
+						},
+						children: hunk.header
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						role: "table",
+						"aria-label": hunk.header,
+						style: {
+							minWidth: "max-content",
+							width: "100%",
+							fontFamily: "var(--ds-font-family-code, monospace)",
+							fontSize: 11.5,
+							lineHeight: 1.55
+						},
+						children: hunk.lines.map((line, lineIndex) => {
+							const addition = line.kind === "addition";
+							const deletion = line.kind === "deletion";
+							const background = addition ? "color-mix(in srgb, var(--dsw-alias-state-success-primary, #1a7f37) 13%, transparent)" : deletion ? "color-mix(in srgb, var(--dsw-alias-state-error-primary, #dc1313) 11%, transparent)" : "transparent";
+							const marker = addition ? "+" : deletion ? "−" : line.kind === "meta" ? "·" : "";
+							return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								role: "row",
+								"data-line-kind": line.kind,
+								style: {
+									display: "grid",
+									gridTemplateColumns: "46px 46px 24px minmax(max-content, 1fr)",
+									minHeight: 20,
+									background
+								},
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										role: "cell",
+										style: {
+											paddingRight: 8,
+											borderRight: `1px solid ${palette.border}`,
+											color: palette.muted,
+											textAlign: "right",
+											userSelect: "none"
+										},
+										children: line.oldLine ?? ""
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										role: "cell",
+										style: {
+											paddingRight: 8,
+											borderRight: `1px solid ${palette.border}`,
+											color: palette.muted,
+											textAlign: "right",
+											userSelect: "none"
+										},
+										children: line.newLine ?? ""
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										role: "cell",
+										style: {
+											color: addition ? palette.success : deletion ? palette.error : palette.muted,
+											textAlign: "center",
+											userSelect: "none"
+										},
+										children: marker
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										role: "cell",
+										style: {
+											paddingRight: 14,
+											whiteSpace: "pre",
+											color: line.kind === "meta" ? palette.muted : palette.text,
+											fontStyle: line.kind === "meta" ? "italic" : void 0
+										},
+										children: line.text || " "
+									})
+								]
+							}, lineIndex);
+						})
+					})] }, `${hunk.header}-${hunkIndex}`))
+				]
 			});
 		}
-		function ChangesView({ cwd, sessionId }) {
+		function ReviewPanel({ review, useSessions }) {
+			const target = (0, react.useSyncExternalStore)(review.subscribe, review.getSnapshot);
+			const currentSession = useSessions((state) => state.current);
+			const currentCwd = useSessions((state) => state.current === void 0 ? void 0 : state.byId[state.current]?.cwd);
+			const [document, setDocument] = (0, react.useState)(null);
+			const [error, setError] = (0, react.useState)(null);
+			const [width, setWidth] = (0, react.useState)(580);
+			const [viewport, setViewport] = (0, react.useState)(() => window.innerWidth);
+			const generation = (0, react.useRef)(0);
+			const dragging = (0, react.useRef)(null);
+			const narrow = viewport < 760;
+			const visible = target !== null && target.sessionId === currentSession && target.cwd === currentCwd;
+			(0, react.useEffect)(() => {
+				const onResize = () => setViewport(window.innerWidth);
+				window.addEventListener("resize", onResize);
+				return () => window.removeEventListener("resize", onResize);
+			}, []);
+			(0, react.useEffect)(() => {
+				if (target !== null && !visible) review.close();
+			}, [
+				review,
+				target,
+				visible
+			]);
+			(0, react.useEffect)(() => {
+				if (!visible || target === null) {
+					setDocument(null);
+					setError(null);
+					return;
+				}
+				const controller = new AbortController();
+				const requestGeneration = ++generation.current;
+				setDocument(null);
+				setError(null);
+				request(target.source === "turn" ? "/aezy/api/project/turn-review" : "/aezy/api/project/diff", target.source === "turn" ? {
+					cwd: target.cwd,
+					sessionId: target.sessionId,
+					turn: String(target.turn),
+					path: target.path
+				} : {
+					cwd: target.cwd,
+					path: target.path
+				}, controller.signal).then((value) => {
+					if (requestGeneration !== generation.current || review.getSnapshot() !== target) return;
+					if (value.file.path !== target.path || value.source.kind !== target.source) throw new Error("Review response identity does not match the active selection.");
+					setDocument(value);
+				}).catch((reason) => {
+					if (controller.signal.aborted || requestGeneration !== generation.current) return;
+					setError(reason instanceof Error ? reason.message : String(reason));
+				});
+				return () => {
+					controller.abort();
+				};
+			}, [
+				review,
+				target,
+				visible
+			]);
+			(0, react.useEffect)(() => {
+				if (!visible) return;
+				const onKey = (event) => {
+					if (event.key === "Escape") review.close();
+				};
+				window.addEventListener("keydown", onKey);
+				return () => window.removeEventListener("keydown", onKey);
+			}, [review, visible]);
+			if (!visible || target === null) return null;
+			const selected = target.files.find((file) => file.path === target.path);
+			const startDrag = (event) => {
+				if (narrow) return;
+				event.currentTarget.setPointerCapture(event.pointerId);
+				dragging.current = {
+					start: event.clientX,
+					width
+				};
+			};
+			const drag = (event) => {
+				if (dragging.current === null) return;
+				setWidth(Math.max(380, Math.min(900, dragging.current.width + dragging.current.start - event.clientX)));
+			};
+			const endDrag = (event) => {
+				if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+				dragging.current = null;
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				"data-aezy-review-panel": true,
+				"data-source": target.source,
+				style: {
+					position: "absolute",
+					inset: 0,
+					pointerEvents: narrow ? "auto" : "none",
+					background: narrow ? "var(--dsw-alias-bg-overlay, rgba(0,0,0,.36))" : "transparent"
+				},
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
+					"aria-label": "Review changes",
+					style: {
+						pointerEvents: "auto",
+						position: "absolute",
+						inset: narrow ? 0 : "0 0 0 auto",
+						width: narrow ? "100%" : Math.min(width, viewport - 40),
+						display: "flex",
+						flexDirection: "column",
+						overflow: "hidden",
+						borderLeft: narrow ? 0 : `1px solid ${palette.border}`,
+						background: palette.panel,
+						color: palette.text,
+						boxShadow: "0 0 34px rgba(0, 0, 0, .18)"
+					},
+					children: [
+						!narrow && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							"aria-label": "Resize Review panel",
+							role: "separator",
+							onPointerDown: startDrag,
+							onPointerMove: drag,
+							onPointerUp: endDrag,
+							onPointerCancel: endDrag,
+							style: {
+								position: "absolute",
+								zIndex: 6,
+								inset: "0 auto 0 0",
+								width: 7,
+								cursor: "col-resize",
+								touchAction: "none"
+							}
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+							style: {
+								flex: "0 0 auto",
+								padding: "12px 14px 10px",
+								borderBottom: `1px solid ${palette.border}`,
+								background: palette.panel
+							},
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								style: {
+									display: "flex",
+									alignItems: "flex-start",
+									justifyContent: "space-between",
+									gap: 12
+								},
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									style: { minWidth: 0 },
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
+										style: {
+											display: "block",
+											fontSize: 14
+										},
+										children: "Review changes"
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										style: {
+											display: "inline-block",
+											marginTop: 4,
+											padding: "2px 7px",
+											borderRadius: 999,
+											background: palette.interactive,
+											color: target.source === "turn" ? palette.accent : palette.warning,
+											fontSize: 10.5,
+											fontWeight: 600
+										},
+										children: target.source === "turn" ? `Historical Turn ${target.turn} snapshot` : "Current Working changes"
+									})]
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									"aria-label": "Close Review panel",
+									onClick: () => review.close(),
+									style: {
+										border: 0,
+										padding: 4,
+										background: "transparent",
+										color: palette.muted,
+										cursor: "pointer",
+										fontSize: 20,
+										lineHeight: 1
+									},
+									children: "×"
+								})]
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								title: target.path,
+								style: {
+									marginTop: 10,
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "space-between",
+									gap: 12
+								},
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									style: {
+										minWidth: 0,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+										fontFamily: "var(--ds-font-family-code, monospace)",
+										fontSize: 12
+									},
+									children: [selected?.oldPath && selected.oldPath !== target.path ? `${selected.oldPath} → ` : "", target.path]
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
+									additions: document?.file.additions ?? selected?.additions ?? null,
+									deletions: document?.file.deletions ?? selected?.deletions ?? null
+								})]
+							})]
+						}),
+						target.files.length > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("nav", {
+							"aria-label": "Changed file navigation",
+							style: {
+								flex: "0 0 auto",
+								display: "flex",
+								gap: 6,
+								padding: "8px 10px",
+								overflowX: "auto",
+								borderBottom: `1px solid ${palette.border}`,
+								background: palette.elevated
+							},
+							children: target.files.map((file) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								onClick: () => review.select(file.path),
+								"aria-current": file.path === target.path ? "page" : void 0,
+								title: file.path,
+								style: {
+									flex: "0 0 auto",
+									maxWidth: 220,
+									overflow: "hidden",
+									textOverflow: "ellipsis",
+									whiteSpace: "nowrap",
+									padding: "5px 8px",
+									border: `1px solid ${file.path === target.path ? palette.accent : palette.border}`,
+									borderRadius: 6,
+									background: file.path === target.path ? palette.interactive : palette.button,
+									color: file.path === target.path ? palette.accent : palette.text,
+									cursor: "pointer",
+									fontFamily: "var(--ds-font-family-code, monospace)",
+									fontSize: 11
+								},
+								children: file.path
+							}, file.path))
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							style: {
+								flex: "1 1 auto",
+								minHeight: 0,
+								overflow: "auto"
+							},
+							children: [
+								document === null && error === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									style: {
+										padding: 30,
+										color: palette.muted,
+										textAlign: "center"
+									},
+									children: "Loading one file…"
+								}),
+								error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									role: "alert",
+									style: {
+										margin: 16,
+										padding: 12,
+										border: `1px solid ${palette.error}`,
+										borderRadius: 8,
+										color: palette.error
+									},
+									children: ["Review unavailable: ", error]
+								}),
+								document !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										style: {
+											position: "sticky",
+											top: 0,
+											zIndex: 3,
+											display: "flex",
+											alignItems: "center",
+											gap: 8,
+											padding: "8px 12px",
+											borderBottom: `1px solid ${palette.border}`,
+											background: palette.panel,
+											color: palette.muted,
+											fontSize: 11
+										},
+										children: [
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												style: {
+													color: document.file.binary ? palette.warning : palette.text,
+													fontWeight: 600
+												},
+												children: statusName(document.file.status)
+											}),
+											document.file.oldPath !== null && document.file.newPath !== null && document.file.oldPath !== document.file.newPath && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												title: `${document.file.oldPath} → ${document.file.newPath}`,
+												children: "rename"
+											}),
+											document.file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "binary" }),
+											document.file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												style: { color: palette.warning },
+												children: "truncated"
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												style: { marginLeft: "auto" },
+												children: document.source.kind === "turn" ? `snapshot ${document.source.snapshotId?.slice(0, 8) ?? ""}` : `fingerprint ${document.source.fingerprint?.slice(0, 8) ?? ""}`
+											})
+										]
+									}),
+									document.file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										style: {
+											padding: "34px 18px",
+											color: palette.muted,
+											textAlign: "center"
+										},
+										children: "Binary file snapshot. Textual lines are not available."
+									}),
+									document.file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										style: {
+											margin: 12,
+											padding: 10,
+											border: `1px solid ${palette.warning}`,
+											borderRadius: 7,
+											color: palette.warning
+										},
+										children: "This diff exceeded Aezy’s bounded review limit. Only a safe fallback may be available."
+									}),
+									!document.file.binary && document.parts.map((part) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StructuredPart, { part }, part.scope))
+								] })
+							]
+						})
+					]
+				})
+			});
+		}
+		function ChangesView({ cwd, sessionId, openReview }) {
 			const [project, setProject] = (0, react.useState)(null);
 			const [ledger, setLedger] = (0, react.useState)(null);
 			const [selected, setSelected] = (0, react.useState)(null);
@@ -470,7 +899,7 @@ window.__ModuleLoader__.load({
 					setProject(next);
 					setLedger(nextLedger);
 					setUndoReceipt((current) => current ?? nextLedger.receipts.filter((receipt) => receipt.status === "committed").sort((left, right) => right.createdAt - left.createdAt)[0]?.id ?? null);
-					setSelected((current) => current !== null && next.files.some((file) => file.path === current) ? current : next.files[0]?.path ?? null);
+					setSelected((current) => current !== null && next.files.some((file) => file.path === current) ? current : null);
 				} catch (reason) {
 					setError(reason instanceof Error ? reason.message : String(reason));
 				} finally {
@@ -485,18 +914,18 @@ window.__ModuleLoader__.load({
 					setDiff(null);
 					return;
 				}
-				let live = true;
+				const controller = new AbortController();
 				setDiff(null);
 				request("/aezy/api/project/diff", {
 					cwd,
 					path: selected
-				}).then((value) => {
-					if (live) setDiff(value);
+				}, controller.signal).then((value) => {
+					if (!controller.signal.aborted && value.file.path === selected) setDiff(value);
 				}).catch((reason) => {
-					if (live) setError(reason instanceof Error ? reason.message : String(reason));
+					if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason));
 				});
 				return () => {
-					live = false;
+					controller.abort();
 				};
 			}, [cwd, selected]);
 			const branch = (0, react.useMemo)(() => {
@@ -736,7 +1165,19 @@ window.__ModuleLoader__.load({
 							},
 							children: project.files.map((file) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
-								onClick: () => setSelected(file.path),
+								onClick: () => {
+									setSelected(file.path);
+									openReview({
+										source: "working",
+										cwd,
+										sessionId,
+										path: file.path,
+										files: project.files.map((item) => ({
+											path: item.path,
+											oldPath: item.originalPath ?? null
+										}))
+									});
+								},
 								style: {
 									width: "100%",
 									display: "grid",
@@ -815,42 +1256,49 @@ window.__ModuleLoader__.load({
 										children: ["Revert T", selectedLedger.turn.turn]
 									})]
 								}),
+								selected === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									style: {
+										padding: "24px 0",
+										color: palette.muted
+									},
+									children: "Select a file to open structured Review without changing this view or its scroll position."
+								}),
 								diff === null && selected !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 									style: {
 										padding: "24px 0",
 										color: palette.muted
 									},
-									children: "Loading diff…"
+									children: "Loading file identity…"
 								}),
-								diff?.binary === true && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								diff !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									style: {
-										padding: "24px 0",
-										color: palette.muted
-									},
-									children: "Binary or oversized file; textual diff unavailable."
-								}),
-								diff?.truncated === true && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									style: {
-										marginTop: 10,
-										color: palette.warning,
+										marginTop: 14,
+										padding: 12,
+										border: `1px solid ${palette.border}`,
+										borderRadius: 8,
+										background: palette.elevated,
+										color: palette.muted,
 										fontSize: 12
 									},
-									children: "Diff truncated at the Aezy safety limit."
-								}),
-								diff !== null && !diff.binary && diff.staged === "" && diff.worktree === "" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									style: {
-										padding: "24px 0",
-										color: palette.muted
-									},
-									children: "No textual diff."
-								}),
-								diff !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(CodeDiff, {
-									title: "Staged",
-									text: diff.staged
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(CodeDiff, {
-									title: diff.file.kind === "untracked" ? "Untracked" : "Working tree",
-									text: diff.worktree
-								})] })
+									children: [
+										"Structured diff is open in the right Review panel. ",
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
+											additions: diff.file.additions,
+											deletions: diff.file.deletions
+										}),
+										diff.file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											style: { marginLeft: 8 },
+											children: "binary"
+										}),
+										diff.file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											style: {
+												marginLeft: 8,
+												color: palette.warning
+											},
+											children: "truncated"
+										})
+									]
+								})
 							]
 						})]
 					})
@@ -1465,6 +1913,13 @@ window.__ModuleLoader__.load({
 			"workspaces"
 		];
 		function apply(ctx) {
+			const review = new ReviewController();
+			ctx.slots.inject("shell.overlay", () => ctx.slots.register({
+				name: "shell.overlay",
+				id: "aezy-review",
+				order: 100,
+				inject: () => ({ review })
+			}, ReviewPanel));
 			ctx.slots.inject("conversation.chat.turnTail", () => ctx.slots.register({
 				name: "conversation.chat.turnTail",
 				priority: -10,
@@ -1474,7 +1929,8 @@ window.__ModuleLoader__.load({
 					if (cwd === void 0) throw new Error(`aezy-project: session "${sessionId}" has no working directory`);
 					return {
 						cwd,
-						sessionId
+						sessionId,
+						openReview: (target) => review.open(target)
 					};
 				}
 			}, TurnChangedFiles));
@@ -1488,7 +1944,8 @@ window.__ModuleLoader__.load({
 					if (cwd === void 0) throw new Error(`aezy-project: session "${sessionId}" has no working directory`);
 					return {
 						cwd,
-						sessionId
+						sessionId,
+						openReview: (target) => review.open(target)
 					};
 				}
 			}, ChangesView));

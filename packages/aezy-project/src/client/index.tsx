@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { summarizeTurn } from '../summary.js'
 
 type FileRow = {
@@ -35,13 +35,53 @@ type ProjectView = {
   files: FileRow[]
 }
 
-type DiffView = {
-  file: FileRow
-  staged: string
-  worktree: string
-  binary: boolean
-  truncated: boolean
-  fingerprint: string
+type DiffLine = {
+  kind: 'context' | 'addition' | 'deletion' | 'meta'
+  oldLine: number | null
+  newLine: number | null
+  text: string
+}
+
+type DiffPart = {
+  scope: 'staged' | 'worktree' | 'turn'
+  label: string
+  state: 'structured' | 'empty' | 'fallback'
+  message?: string
+  rawFallback?: string
+  hunks: Array<{
+    header: string
+    oldStart: number
+    oldCount: number
+    newStart: number
+    newCount: number
+    lines: DiffLine[]
+  }>
+}
+
+type ReviewDocument = {
+  version: 2
+  identity: string
+  source: {
+    kind: 'working' | 'turn'
+    label: string
+    repositoryRoot: string
+    fingerprint?: string
+    sessionId?: string
+    turn?: number
+    snapshotId?: string
+  }
+  file: {
+    path: string
+    oldPath: string | null
+    newPath: string | null
+    status: 'modified' | 'added' | 'deleted' | 'renamed' | 'binary' | 'unavailable'
+    additions: number | null
+    deletions: number | null
+    binary: boolean
+    truncated: boolean
+  }
+  fingerprint?: string
+  parts: DiffPart[]
 }
 
 type LedgerFile = {
@@ -54,6 +94,9 @@ type LedgerFile = {
   additions: number | null
   deletions: number | null
   binary: boolean
+  truncated?: boolean
+  status?: ReviewDocument['file']['status']
+  oldPath?: string | null
 }
 
 type LedgerTurn = {
@@ -82,22 +125,8 @@ type LedgerView = {
   }>
 }
 
-type TurnReview = {
-  turn: number
-  files: Array<{
-    path: string
-    openPath: string
-    change: LedgerFile['change']
-    additions: number | null
-    deletions: number | null
-    binary: boolean
-    truncated: boolean
-    diff: string
-  }>
-}
-
 type Snapshot<T> = { getSnapshot(): T; subscribe(listener: () => void): () => void }
-type SessionsState = { byId: Record<string, { cwd?: string }> }
+type SessionsState = { current?: string; byId: Record<string, { cwd?: string }> }
 type ClientContext = {
   effect(effect: () => (() => void) | void, label: string): void
   slots: {
@@ -118,6 +147,7 @@ type ClientContext = {
 type ChangesProps = {
   cwd: string
   sessionId: string
+  openReview(target: ReviewTarget): void
 }
 
 type TurnTailOwner = {
@@ -128,7 +158,7 @@ type TurnSummaryProps = {
   matched: { turn: number }
   cwd: string
   sessionId: string
-  openFile(path: string): void
+  openReview(target: ReviewTarget): void
 }
 
 type TurnSummary = NonNullable<ReturnType<typeof summarizeTurn>>
@@ -199,6 +229,49 @@ const palette = {
   error: 'var(--dsw-alias-state-error-primary, #dc1313)',
 }
 
+type ReviewNavFile = {
+  path: string
+  oldPath?: string | null
+  additions?: number | null
+  deletions?: number | null
+  binary?: boolean
+  truncated?: boolean
+  status?: ReviewDocument['file']['status']
+}
+
+type ReviewTarget = {
+  source: 'working' | 'turn'
+  sessionId: string
+  cwd: string
+  turn?: number
+  path: string
+  files: ReviewNavFile[]
+}
+
+class ReviewController {
+  #target: ReviewTarget | null = null
+  #listeners = new Set<() => void>()
+
+  getSnapshot = (): ReviewTarget | null => this.#target
+  subscribe = (listener: () => void): (() => void) => {
+    this.#listeners.add(listener)
+    return () => { this.#listeners.delete(listener) }
+  }
+  open(target: ReviewTarget): void {
+    this.#target = target
+    for (const listener of this.#listeners) listener()
+  }
+  select(path: string): void {
+    if (this.#target === null || !this.#target.files.some(file => file.path === path)) return
+    this.open({ ...this.#target, path })
+  }
+  close(): void {
+    if (this.#target === null) return
+    this.#target = null
+    for (const listener of this.#listeners) listener()
+  }
+}
+
 const ledgerRequests = new Map<string, { at: number; promise: Promise<LedgerView> }>()
 
 function loadLedger(cwd: string, sessionId: string): Promise<LedgerView> {
@@ -226,10 +299,8 @@ function DiffStats({ additions, deletions }: { additions: number | null; deletio
   </span>
 }
 
-function TurnChangedFiles({ matched, cwd, sessionId, openFile }: TurnSummaryProps) {
+function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryProps) {
   const [summary, setSummary] = useState<TurnSummary | null | undefined>(undefined)
-  const [review, setReview] = useState<TurnReview | undefined>(undefined)
-  const [reviewOpen, setReviewOpen] = useState(false)
   const [receiptId, setReceiptId] = useState<string | null>(null)
   const [mutating, setMutating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -278,23 +349,20 @@ function TurnChangedFiles({ matched, cwd, sessionId, openFile }: TurnSummaryProp
       setMutating(false)
     }
   }
-  const toggleReview = async () => {
-    if (reviewOpen) {
-      setReviewOpen(false)
-      return
-    }
-    setReviewOpen(true)
-    if (review !== undefined) return
-    setError(null)
-    try {
-      setReview(await request<TurnReview>('/aezy/api/project/turn-review', {
-        cwd, sessionId, turn: String(summary.turn),
-      }))
-    } catch (reason) {
-      setReview(undefined)
-      setReviewOpen(false)
-      setError(reason instanceof Error ? reason.message : String(reason))
-    }
+  const openTurnReview = (path = summary.files[0]?.path) => {
+    if (path === undefined) return
+    openReview({
+      source: 'turn', cwd, sessionId, turn: summary.turn, path,
+      files: summary.files.map(file => ({
+        path: file.path,
+        oldPath: file.oldPath,
+        additions: file.additions,
+        deletions: file.deletions,
+        binary: file.binary,
+        truncated: file.truncated,
+        status: file.status,
+      })),
+    })
   }
 
   return <section data-aezy-turn-files={summary.turn} style={{ marginTop: 14, maxWidth: 720, overflow: 'hidden', border: `1px solid ${palette.border}`, borderRadius: 10, background: palette.elevated, color: palette.text, fontSize: 12 }}>
@@ -302,7 +370,7 @@ function TurnChangedFiles({ matched, cwd, sessionId, openFile }: TurnSummaryProp
       <strong style={{ fontSize: 12, fontWeight: 600 }}>Edited {summary.files.length} {summary.files.length === 1 ? 'file' : 'files'}</strong>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
         <button type="button" disabled={!canUndo || mutating} onClick={() => { void toggleUndo() }} title={summary.concurrent ? 'Batch Undo is disabled because another Session overlapped this Turn' : canUndo ? (receiptId === null ? 'Restore every file to its state before this Turn' : 'Reapply the files changed by this Turn') : 'At least one file cannot be restored safely'} style={{ border: 0, borderRadius: 5, padding: '3px 7px', background: 'transparent', color: canUndo ? palette.accent : palette.muted, cursor: canUndo && !mutating ? 'pointer' : 'not-allowed', font: 'inherit' }}>{mutating ? 'Working…' : receiptId === null ? 'Undo' : 'Redo'}</button>
-        <button type="button" onClick={() => { void toggleReview() }} aria-expanded={reviewOpen} style={{ border: 0, borderRadius: 5, padding: '3px 7px', background: 'transparent', color: palette.accent, cursor: 'pointer', font: 'inherit' }}>{reviewOpen ? 'Close review' : 'Review'}</button>
+        <button type="button" onClick={() => openTurnReview()} style={{ border: 0, borderRadius: 5, padding: '3px 7px', background: 'transparent', color: palette.accent, cursor: 'pointer', font: 'inherit' }}>Review changes</button>
       </span>
     </header>
     <div style={{ padding: '0 12px 8px', color: palette.muted }}>
@@ -312,36 +380,24 @@ function TurnChangedFiles({ matched, cwd, sessionId, openFile }: TurnSummaryProp
     </div>
     <div style={{ borderTop: `1px solid ${palette.border}` }}>
       {summary.files.map(file => <div key={file.path} style={{ minHeight: 30, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', gap: 16, padding: '4px 12px', borderBottom: `1px solid ${palette.border}` }}>
-        {file.afterFingerprint === null
-          ? <span title={`${file.path} (removed)`} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: palette.muted, textDecoration: 'line-through', fontFamily: 'monospace' }}>{file.path}</span>
-          : <button type="button" title={file.path} onClick={() => openFile(file.openPath)} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: 0, border: 0, background: 'transparent', color: palette.text, cursor: 'pointer', textAlign: 'left', fontFamily: 'monospace', fontSize: 12 }}>{file.path}</button>}
+        <button type="button" title={file.path} onClick={() => openTurnReview(file.path)} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: 0, border: 0, background: 'transparent', color: file.afterFingerprint === null ? palette.muted : palette.text, cursor: 'pointer', textAlign: 'left', fontFamily: 'monospace', fontSize: 12, textDecoration: file.afterFingerprint === null ? 'line-through' : undefined }}>
+          {file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : ''}{file.path}
+          {file.binary && <span style={{ marginLeft: 7, color: palette.muted, fontFamily: 'inherit' }}>binary</span>}
+          {file.truncated && <span style={{ marginLeft: 7, color: palette.warning, fontFamily: 'inherit' }}>truncated</span>}
+        </button>
         <DiffStats additions={file.additions} deletions={file.deletions} />
       </div>)}
     </div>
     {error !== null && <div title={error} style={{ padding: '8px 12px', color: palette.error }}>{error}</div>}
-    {reviewOpen && <div style={{ padding: 12, background: palette.panel }}>
-      {review === undefined && <div style={{ color: palette.muted }}>Loading Turn diff…</div>}
-      {review?.files.map(file => <section key={file.path} style={{ marginTop: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-          <strong style={{ minWidth: 0, overflowWrap: 'anywhere', fontFamily: 'monospace', fontWeight: 500 }}>{file.path}</strong>
-          <DiffStats additions={file.additions} deletions={file.deletions} />
-        </div>
-        {file.binary
-          ? <div style={{ color: palette.muted }}>Binary or oversized file; textual review unavailable.</div>
-          : file.diff === ''
-            ? <div style={{ color: palette.muted }}>No worktree line changes.</div>
-            : <pre style={{ margin: 0, padding: 10, maxHeight: 360, overflow: 'auto', border: `1px solid ${palette.border}`, borderRadius: 7, background: palette.code, color: palette.text, fontSize: 11, lineHeight: 1.5, whiteSpace: 'pre' }}>{file.diff}</pre>}
-        {file.truncated && <div style={{ marginTop: 5, color: palette.warning }}>Diff truncated at the Aezy review limit.</div>}
-      </section>)}
-    </div>}
   </section>
 }
 
-async function request<T>(path: string, params: Record<string, string>): Promise<T> {
+async function request<T>(path: string, params: Record<string, string>, signal?: AbortSignal): Promise<T> {
   const query = new URLSearchParams(params)
   const response = await fetch(`${path}?${query}`, {
     headers: { 'X-Aezy-Client': 'web' },
     cache: 'no-store',
+    signal,
   })
   const body = await response.json() as T & { error?: string }
   if (!response.ok) throw new Error(body.error ?? `Aezy Project request failed (${response.status})`)
@@ -368,19 +424,162 @@ function statusLabel(file: FileRow): string {
   return `${file.indexStatus}${file.worktreeStatus}`
 }
 
-function CodeDiff({ title, text }: { title: string; text: string }) {
-  if (text === '') return null
-  return <section style={{ marginTop: 16 }}>
-    <h3 style={{ margin: '0 0 8px', fontSize: 12, color: palette.muted, textTransform: 'uppercase', letterSpacing: '.08em' }}>{title}</h3>
-    <pre style={{ margin: 0, padding: 14, overflow: 'auto', fontSize: 12, lineHeight: 1.55, background: palette.code, border: `1px solid ${palette.border}`, borderRadius: 8, color: palette.text, whiteSpace: 'pre' }}>{text}</pre>
+function statusName(status: ReviewDocument['file']['status']): string {
+  return status[0].toUpperCase() + status.slice(1)
+}
+
+function StructuredPart({ part }: { part: DiffPart }) {
+  const [rawOpen, setRawOpen] = useState(false)
+  return <section style={{ borderBottom: `1px solid ${palette.border}` }}>
+    <div style={{ position: 'sticky', top: 70, zIndex: 2, padding: '7px 12px', borderBottom: `1px solid ${palette.border}`, background: palette.elevated, color: palette.muted, fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' }}>{part.label}</div>
+    {part.state === 'empty' && <div style={{ padding: '28px 16px', color: palette.muted, textAlign: 'center' }}>{part.message ?? 'No textual line changes.'}</div>}
+    {part.state === 'fallback' && <div style={{ padding: 16 }}>
+      <div role="status" style={{ padding: 12, border: `1px solid ${palette.warning}`, borderRadius: 8, color: palette.warning, background: palette.elevated }}>
+        Structured review stopped safely. {part.message}
+      </div>
+      {part.rawFallback !== undefined && <div style={{ marginTop: 10 }}>
+        <button type="button" onClick={() => setRawOpen(value => !value)} style={{ border: 0, padding: 0, background: 'transparent', color: palette.accent, cursor: 'pointer', font: 'inherit' }}>{rawOpen ? 'Hide' : 'Show'} bounded raw fallback</button>
+        {rawOpen && <pre style={{ margin: '10px 0 0', padding: 12, maxHeight: 360, overflow: 'auto', border: `1px solid ${palette.border}`, borderRadius: 7, background: palette.code, color: palette.text, fontSize: 11, lineHeight: 1.5, whiteSpace: 'pre' }}>{part.rawFallback}</pre>}
+      </div>}
+    </div>}
+    {part.state === 'structured' && part.hunks.map((hunk, hunkIndex) => <section key={`${hunk.header}-${hunkIndex}`}>
+      <div style={{ position: 'sticky', top: 96, zIndex: 1, padding: '6px 12px', borderBottom: `1px solid ${palette.border}`, background: 'var(--dsw-alias-bg-layer-2, #f3f5f8)', color: palette.accent, fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11, whiteSpace: 'pre', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hunk.header}</div>
+      <div role="table" aria-label={hunk.header} style={{ minWidth: 'max-content', width: '100%', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11.5, lineHeight: 1.55 }}>
+        {hunk.lines.map((line, lineIndex) => {
+          const addition = line.kind === 'addition'
+          const deletion = line.kind === 'deletion'
+          const background = addition
+            ? 'color-mix(in srgb, var(--dsw-alias-state-success-primary, #1a7f37) 13%, transparent)'
+            : deletion ? 'color-mix(in srgb, var(--dsw-alias-state-error-primary, #dc1313) 11%, transparent)' : 'transparent'
+          const marker = addition ? '+' : deletion ? '−' : line.kind === 'meta' ? '·' : ''
+          return <div role="row" key={lineIndex} data-line-kind={line.kind} style={{ display: 'grid', gridTemplateColumns: '46px 46px 24px minmax(max-content, 1fr)', minHeight: 20, background }}>
+            <span role="cell" style={{ paddingRight: 8, borderRight: `1px solid ${palette.border}`, color: palette.muted, textAlign: 'right', userSelect: 'none' }}>{line.oldLine ?? ''}</span>
+            <span role="cell" style={{ paddingRight: 8, borderRight: `1px solid ${palette.border}`, color: palette.muted, textAlign: 'right', userSelect: 'none' }}>{line.newLine ?? ''}</span>
+            <span role="cell" style={{ color: addition ? palette.success : deletion ? palette.error : palette.muted, textAlign: 'center', userSelect: 'none' }}>{marker}</span>
+            <span role="cell" style={{ paddingRight: 14, whiteSpace: 'pre', color: line.kind === 'meta' ? palette.muted : palette.text, fontStyle: line.kind === 'meta' ? 'italic' : undefined }}>{line.text || ' '}</span>
+          </div>
+        })}
+      </div>
+    </section>)}
   </section>
 }
 
-function ChangesView({ cwd, sessionId }: ChangesProps) {
+type ReviewPanelProps = {
+  review: ReviewController
+  useSessions<T>(selector: (state: SessionsState) => T): T
+}
+
+function ReviewPanel({ review, useSessions }: ReviewPanelProps) {
+  const target = useSyncExternalStore(review.subscribe, review.getSnapshot)
+  const currentSession = useSessions(state => state.current)
+  const currentCwd = useSessions(state => state.current === undefined ? undefined : state.byId[state.current]?.cwd)
+  const [document, setDocument] = useState<ReviewDocument | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [width, setWidth] = useState(580)
+  const [viewport, setViewport] = useState(() => window.innerWidth)
+  const generation = useRef(0)
+  const dragging = useRef<{ start: number; width: number } | null>(null)
+  const narrow = viewport < 760
+  const visible = target !== null && target.sessionId === currentSession && target.cwd === currentCwd
+
+  useEffect(() => {
+    const onResize = () => setViewport(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  useEffect(() => {
+    if (target !== null && !visible) review.close()
+  }, [review, target, visible])
+
+  useEffect(() => {
+    if (!visible || target === null) { setDocument(null); setError(null); return }
+    const controller = new AbortController()
+    const requestGeneration = ++generation.current
+    setDocument(null)
+    setError(null)
+    const path = target.source === 'turn' ? '/aezy/api/project/turn-review' : '/aezy/api/project/diff'
+    const params = target.source === 'turn'
+      ? { cwd: target.cwd, sessionId: target.sessionId, turn: String(target.turn), path: target.path }
+      : { cwd: target.cwd, path: target.path }
+    request<ReviewDocument>(path, params, controller.signal).then(value => {
+      if (requestGeneration !== generation.current || review.getSnapshot() !== target) return
+      if (value.file.path !== target.path || value.source.kind !== target.source) throw new Error('Review response identity does not match the active selection.')
+      setDocument(value)
+    }).catch(reason => {
+      if (controller.signal.aborted || requestGeneration !== generation.current) return
+      setError(reason instanceof Error ? reason.message : String(reason))
+    })
+    return () => { controller.abort() }
+  }, [review, target, visible])
+
+  useEffect(() => {
+    if (!visible) return
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') review.close() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [review, visible])
+
+  if (!visible || target === null) return null
+  const selected = target.files.find(file => file.path === target.path)
+  const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (narrow) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    dragging.current = { start: event.clientX, width }
+  }
+  const drag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragging.current === null) return
+    setWidth(Math.max(380, Math.min(900, dragging.current.width + dragging.current.start - event.clientX)))
+  }
+  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    dragging.current = null
+  }
+
+  return <div data-aezy-review-panel data-source={target.source} style={{ position: 'absolute', inset: 0, pointerEvents: narrow ? 'auto' : 'none', background: narrow ? 'var(--dsw-alias-bg-overlay, rgba(0,0,0,.36))' : 'transparent' }}>
+    <aside aria-label="Review changes" style={{ pointerEvents: 'auto', position: 'absolute', inset: narrow ? 0 : '0 0 0 auto', width: narrow ? '100%' : Math.min(width, viewport - 40), display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: narrow ? 0 : `1px solid ${palette.border}`, background: palette.panel, color: palette.text, boxShadow: '0 0 34px rgba(0, 0, 0, .18)' }}>
+      {!narrow && <div aria-label="Resize Review panel" role="separator" onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag} style={{ position: 'absolute', zIndex: 6, inset: '0 auto 0 0', width: 7, cursor: 'col-resize', touchAction: 'none' }} />}
+      <header style={{ flex: '0 0 auto', padding: '12px 14px 10px', borderBottom: `1px solid ${palette.border}`, background: palette.panel }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ minWidth: 0 }}>
+            <strong style={{ display: 'block', fontSize: 14 }}>Review changes</strong>
+            <span style={{ display: 'inline-block', marginTop: 4, padding: '2px 7px', borderRadius: 999, background: palette.interactive, color: target.source === 'turn' ? palette.accent : palette.warning, fontSize: 10.5, fontWeight: 600 }}>{target.source === 'turn' ? `Historical Turn ${target.turn} snapshot` : 'Current Working changes'}</span>
+          </div>
+          <button type="button" aria-label="Close Review panel" onClick={() => review.close()} style={{ border: 0, padding: 4, background: 'transparent', color: palette.muted, cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
+        </div>
+        <div title={target.path} style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 12 }}>{selected?.oldPath && selected.oldPath !== target.path ? `${selected.oldPath} → ` : ''}{target.path}</span>
+          <DiffStats additions={document?.file.additions ?? selected?.additions ?? null} deletions={document?.file.deletions ?? selected?.deletions ?? null} />
+        </div>
+      </header>
+      {target.files.length > 1 && <nav aria-label="Changed file navigation" style={{ flex: '0 0 auto', display: 'flex', gap: 6, padding: '8px 10px', overflowX: 'auto', borderBottom: `1px solid ${palette.border}`, background: palette.elevated }}>
+        {target.files.map(file => <button key={file.path} type="button" onClick={() => review.select(file.path)} aria-current={file.path === target.path ? 'page' : undefined} title={file.path} style={{ flex: '0 0 auto', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '5px 8px', border: `1px solid ${file.path === target.path ? palette.accent : palette.border}`, borderRadius: 6, background: file.path === target.path ? palette.interactive : palette.button, color: file.path === target.path ? palette.accent : palette.text, cursor: 'pointer', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{file.path}</button>)}
+      </nav>}
+      <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto' }}>
+        {document === null && error === null && <div style={{ padding: 30, color: palette.muted, textAlign: 'center' }}>Loading one file…</div>}
+        {error !== null && <div role="alert" style={{ margin: 16, padding: 12, border: `1px solid ${palette.error}`, borderRadius: 8, color: palette.error }}>Review unavailable: {error}</div>}
+        {document !== null && <>
+          <div style={{ position: 'sticky', top: 0, zIndex: 3, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: `1px solid ${palette.border}`, background: palette.panel, color: palette.muted, fontSize: 11 }}>
+            <span style={{ color: document.file.binary ? palette.warning : palette.text, fontWeight: 600 }}>{statusName(document.file.status)}</span>
+            {document.file.oldPath !== null && document.file.newPath !== null && document.file.oldPath !== document.file.newPath && <span title={`${document.file.oldPath} → ${document.file.newPath}`}>rename</span>}
+            {document.file.binary && <span>binary</span>}
+            {document.file.truncated && <span style={{ color: palette.warning }}>truncated</span>}
+            <span style={{ marginLeft: 'auto' }}>{document.source.kind === 'turn' ? `snapshot ${document.source.snapshotId?.slice(0, 8) ?? ''}` : `fingerprint ${document.source.fingerprint?.slice(0, 8) ?? ''}`}</span>
+          </div>
+          {document.file.binary && <div style={{ padding: '34px 18px', color: palette.muted, textAlign: 'center' }}>Binary file snapshot. Textual lines are not available.</div>}
+          {document.file.truncated && <div style={{ margin: 12, padding: 10, border: `1px solid ${palette.warning}`, borderRadius: 7, color: palette.warning }}>This diff exceeded Aezy’s bounded review limit. Only a safe fallback may be available.</div>}
+          {!document.file.binary && document.parts.map(part => <StructuredPart key={part.scope} part={part} />)}
+        </>}
+      </div>
+    </aside>
+  </div>
+}
+
+function ChangesView({ cwd, sessionId, openReview }: ChangesProps) {
   const [project, setProject] = useState<ProjectView | null>(null)
   const [ledger, setLedger] = useState<LedgerView | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
-  const [diff, setDiff] = useState<DiffView | null>(null)
+  const [diff, setDiff] = useState<ReviewDocument | null>(null)
   const [loading, setLoading] = useState(false)
   const [mutating, setMutating] = useState(false)
   const [undoReceipt, setUndoReceipt] = useState<string | null>(null)
@@ -399,9 +598,7 @@ function ChangesView({ cwd, sessionId }: ChangesProps) {
       setUndoReceipt(current => current ?? nextLedger.receipts
         .filter(receipt => receipt.status === 'committed')
         .sort((left, right) => right.createdAt - left.createdAt)[0]?.id ?? null)
-      setSelected(current => current !== null && next.files.some(file => file.path === current)
-        ? current
-        : next.files[0]?.path ?? null)
+      setSelected(current => current !== null && next.files.some(file => file.path === current) ? current : null)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
     } finally {
@@ -416,12 +613,12 @@ function ChangesView({ cwd, sessionId }: ChangesProps) {
       setDiff(null)
       return
     }
-    let live = true
+    const controller = new AbortController()
     setDiff(null)
-    request<DiffView>('/aezy/api/project/diff', { cwd, path: selected })
-      .then(value => { if (live) setDiff(value) })
-      .catch(reason => { if (live) setError(reason instanceof Error ? reason.message : String(reason)) })
-    return () => { live = false }
+    request<ReviewDocument>('/aezy/api/project/diff', { cwd, path: selected }, controller.signal)
+      .then(value => { if (!controller.signal.aborted && value.file.path === selected) setDiff(value) })
+      .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason)) })
+    return () => { controller.abort() }
   }, [cwd, selected])
 
   const branch = useMemo(() => {
@@ -517,7 +714,13 @@ function ChangesView({ cwd, sessionId }: ChangesProps) {
         {project.files.map(file => <button
           key={file.path}
           type="button"
-          onClick={() => setSelected(file.path)}
+          onClick={() => {
+            setSelected(file.path)
+            openReview({
+              source: 'working', cwd, sessionId, path: file.path,
+              files: project.files.map(item => ({ path: item.path, oldPath: item.originalPath ?? null })),
+            })
+          }}
           style={{ width: '100%', display: 'grid', gridTemplateColumns: '30px minmax(0, 1fr) auto', gap: 8, padding: '9px 10px', border: 0, borderBottom: `1px solid ${palette.border}`, background: selected === file.path ? palette.interactive : 'transparent', color: palette.text, textAlign: 'left', cursor: 'pointer' }}
         >
           <span style={{ color: file.conflict ? palette.error : palette.accent, fontFamily: 'monospace', fontSize: 11 }}>{statusLabel(file)}</span>
@@ -530,14 +733,13 @@ function ChangesView({ cwd, sessionId }: ChangesProps) {
           <h2 style={{ margin: 0, fontFamily: 'monospace', fontSize: 14, overflowWrap: 'anywhere' }}>{selected}</h2>
           {selectedLedger !== undefined && <button type="button" onClick={() => void revertSelected()} disabled={!canRevert || mutating} title={canRevert ? `Restore the state before Turn ${selectedLedger.turn.turn}` : 'The file changed after this ledger entry or the recorded state is unsupported'} style={{ padding: '5px 9px', flex: '0 0 auto', borderRadius: 6, border: `1px solid ${canRevert ? palette.warning : palette.border}`, background: palette.button, color: canRevert ? palette.warning : palette.muted, cursor: canRevert && !mutating ? 'pointer' : 'not-allowed' }}>Revert T{selectedLedger.turn.turn}</button>}
         </div>}
-        {diff === null && selected !== null && <div style={{ padding: '24px 0', color: palette.muted }}>Loading diff…</div>}
-        {diff?.binary === true && <div style={{ padding: '24px 0', color: palette.muted }}>Binary or oversized file; textual diff unavailable.</div>}
-        {diff?.truncated === true && <div style={{ marginTop: 10, color: palette.warning, fontSize: 12 }}>Diff truncated at the Aezy safety limit.</div>}
-        {diff !== null && !diff.binary && diff.staged === '' && diff.worktree === '' && <div style={{ padding: '24px 0', color: palette.muted }}>No textual diff.</div>}
-        {diff !== null && <>
-          <CodeDiff title="Staged" text={diff.staged} />
-          <CodeDiff title={diff.file.kind === 'untracked' ? 'Untracked' : 'Working tree'} text={diff.worktree} />
-        </>}
+        {selected === null && <div style={{ padding: '24px 0', color: palette.muted }}>Select a file to open structured Review without changing this view or its scroll position.</div>}
+        {diff === null && selected !== null && <div style={{ padding: '24px 0', color: palette.muted }}>Loading file identity…</div>}
+        {diff !== null && <div style={{ marginTop: 14, padding: 12, border: `1px solid ${palette.border}`, borderRadius: 8, background: palette.elevated, color: palette.muted, fontSize: 12 }}>
+          Structured diff is open in the right Review panel. <DiffStats additions={diff.file.additions} deletions={diff.file.deletions} />
+          {diff.file.binary && <span style={{ marginLeft: 8 }}>binary</span>}
+          {diff.file.truncated && <span style={{ marginLeft: 8, color: palette.warning }}>truncated</span>}
+        </div>}
       </main>
     </div>}
   </div>
@@ -764,16 +966,25 @@ function WorktreesView({ cwd, sessionId, openWorktree, returnToLocal }: Worktree
 export const inject = ['slots', 'sessions', 'workspaces']
 
 export function apply(ctx: ClientContext): void {
+  const review = new ReviewController()
+
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
+    id: 'aezy-review',
+    order: 100,
+    inject: (): Pick<ReviewPanelProps, 'review'> => ({ review }),
+  }, ReviewPanel))
+
   ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
     name: 'conversation.chat.turnTail',
     priority: -10,
     select: (owner: TurnTailOwner) => owner.turn.status === 'closed'
       ? { turn: owner.turn.turn }
       : null,
-    inject: (sessionId: string): Omit<TurnSummaryProps, 'matched' | 'openFile'> => {
+    inject: (sessionId: string): Omit<TurnSummaryProps, 'matched'> => {
       const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
       if (cwd === undefined) throw new Error(`aezy-project: session "${sessionId}" has no working directory`)
-      return { cwd, sessionId }
+      return { cwd, sessionId, openReview: target => review.open(target) }
     },
   }, TurnChangedFiles))
 
@@ -785,7 +996,7 @@ export function apply(ctx: ClientContext): void {
     inject: (sessionId: string): ChangesProps => {
       const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
       if (cwd === undefined) throw new Error(`aezy-project: session "${sessionId}" has no working directory`)
-      return { cwd, sessionId }
+      return { cwd, sessionId, openReview: target => review.open(target) }
     },
   }, ChangesView))
 

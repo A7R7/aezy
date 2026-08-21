@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
-test('built client bundle registers Changes, Worktrees, and Turn-tail surfaces', async () => {
+test('built client bundle registers the additive Review overlay, Changes, Worktrees, and Turn-tail surfaces', async () => {
   let handoff
   globalThis.window = {
     __ModuleLoader__: {
@@ -41,16 +41,23 @@ test('built client bundle registers Changes, Worktrees, and Turn-tail surfaces',
     },
   })
 
-  assert.deepEqual(injectedSlots, ['conversation.chat.turnTail', 'conversation.view', 'conversation.view'])
+  assert.deepEqual(injectedSlots, ['shell.overlay', 'conversation.chat.turnTail', 'conversation.view', 'conversation.view'])
+  const panel = registrations.find(entry => entry.options.name === 'shell.overlay')
+  assert.equal(panel.options.id, 'aezy-review')
+  assert.equal(typeof panel.component, 'function')
   const tail = registrations.find(entry => entry.options.name === 'conversation.chat.turnTail')
   assert.equal(tail.options.priority, -10)
   assert.deepEqual(tail.options.select({ turn: { turn: 3, status: 'closed' } }), { turn: 3 })
   assert.equal(tail.options.select({ turn: { turn: 3, status: 'open' } }), null)
-  assert.deepEqual(tail.options.inject('session'), { cwd: '/repo', sessionId: 'session' })
+  assert.equal(tail.options.inject('session').cwd, '/repo')
+  assert.equal(tail.options.inject('session').sessionId, 'session')
+  assert.equal(typeof tail.options.inject('session').openReview, 'function')
   assert.equal(typeof tail.component, 'function')
   const view = registrations.find(entry => entry.options.id === 'changes')
   assert.equal(view.options.label(), 'Changes')
-  assert.deepEqual(view.options.inject('session'), { cwd: '/repo', sessionId: 'session' })
+  assert.equal(view.options.inject('session').cwd, '/repo')
+  assert.equal(view.options.inject('session').sessionId, 'session')
+  assert.equal(typeof view.options.inject('session').openReview, 'function')
   assert.equal(typeof view.component, 'function')
   const worktrees = registrations.find(entry => entry.options.id === 'worktrees')
   assert.equal(worktrees.options.label(), 'Worktrees')
@@ -58,7 +65,7 @@ test('built client bundle registers Changes, Worktrees, and Turn-tail surfaces',
   assert.equal(typeof worktrees.component, 'function')
 })
 
-test('built Changes and Turn review card consume DSH theme aliases without dark-only fallbacks', async () => {
+test('built structured Review surface uses DSH aliases and removes the Turn inline review path', async () => {
   const bundle = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
   assert.match(bundle, /--dsw-alias-bg-base/)
   assert.match(bundle, /--dsw-alias-bg-module-platform/)
@@ -69,6 +76,13 @@ test('built Changes and Turn review card consume DSH theme aliases without dark-
   assert.match(bundle, /Review/)
   assert.match(bundle, /--dsw-alias-state-success-primary/)
   assert.match(bundle, /data-aezy-turn-files/)
+  assert.match(bundle, /data-aezy-review-panel/)
+  assert.match(bundle, /Historical Turn/)
+  assert.match(bundle, /Current Working changes/)
+  assert.match(bundle, /AbortController/)
+  assert.match(bundle, /oldLine/)
+  assert.doesNotMatch(bundle, /Close review/)
+  assert.doesNotMatch(bundle, /Loading Turn diff/)
   assert.match(bundle, /Worktrees & Handoff/)
   assert.match(bundle, /Handoff to Local/)
   assert.doesNotMatch(bundle, /--color-bg/)
