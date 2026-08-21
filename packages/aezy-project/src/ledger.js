@@ -1,14 +1,16 @@
 import { createHash, randomUUID } from 'node:crypto'
 import {
-  chmod, lstat, mkdir, readFile, rename, rm, writeFile,
+  chmod, lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile,
 } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
 import {
   describeProject,
   fingerprintPath,
   git,
   gitMetadataRoot,
   indexEntry,
+  readGitBlob,
   repositoryFor,
   safeRelativePath,
   snapshotChangedFiles,
@@ -16,6 +18,7 @@ import {
 } from './git.js'
 
 const MAX_CAPTURE_BYTES = 8 * 1024 * 1024
+const MAX_REVIEW_DIFF_BYTES = 512 * 1024
 const MAX_TURNS_PER_SESSION = 100
 
 function emptyLedger() {
@@ -60,6 +63,96 @@ async function storeObject(metaRoot, bytes) {
   return id
 }
 
+async function readObject(metaRoot, id) {
+  return readFile(resolve(metaRoot, 'objects', id.slice(0, 2), id.slice(2)))
+}
+
+async function worktreeBytes(root, metaRoot, state) {
+  const descriptor = state?.worktree
+  if (descriptor?.kind === 'missing') return Buffer.alloc(0)
+  if (descriptor?.kind === 'object') return readObject(metaRoot, descriptor.object)
+  if (descriptor?.kind === 'git') {
+    const blob = descriptor.blob ?? state?.index?.blob
+    return typeof blob === 'string' ? readGitBlob(root, blob) : undefined
+  }
+  return undefined
+}
+
+function normalizeReviewDiff(raw, path, beforeMissing, afterMissing) {
+  const lines = raw.split('\n')
+  if (lines[0]?.startsWith('diff --git ')) lines[0] = `diff --git a/${path} b/${path}`
+  const beforeAt = lines.findIndex(line => line.startsWith('--- '))
+  const afterAt = lines.findIndex(line => line.startsWith('+++ '))
+  if (beforeAt >= 0) lines[beforeAt] = beforeMissing ? '--- /dev/null' : `--- a/${path}`
+  if (afterAt >= 0) lines[afterAt] = afterMissing ? '+++ /dev/null' : `+++ b/${path}`
+  return lines.join('\n')
+}
+
+async function reviewForStates(root, path, metaRoot, before, after) {
+  const [beforeBytes, afterBytes] = await Promise.all([
+    worktreeBytes(root, metaRoot, before),
+    worktreeBytes(root, metaRoot, after),
+  ])
+  if (beforeBytes === undefined || afterBytes === undefined) {
+    return { additions: null, deletions: null, binary: true, truncated: false, object: null }
+  }
+  if (beforeBytes.includes(0) || afterBytes.includes(0)) {
+    return { additions: null, deletions: null, binary: true, truncated: false, object: null }
+  }
+  if (beforeBytes.equals(afterBytes)) {
+    return { additions: 0, deletions: 0, binary: false, truncated: false, object: null }
+  }
+
+  const temporaryBase = process.platform === 'win32' ? tmpdir() : '/tmp'
+  const temporary = await mkdtemp(join(temporaryBase, 'aezy-turn-diff-'))
+  const beforePath = resolve(temporary, 'before')
+  const afterPath = resolve(temporary, 'after')
+  try {
+    await Promise.all([writeFile(beforePath, beforeBytes), writeFile(afterPath, afterBytes)])
+    const stat = await git(root, [
+      'diff', '--no-index', '--numstat', '--', beforePath, afterPath,
+    ], [0, 1])
+    const [added, deleted] = stat.stdout.trim().split(/\s+/u)
+    if (added === '-' || deleted === '-') {
+      return { additions: null, deletions: null, binary: true, truncated: false, object: null }
+    }
+    const additions = Number.parseInt(added, 10)
+    const deletions = Number.parseInt(deleted, 10)
+    if (!Number.isSafeInteger(additions) || additions < 0
+      || !Number.isSafeInteger(deletions) || deletions < 0) {
+      throw new Error(`Git returned invalid Turn diff statistics for "${path}"`)
+    }
+    let raw
+    try {
+      raw = (await git(root, [
+        'diff', '--no-index', '--no-color', '--unified=3', '--', beforePath, afterPath,
+      ], [0, 1])).stdout
+    } catch {
+      return { additions, deletions, binary: false, truncated: true, object: null }
+    }
+    const normalized = normalizeReviewDiff(
+      raw,
+      path,
+      before.worktree.kind === 'missing',
+      after.worktree.kind === 'missing',
+    )
+    const bytes = Buffer.from(normalized)
+    const truncated = bytes.length > MAX_REVIEW_DIFF_BYTES
+    const bounded = truncated
+      ? `${bytes.subarray(0, MAX_REVIEW_DIFF_BYTES).toString('utf8')}\n\n[diff truncated by Aezy]\n`
+      : normalized
+    return {
+      additions,
+      deletions,
+      binary: false,
+      truncated,
+      object: bounded === '' ? null : await storeObject(metaRoot, Buffer.from(bounded)),
+    }
+  } finally {
+    await rm(temporary, { recursive: true, force: true })
+  }
+}
+
 async function captureWorktree(root, path, metaRoot) {
   const absolute = resolve(root, path)
   let info
@@ -95,7 +188,7 @@ async function cleanBaselineState(root, head, path) {
   const entry = await treeEntry(root, head, path)
   if (entry.kind === 'tracked') {
     return {
-      worktree: { kind: 'git', ref: head },
+      worktree: { kind: 'git', ref: head, blob: entry.blob },
       index: entry,
     }
   }
@@ -166,20 +259,27 @@ async function restoreState(root, path, metaRoot, state) {
 }
 
 function publicTurn(turn, root) {
+  const files = turn.files.map(file => ({
+    path: file.path,
+    openPath: resolve(root, safeRelativePath(root, file.path)),
+    change: file.change,
+    beforeFingerprint: file.beforeFingerprint,
+    afterFingerprint: file.afterFingerprint,
+    revertable: file.revertable,
+    additions: file.review?.additions ?? null,
+    deletions: file.review?.deletions ?? null,
+    binary: file.review?.binary ?? false,
+  }))
   return {
     turn: turn.turn,
     startedAt: turn.startedAt,
     endedAt: turn.endedAt,
     reason: turn.reason,
     concurrent: turn.concurrent,
-    files: turn.files.map(file => ({
-      path: file.path,
-      openPath: resolve(root, safeRelativePath(root, file.path)),
-      change: file.change,
-      beforeFingerprint: file.beforeFingerprint,
-      afterFingerprint: file.afterFingerprint,
-      revertable: file.revertable,
-    })),
+    additions: files.reduce((sum, file) => sum + (file.additions ?? 0), 0),
+    deletions: files.reduce((sum, file) => sum + (file.deletions ?? 0), 0),
+    statsComplete: files.every(file => file.additions !== null && file.deletions !== null),
+    files,
   }
 }
 
@@ -275,12 +375,22 @@ export class TurnLedger {
       if (beforeState?.fingerprint === afterFingerprint) continue
       const before = baseline.restore.get(path)
         ?? await cleanBaselineState(baseline.root, baseline.head, path)
+      const afterRestore = await captureRestoreState(baseline.root, path, baseline.metaRoot)
+      let review
+      try {
+        review = await reviewForStates(baseline.root, path, baseline.metaRoot, before, afterRestore)
+      } catch (error) {
+        this.#warn(error)
+        review = { additions: null, deletions: null, binary: true, truncated: false, object: null }
+      }
       files.push({
         path,
         change: changeKind(beforeState?.fingerprint ?? null, afterFingerprint),
         beforeFingerprint: beforeState?.fingerprint ?? null,
         afterFingerprint,
         before,
+        after: afterRestore,
+        review,
         revertable: restoreSupported(before)
           && beforeState?.row?.kind !== 'conflict'
           && beforeState?.row?.kind !== 'renamed'
@@ -328,8 +438,10 @@ export class TurnLedger {
         .filter(receipt => receipt.sessionId === sessionId)
         .map(receipt => ({
           id: receipt.id,
+          kind: receipt.kind ?? 'file',
           turn: receipt.turn,
-          path: receipt.path,
+          path: receipt.path ?? null,
+          files: receipt.files?.map(file => file.path) ?? [receipt.path],
           status: receipt.status,
           createdAt: receipt.createdAt,
         }))
@@ -339,6 +451,35 @@ export class TurnLedger {
         repositoryRoot: root,
         turns: turns.map(turn => publicTurn(turn, root)),
         receipts,
+      }
+    })
+  }
+
+  async review(cwd, sessionId, turn) {
+    if (!validSessionId(sessionId)) throw new Error('sessionId is invalid')
+    if (!Number.isSafeInteger(turn) || turn < 1) throw new Error('turn must be a positive integer')
+    const { root } = await repositoryFor(cwd)
+    const metaRoot = resolve(await gitMetadataRoot(root), 'aezy')
+    return this.#serial(root, async () => {
+      const ledger = await readLedger(metaRoot)
+      const record = ledger.sessions[sessionId]?.turns?.find(item => item.turn === turn)
+      if (record === undefined) throw new Error('turn ledger entry does not exist')
+      return {
+        version: 1,
+        sessionId,
+        turn,
+        files: await Promise.all(record.files.map(async file => ({
+          path: file.path,
+          openPath: resolve(root, safeRelativePath(root, file.path)),
+          change: file.change,
+          additions: file.review?.additions ?? null,
+          deletions: file.review?.deletions ?? null,
+          binary: file.review?.binary ?? false,
+          truncated: file.review?.truncated ?? false,
+          diff: typeof file.review?.object === 'string'
+            ? (await readObject(metaRoot, file.review.object)).toString('utf8')
+            : '',
+        }))),
       }
     })
   }
@@ -404,6 +545,81 @@ export class TurnLedger {
     })
   }
 
+  async revertTurn(request) {
+    const { cwd, sessionId, turn } = request
+    if (!validSessionId(sessionId)) throw new Error('sessionId is invalid')
+    if (!Number.isSafeInteger(turn) || turn < 1) throw new Error('turn must be a positive integer')
+    const { root } = await repositoryFor(cwd)
+    const metaRoot = resolve(await gitMetadataRoot(root), 'aezy')
+    return this.#serial(root, async () => {
+      const ledger = await readLedger(metaRoot)
+      const record = ledger.sessions[sessionId]?.turns?.find(item => item.turn === turn)
+      if (record === undefined) throw new Error('turn ledger entry does not exist')
+      if (record.concurrent) throw new Error('concurrent turn changes cannot be reverted as a batch')
+      if (record.files.length === 0) throw new Error('turn ledger entry has no files')
+
+      const project = await describeProject(root)
+      const prepared = []
+      for (const file of record.files) {
+        if (!file.revertable) throw new Error(`turn ledger entry is not safely revertable: ${file.path}`)
+        const row = project.files.find(item => item.path === file.path)
+        const current = await fingerprintPath(root, file.path, row)
+        if (current !== file.afterFingerprint) {
+          throw new Error(`file "${file.path}" changed since this turn was recorded`)
+        }
+        const restore = await captureRestoreState(root, file.path, metaRoot)
+        if (!restoreSupported(restore)) {
+          throw new Error(`current file state cannot be backed up safely: ${file.path}`)
+        }
+        prepared.push({
+          path: file.path,
+          restore,
+          reverted: file.before,
+          expectedFingerprint: file.afterFingerprint,
+        })
+      }
+
+      const receiptId = randomUUID()
+      const receipt = {
+        id: receiptId,
+        kind: 'turn',
+        sessionId,
+        turn,
+        createdAt: Date.now(),
+        status: 'prepared',
+        files: prepared,
+      }
+      ledger.receipts[receiptId] = receipt
+      await writeLedger(metaRoot, ledger)
+      let revertedProject
+      try {
+        for (const file of record.files) await restoreState(root, file.path, metaRoot, file.before)
+        revertedProject = await describeProject(root)
+        for (const file of prepared) {
+          const row = revertedProject.files.find(item => item.path === file.path)
+          file.revertedFingerprint = await fingerprintPath(root, file.path, row)
+        }
+      } catch (error) {
+        try {
+          for (const file of prepared) await restoreState(root, file.path, metaRoot, file.restore)
+          receipt.status = 'rolled-back'
+          await writeLedger(metaRoot, ledger)
+        } catch (rollbackError) {
+          this.#warn(rollbackError)
+        }
+        throw error
+      }
+      receipt.status = 'committed'
+      await writeLedger(metaRoot, ledger)
+      return {
+        ok: true,
+        receiptId,
+        files: prepared.map(file => file.path),
+        project: revertedProject,
+      }
+    })
+  }
+
   async undo(request) {
     const { cwd, receiptId } = request
     if (typeof receiptId !== 'string' || !/^[a-f0-9-]{36}$/u.test(receiptId)) {
@@ -417,6 +633,35 @@ export class TurnLedger {
       if (receipt === undefined) throw new Error('revert receipt does not match this repository')
       if (receipt.status === 'undone') throw new Error('revert receipt is already undone')
       if (receipt.status !== 'committed') throw new Error('revert receipt is not undoable')
+      if (receipt.kind === 'turn') {
+        const project = await describeProject(root)
+        for (const file of receipt.files) {
+          const row = project.files.find(item => item.path === file.path)
+          const current = await fingerprintPath(root, file.path, row)
+          if (current !== file.revertedFingerprint) {
+            throw new Error(`file "${file.path}" changed since the turn revert was recorded`)
+          }
+        }
+        try {
+          for (const file of receipt.files) await restoreState(root, file.path, metaRoot, file.restore)
+        } catch (error) {
+          try {
+            for (const file of receipt.files) await restoreState(root, file.path, metaRoot, file.reverted)
+          } catch (rollbackError) {
+            this.#warn(rollbackError)
+          }
+          throw error
+        }
+        receipt.status = 'undone'
+        receipt.undoneAt = Date.now()
+        await writeLedger(metaRoot, ledger)
+        return {
+          ok: true,
+          receiptId,
+          files: receipt.files.map(file => file.path),
+          project: await describeProject(root),
+        }
+      }
       const project = await describeProject(root)
       const row = project.files.find(item => item.path === receipt.path)
       const current = await fingerprintPath(root, receipt.path, row)

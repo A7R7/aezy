@@ -54,13 +54,16 @@ test('built client bundle registers and mounts the Changes view', async () => {
   assert.equal(typeof view.component, 'function')
 })
 
-test('built Changes view consumes DSH theme aliases without dark-only fallbacks', async () => {
+test('built Changes and Turn review card consume DSH theme aliases without dark-only fallbacks', async () => {
   const bundle = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
   assert.match(bundle, /--dsw-alias-bg-base/)
   assert.match(bundle, /--dsw-alias-bg-module-platform/)
   assert.match(bundle, /--dsw-alias-markdown-code-block/)
   assert.match(bundle, /--dsw-alias-label-primary/)
-  assert.match(bundle, /Changed files/)
+  assert.match(bundle, /Edited/)
+  assert.match(bundle, /Undo/)
+  assert.match(bundle, /Review/)
+  assert.match(bundle, /--dsw-alias-state-success-primary/)
   assert.match(bundle, /data-aezy-turn-files/)
   assert.doesNotMatch(bundle, /--color-bg/)
 })

@@ -54,16 +54,22 @@ try {
   const entry = view.turns[0].files[0]
   assert.equal(entry.path, 'file.txt')
   assert.equal(entry.openPath, join(root, 'file.txt'))
+  assert.equal(entry.additions, 1)
+  assert.equal(entry.deletions, 1)
 
-  const reverted = await request('/aezy/api/project/revert', {
+  const review = await request(`/aezy/api/project/turn-review?${new URLSearchParams({
+    cwd: root, sessionId: 'http-session', turn: '1',
+  })}`)
+  assert.match(review.files[0].diff, /-before/u)
+  assert.match(review.files[0].diff, /\+after/u)
+
+  const reverted = await request('/aezy/api/project/revert-turn', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       cwd: root,
       sessionId: 'http-session',
       turn: 1,
-      path: 'file.txt',
-      expectedFingerprint: entry.afterFingerprint,
     }),
   })
   assert.equal(await readFile(join(root, 'file.txt'), 'utf8'), 'before\n')
@@ -77,7 +83,7 @@ try {
 
   const forbidden = await fetch(`${baseUrl}/aezy/api/project?${new URLSearchParams({ cwd: root })}`)
   assert.equal(forbidden.status, 403)
-  process.stdout.write('M1 real DSH HTTP post-turn summary, safe revert, undo, and request fence passed.\n')
+  process.stdout.write('M1 real DSH HTTP Codex-style Turn review, batch Undo/Redo, and request fence passed.\n')
 } finally {
   await rm(root, { recursive: true, force: true })
 }

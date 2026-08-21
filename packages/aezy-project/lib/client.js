@@ -15,18 +15,20 @@ window.__ModuleLoader__.load({
 			return {
 				turn: turn.turn,
 				concurrent: turn.concurrent === true,
+				additions: turn.additions ?? 0,
+				deletions: turn.deletions ?? 0,
+				statsComplete: turn.statsComplete === true,
 				files: turn.files.map((file) => ({
 					path: file.path,
 					openPath: file.openPath,
 					change: file.change,
-					afterFingerprint: file.afterFingerprint
+					afterFingerprint: file.afterFingerprint,
+					revertable: file.revertable === true,
+					additions: file.additions ?? null,
+					deletions: file.deletions ?? null,
+					binary: file.binary === true
 				}))
 			};
-		}
-		/** Trailing path segment for a compact Turn-tail chip. */
-		function basename(path) {
-			const at = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-			return at < 0 ? path : path.slice(at + 1);
 		}
 		//#endregion
 		//#region src/client/index.tsx
@@ -40,10 +42,10 @@ window.__ModuleLoader__.load({
 			text: "var(--dsw-alias-label-primary, #0f1115)",
 			muted: "var(--dsw-alias-label-tertiary, #81858c)",
 			accent: "var(--dsw-alias-state-business-primary, #4d6bfe)",
+			success: "var(--dsw-alias-state-success-primary, #1a7f37)",
 			warning: "var(--dsw-alias-state-warn-label, #b45309)",
 			error: "var(--dsw-alias-state-error-primary, #dc1313)"
 		};
-		const SUMMARY_CHIP_LIMIT = 6;
 		const ledgerRequests = /* @__PURE__ */ new Map();
 		function loadLedger(cwd, sessionId) {
 			const key = `${sessionId}\0${cwd}`;
@@ -62,15 +64,44 @@ window.__ModuleLoader__.load({
 			});
 			return promise;
 		}
+		function DiffStats({ additions, deletions }) {
+			if (additions === null || deletions === null) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+				title: "Line statistics are unavailable for a binary, oversized, or legacy ledger entry",
+				style: { color: palette.muted },
+				children: "—"
+			});
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+				style: {
+					display: "inline-flex",
+					gap: 7,
+					fontVariantNumeric: "tabular-nums",
+					fontFamily: "monospace"
+				},
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+					style: { color: palette.success },
+					children: ["+", additions]
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+					style: { color: palette.error },
+					children: ["-", deletions]
+				})]
+			});
+		}
 		function TurnChangedFiles({ matched, cwd, sessionId, openFile }) {
 			const [summary, setSummary] = (0, react.useState)(void 0);
+			const [review, setReview] = (0, react.useState)(void 0);
+			const [reviewOpen, setReviewOpen] = (0, react.useState)(false);
+			const [receiptId, setReceiptId] = (0, react.useState)(null);
+			const [mutating, setMutating] = (0, react.useState)(false);
 			const [error, setError] = (0, react.useState)(null);
 			(0, react.useEffect)(() => {
 				let live = true;
 				setSummary(void 0);
 				setError(null);
 				loadLedger(cwd, sessionId).then((ledger) => {
-					if (live) setSummary(summarizeTurn(ledger, matched.turn));
+					if (!live) return;
+					setSummary(summarizeTurn(ledger, matched.turn));
+					const latest = ledger.receipts.filter((receipt) => receipt.kind === "turn" && receipt.turn === matched.turn).sort((left, right) => right.createdAt - left.createdAt)[0];
+					setReceiptId(latest?.status === "committed" ? latest.id : null);
 				}).catch((reason) => {
 					if (live) setError(reason instanceof Error ? reason.message : String(reason));
 				});
@@ -82,7 +113,7 @@ window.__ModuleLoader__.load({
 				matched.turn,
 				sessionId
 			]);
-			if (error !== null) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+			if (error !== null && summary === void 0) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 				title: error,
 				style: {
 					marginTop: 14,
@@ -92,62 +123,271 @@ window.__ModuleLoader__.load({
 				children: "Changed files unavailable"
 			});
 			if (summary === void 0 || summary === null) return null;
-			const visible = summary.files.slice(0, SUMMARY_CHIP_LIMIT);
-			const hidden = summary.files.length - visible.length;
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+			const canUndo = !summary.concurrent && summary.files.every((file) => file.revertable);
+			const toggleUndo = async () => {
+				if (!canUndo || mutating) return;
+				setMutating(true);
+				setError(null);
+				try {
+					if (receiptId === null) {
+						const result = await mutate("/aezy/api/project/revert-turn", {
+							cwd,
+							sessionId,
+							turn: summary.turn
+						});
+						setReceiptId(result.receiptId);
+					} else {
+						await mutate("/aezy/api/project/undo", {
+							cwd,
+							receiptId
+						});
+						setReceiptId(null);
+					}
+					ledgerRequests.delete(`${sessionId}\0${cwd}`);
+				} catch (reason) {
+					setError(reason instanceof Error ? reason.message : String(reason));
+				} finally {
+					setMutating(false);
+				}
+			};
+			const toggleReview = async () => {
+				if (reviewOpen) {
+					setReviewOpen(false);
+					return;
+				}
+				setReviewOpen(true);
+				if (review !== void 0) return;
+				setError(null);
+				try {
+					setReview(await request("/aezy/api/project/turn-review", {
+						cwd,
+						sessionId,
+						turn: String(summary.turn)
+					}));
+				} catch (reason) {
+					setReview(void 0);
+					setReviewOpen(false);
+					setError(reason instanceof Error ? reason.message : String(reason));
+				}
+			};
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				"data-aezy-turn-files": summary.turn,
 				style: {
 					marginTop: 14,
-					display: "flex",
-					alignItems: "center",
-					gap: 8,
-					flexWrap: "wrap",
-					color: palette.muted,
+					maxWidth: 720,
+					overflow: "hidden",
+					border: `1px solid ${palette.border}`,
+					borderRadius: 10,
+					background: palette.elevated,
+					color: palette.text,
 					fontSize: 12
 				},
 				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: ["Changed files · ", summary.files.length] }),
-					visible.map((file) => file.afterFingerprint === null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						title: `${file.path} (removed)`,
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
 						style: {
-							maxWidth: 260,
-							overflow: "hidden",
-							textOverflow: "ellipsis",
-							whiteSpace: "nowrap",
-							padding: "2px 7px",
-							borderRadius: 6,
-							background: palette.interactive,
-							textDecoration: "line-through"
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "space-between",
+							gap: 12,
+							padding: "10px 12px 7px"
 						},
-						children: basename(file.path)
-					}, file.path) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-						type: "button",
-						title: file.path,
-						onClick: () => openFile(file.openPath),
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", {
+							style: {
+								fontSize: 12,
+								fontWeight: 600
+							},
+							children: [
+								"Edited ",
+								summary.files.length,
+								" ",
+								summary.files.length === 1 ? "file" : "files"
+							]
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+							style: {
+								display: "inline-flex",
+								alignItems: "center",
+								gap: 4
+							},
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								disabled: !canUndo || mutating,
+								onClick: () => {
+									toggleUndo();
+								},
+								title: summary.concurrent ? "Batch Undo is disabled because another Session overlapped this Turn" : canUndo ? receiptId === null ? "Restore every file to its state before this Turn" : "Reapply the files changed by this Turn" : "At least one file cannot be restored safely",
+								style: {
+									border: 0,
+									borderRadius: 5,
+									padding: "3px 7px",
+									background: "transparent",
+									color: canUndo ? palette.accent : palette.muted,
+									cursor: canUndo && !mutating ? "pointer" : "not-allowed",
+									font: "inherit"
+								},
+								children: mutating ? "Working…" : receiptId === null ? "Undo" : "Redo"
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								onClick: () => {
+									toggleReview();
+								},
+								"aria-expanded": reviewOpen,
+								style: {
+									border: 0,
+									borderRadius: 5,
+									padding: "3px 7px",
+									background: "transparent",
+									color: palette.accent,
+									cursor: "pointer",
+									font: "inherit"
+								},
+								children: reviewOpen ? "Close review" : "Review"
+							})]
+						})]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						style: {
-							maxWidth: 260,
-							overflow: "hidden",
-							textOverflow: "ellipsis",
-							whiteSpace: "nowrap",
-							padding: "2px 7px",
-							border: 0,
-							borderRadius: 6,
-							background: palette.interactive,
-							color: palette.text,
-							cursor: "pointer",
-							font: "inherit"
+							padding: "0 12px 8px",
+							color: palette.muted
 						},
-						children: basename(file.path)
-					}, file.path)),
-					hidden > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
-						"+",
-						hidden,
-						" more"
-					] }),
-					summary.concurrent && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-						title: "Another Session was active in this repository during the Turn",
-						style: { color: palette.warning },
-						children: "concurrent"
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
+								additions: summary.additions,
+								deletions: summary.deletions
+							}),
+							!summary.statsComplete && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								title: "One or more files have unavailable line statistics",
+								style: { marginLeft: 8 },
+								children: "partial"
+							}),
+							summary.concurrent && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								title: "Another Session was active in this repository during the Turn",
+								style: {
+									marginLeft: 8,
+									color: palette.warning
+								},
+								children: "concurrent"
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						style: { borderTop: `1px solid ${palette.border}` },
+						children: summary.files.map((file) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							style: {
+								minHeight: 30,
+								display: "grid",
+								gridTemplateColumns: "minmax(0, 1fr) auto",
+								alignItems: "center",
+								gap: 16,
+								padding: "4px 12px",
+								borderBottom: `1px solid ${palette.border}`
+							},
+							children: [file.afterFingerprint === null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								title: `${file.path} (removed)`,
+								style: {
+									minWidth: 0,
+									overflow: "hidden",
+									textOverflow: "ellipsis",
+									whiteSpace: "nowrap",
+									color: palette.muted,
+									textDecoration: "line-through",
+									fontFamily: "monospace"
+								},
+								children: file.path
+							}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								title: file.path,
+								onClick: () => openFile(file.openPath),
+								style: {
+									minWidth: 0,
+									overflow: "hidden",
+									textOverflow: "ellipsis",
+									whiteSpace: "nowrap",
+									padding: 0,
+									border: 0,
+									background: "transparent",
+									color: palette.text,
+									cursor: "pointer",
+									textAlign: "left",
+									fontFamily: "monospace",
+									fontSize: 12
+								},
+								children: file.path
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
+								additions: file.additions,
+								deletions: file.deletions
+							})]
+						}, file.path))
+					}),
+					error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						title: error,
+						style: {
+							padding: "8px 12px",
+							color: palette.error
+						},
+						children: error
+					}),
+					reviewOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						style: {
+							padding: 12,
+							background: palette.panel
+						},
+						children: [review === void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							style: { color: palette.muted },
+							children: "Loading Turn diff…"
+						}), review?.files.map((file) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+							style: { marginTop: 10 },
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									style: {
+										display: "flex",
+										justifyContent: "space-between",
+										gap: 12,
+										marginBottom: 6
+									},
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
+										style: {
+											minWidth: 0,
+											overflowWrap: "anywhere",
+											fontFamily: "monospace",
+											fontWeight: 500
+										},
+										children: file.path
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
+										additions: file.additions,
+										deletions: file.deletions
+									})]
+								}),
+								file.binary ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									style: { color: palette.muted },
+									children: "Binary or oversized file; textual review unavailable."
+								}) : file.diff === "" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									style: { color: palette.muted },
+									children: "No worktree line changes."
+								}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
+									style: {
+										margin: 0,
+										padding: 10,
+										maxHeight: 360,
+										overflow: "auto",
+										border: `1px solid ${palette.border}`,
+										borderRadius: 7,
+										background: palette.code,
+										color: palette.text,
+										fontSize: 11,
+										lineHeight: 1.5,
+										whiteSpace: "pre"
+									},
+									children: file.diff
+								}),
+								file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									style: {
+										marginTop: 5,
+										color: palette.warning
+									},
+									children: "Diff truncated at the Aezy review limit."
+								})
+							]
+						}, file.path))]
 					})
 				]
 			});

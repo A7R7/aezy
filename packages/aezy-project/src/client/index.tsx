@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { basename, summarizeTurn } from '../summary.js'
+import { summarizeTurn } from '../summary.js'
 
 type FileRow = {
   path: string
@@ -49,6 +49,9 @@ type LedgerFile = {
   beforeFingerprint: string | null
   afterFingerprint: string | null
   revertable: boolean
+  additions: number | null
+  deletions: number | null
+  binary: boolean
 }
 
 type LedgerTurn = {
@@ -57,6 +60,9 @@ type LedgerTurn = {
   endedAt: number
   reason: { kind: string }
   concurrent: boolean
+  additions: number
+  deletions: number
+  statsComplete: boolean
   files: LedgerFile[]
 }
 
@@ -65,10 +71,26 @@ type LedgerView = {
   turns: LedgerTurn[]
   receipts: Array<{
     id: string
+    kind: 'file' | 'turn'
     turn: number
-    path: string
+    path: string | null
+    files: string[]
     status: string
     createdAt: number
+  }>
+}
+
+type TurnReview = {
+  turn: number
+  files: Array<{
+    path: string
+    openPath: string
+    change: LedgerFile['change']
+    additions: number | null
+    deletions: number | null
+    binary: boolean
+    truncated: boolean
+    diff: string
   }>
 }
 
@@ -111,11 +133,11 @@ const palette = {
   text: 'var(--dsw-alias-label-primary, #0f1115)',
   muted: 'var(--dsw-alias-label-tertiary, #81858c)',
   accent: 'var(--dsw-alias-state-business-primary, #4d6bfe)',
+  success: 'var(--dsw-alias-state-success-primary, #1a7f37)',
   warning: 'var(--dsw-alias-state-warn-label, #b45309)',
   error: 'var(--dsw-alias-state-error-primary, #dc1313)',
 }
 
-const SUMMARY_CHIP_LIMIT = 6
 const ledgerRequests = new Map<string, { at: number; promise: Promise<LedgerView> }>()
 
 function loadLedger(cwd: string, sessionId: string): Promise<LedgerView> {
@@ -133,8 +155,22 @@ function loadLedger(cwd: string, sessionId: string): Promise<LedgerView> {
   return promise
 }
 
+function DiffStats({ additions, deletions }: { additions: number | null; deletions: number | null }) {
+  if (additions === null || deletions === null) {
+    return <span title="Line statistics are unavailable for a binary, oversized, or legacy ledger entry" style={{ color: palette.muted }}>—</span>
+  }
+  return <span style={{ display: 'inline-flex', gap: 7, fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace' }}>
+    <span style={{ color: palette.success }}>+{additions}</span>
+    <span style={{ color: palette.error }}>-{deletions}</span>
+  </span>
+}
+
 function TurnChangedFiles({ matched, cwd, sessionId, openFile }: TurnSummaryProps) {
   const [summary, setSummary] = useState<TurnSummary | null | undefined>(undefined)
+  const [review, setReview] = useState<TurnReview | undefined>(undefined)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [receiptId, setReceiptId] = useState<string | null>(null)
+  const [mutating, setMutating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -142,28 +178,102 @@ function TurnChangedFiles({ matched, cwd, sessionId, openFile }: TurnSummaryProp
     setSummary(undefined)
     setError(null)
     loadLedger(cwd, sessionId).then((ledger) => {
-      if (live) setSummary(summarizeTurn(ledger, matched.turn))
+      if (!live) return
+      setSummary(summarizeTurn(ledger, matched.turn))
+      const latest = ledger.receipts
+        .filter(receipt => receipt.kind === 'turn' && receipt.turn === matched.turn)
+        .sort((left, right) => right.createdAt - left.createdAt)[0]
+      setReceiptId(latest?.status === 'committed' ? latest.id : null)
     }).catch((reason) => {
       if (live) setError(reason instanceof Error ? reason.message : String(reason))
     })
     return () => { live = false }
   }, [cwd, matched.turn, sessionId])
 
-  if (error !== null) {
+  if (error !== null && summary === undefined) {
     return <div title={error} style={{ marginTop: 14, color: palette.error, fontSize: 12 }}>Changed files unavailable</div>
   }
   if (summary === undefined || summary === null) return null
 
-  const visible = summary.files.slice(0, SUMMARY_CHIP_LIMIT)
-  const hidden = summary.files.length - visible.length
-  return <div data-aezy-turn-files={summary.turn} style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', color: palette.muted, fontSize: 12 }}>
-    <span>Changed files · {summary.files.length}</span>
-    {visible.map(file => file.afterFingerprint === null
-      ? <span key={file.path} title={`${file.path} (removed)`} style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 7px', borderRadius: 6, background: palette.interactive, textDecoration: 'line-through' }}>{basename(file.path)}</span>
-      : <button key={file.path} type="button" title={file.path} onClick={() => openFile(file.openPath)} style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 7px', border: 0, borderRadius: 6, background: palette.interactive, color: palette.text, cursor: 'pointer', font: 'inherit' }}>{basename(file.path)}</button>)}
-    {hidden > 0 && <span>+{hidden} more</span>}
-    {summary.concurrent && <span title="Another Session was active in this repository during the Turn" style={{ color: palette.warning }}>concurrent</span>}
-  </div>
+  const canUndo = !summary.concurrent && summary.files.every(file => file.revertable)
+  const toggleUndo = async () => {
+    if (!canUndo || mutating) return
+    setMutating(true)
+    setError(null)
+    try {
+      if (receiptId === null) {
+        const result = await mutate<{ receiptId: string }>('/aezy/api/project/revert-turn', {
+          cwd, sessionId, turn: summary.turn,
+        })
+        setReceiptId(result.receiptId)
+      } else {
+        await mutate('/aezy/api/project/undo', { cwd, receiptId })
+        setReceiptId(null)
+      }
+      ledgerRequests.delete(`${sessionId}\0${cwd}`)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setMutating(false)
+    }
+  }
+  const toggleReview = async () => {
+    if (reviewOpen) {
+      setReviewOpen(false)
+      return
+    }
+    setReviewOpen(true)
+    if (review !== undefined) return
+    setError(null)
+    try {
+      setReview(await request<TurnReview>('/aezy/api/project/turn-review', {
+        cwd, sessionId, turn: String(summary.turn),
+      }))
+    } catch (reason) {
+      setReview(undefined)
+      setReviewOpen(false)
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }
+
+  return <section data-aezy-turn-files={summary.turn} style={{ marginTop: 14, maxWidth: 720, overflow: 'hidden', border: `1px solid ${palette.border}`, borderRadius: 10, background: palette.elevated, color: palette.text, fontSize: 12 }}>
+    <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px 7px' }}>
+      <strong style={{ fontSize: 12, fontWeight: 600 }}>Edited {summary.files.length} {summary.files.length === 1 ? 'file' : 'files'}</strong>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <button type="button" disabled={!canUndo || mutating} onClick={() => { void toggleUndo() }} title={summary.concurrent ? 'Batch Undo is disabled because another Session overlapped this Turn' : canUndo ? (receiptId === null ? 'Restore every file to its state before this Turn' : 'Reapply the files changed by this Turn') : 'At least one file cannot be restored safely'} style={{ border: 0, borderRadius: 5, padding: '3px 7px', background: 'transparent', color: canUndo ? palette.accent : palette.muted, cursor: canUndo && !mutating ? 'pointer' : 'not-allowed', font: 'inherit' }}>{mutating ? 'Working…' : receiptId === null ? 'Undo' : 'Redo'}</button>
+        <button type="button" onClick={() => { void toggleReview() }} aria-expanded={reviewOpen} style={{ border: 0, borderRadius: 5, padding: '3px 7px', background: 'transparent', color: palette.accent, cursor: 'pointer', font: 'inherit' }}>{reviewOpen ? 'Close review' : 'Review'}</button>
+      </span>
+    </header>
+    <div style={{ padding: '0 12px 8px', color: palette.muted }}>
+      <DiffStats additions={summary.additions} deletions={summary.deletions} />
+      {!summary.statsComplete && <span title="One or more files have unavailable line statistics" style={{ marginLeft: 8 }}>partial</span>}
+      {summary.concurrent && <span title="Another Session was active in this repository during the Turn" style={{ marginLeft: 8, color: palette.warning }}>concurrent</span>}
+    </div>
+    <div style={{ borderTop: `1px solid ${palette.border}` }}>
+      {summary.files.map(file => <div key={file.path} style={{ minHeight: 30, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', gap: 16, padding: '4px 12px', borderBottom: `1px solid ${palette.border}` }}>
+        {file.afterFingerprint === null
+          ? <span title={`${file.path} (removed)`} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: palette.muted, textDecoration: 'line-through', fontFamily: 'monospace' }}>{file.path}</span>
+          : <button type="button" title={file.path} onClick={() => openFile(file.openPath)} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: 0, border: 0, background: 'transparent', color: palette.text, cursor: 'pointer', textAlign: 'left', fontFamily: 'monospace', fontSize: 12 }}>{file.path}</button>}
+        <DiffStats additions={file.additions} deletions={file.deletions} />
+      </div>)}
+    </div>
+    {error !== null && <div title={error} style={{ padding: '8px 12px', color: palette.error }}>{error}</div>}
+    {reviewOpen && <div style={{ padding: 12, background: palette.panel }}>
+      {review === undefined && <div style={{ color: palette.muted }}>Loading Turn diff…</div>}
+      {review?.files.map(file => <section key={file.path} style={{ marginTop: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+          <strong style={{ minWidth: 0, overflowWrap: 'anywhere', fontFamily: 'monospace', fontWeight: 500 }}>{file.path}</strong>
+          <DiffStats additions={file.additions} deletions={file.deletions} />
+        </div>
+        {file.binary
+          ? <div style={{ color: palette.muted }}>Binary or oversized file; textual review unavailable.</div>
+          : file.diff === ''
+            ? <div style={{ color: palette.muted }}>No worktree line changes.</div>
+            : <pre style={{ margin: 0, padding: 10, maxHeight: 360, overflow: 'auto', border: `1px solid ${palette.border}`, borderRadius: 7, background: palette.code, color: palette.text, fontSize: 11, lineHeight: 1.5, whiteSpace: 'pre' }}>{file.diff}</pre>}
+        {file.truncated && <div style={{ marginTop: 5, color: palette.warning }}>Diff truncated at the Aezy review limit.</div>}
+      </section>)}
+    </div>}
+  </section>
 }
 
 async function request<T>(path: string, params: Record<string, string>): Promise<T> {

@@ -8,10 +8,12 @@ DSH's public client-module and `conversation.view` slot seams.
 The same browser module takes priority `-10` in the public
 `conversation.chat.turnTail` chain. After a completed Turn it reads the
 authoritative Git ledger, waits for the asynchronous end scan to settle, and
-renders a compact Changed files row under the final assistant message. Unlike
-DSH's tool-location-derived Produced files row, this includes shell-created,
-modified, and removed files and suppresses files restored to their baseline
-within the same Turn.
+renders a Codex-style change card under the final assistant message. The card
+shows total and per-file added/deleted line counts, opens a durable historical
+Turn diff through Review, and provides conflict-safe whole-Turn Undo/Redo.
+Unlike DSH's tool-location-derived Produced files row, this includes
+shell-created, modified, and removed files and suppresses files restored to
+their baseline within the same Turn.
 
 The HTTP boundary requires a non-simple `X-Aezy-Client: web` request header and
 a loopback authority, uses no shell interpolation, caps Git output, and
@@ -24,10 +26,11 @@ metadata directory: these are files whose exact repository state changed
 during the Turn, not a claim that one specific Tool authored every byte.
 Overlapping Sessions on one checkout are marked concurrent.
 
-File revert requires the ledger's exact after-fingerprint to still match. It
-restores both worktree and index to the pre-Turn state, writes a recoverable
-receipt first, and offers Undo only while the post-revert fingerprint still
-matches. Symlinks, non-files, conflicts, renames, and files larger than the
+File and whole-Turn revert require every exact after-fingerprint to still
+match. Whole-Turn Undo validates and backs up every file before changing any,
+rolls the batch back if restoration fails, restores both worktree and index,
+and writes a recoverable receipt first. Concurrent Turns never expose batch
+Undo. Symlinks, non-files, conflicts, renames, and files larger than the
 capture limit fail closed instead of taking a lossy path.
 
 In the Aezy Web composition, M2's `aezySecurity` service is a required runtime

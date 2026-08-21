@@ -6,11 +6,18 @@ export function summarizeTurn(ledger, turnNumber) {
   return {
     turn: turn.turn,
     concurrent: turn.concurrent === true,
+    additions: turn.additions ?? 0,
+    deletions: turn.deletions ?? 0,
+    statsComplete: turn.statsComplete === true,
     files: turn.files.map(file => ({
       path: file.path,
       openPath: file.openPath,
       change: file.change,
       afterFingerprint: file.afterFingerprint,
+      revertable: file.revertable === true,
+      additions: file.additions ?? null,
+      deletions: file.deletions ?? null,
+      binary: file.binary === true,
     })),
   }
 }

@@ -77,15 +77,21 @@ test('Turn summary is bounded to one ledger turn and preserves removed-file fact
     turns: [{
       turn: 2,
       concurrent: true,
+      additions: 4,
+      deletions: 2,
+      statsComplete: true,
       files: [
-        { path: 'src/changed.ts', openPath: '/repo/src/changed.ts', change: 'modified', afterFingerprint: 'a'.repeat(64) },
-        { path: 'old/deleted.ts', openPath: '/repo/old/deleted.ts', change: 'restored-or-removed', afterFingerprint: null },
+        { path: 'src/changed.ts', openPath: '/repo/src/changed.ts', change: 'modified', afterFingerprint: 'a'.repeat(64), revertable: true, additions: 3, deletions: 1, binary: false },
+        { path: 'old/deleted.ts', openPath: '/repo/old/deleted.ts', change: 'restored-or-removed', afterFingerprint: null, revertable: true, additions: 1, deletions: 1, binary: false },
       ],
     }],
   }
   assert.deepEqual(summarizeTurn(ledger, 2), {
     turn: 2,
     concurrent: true,
+    additions: 4,
+    deletions: 2,
+    statsComplete: true,
     files: ledger.turns[0].files,
   })
   assert.equal(summarizeTurn(ledger, 1), null)
@@ -119,6 +125,14 @@ test('turn ledger survives a fresh reader and safe revert preserves pre-turn dir
   assert.equal(view.turns.length, 1)
   assert.deepEqual(view.turns[0].files.map(file => file.path), ['created.txt', 'tracked.txt'])
   assert.equal(view.turns[0].files[0].openPath, join(root, 'created.txt'))
+  assert.deepEqual(view.turns[0].files.map(file => [file.additions, file.deletions]), [[1, 0], [1, 1]])
+  assert.equal(view.turns[0].additions, 2)
+  assert.equal(view.turns[0].deletions, 1)
+
+  const review = await freshReader.review(root, 'ledger-session', 1)
+  assert.match(review.files.find(file => file.path === 'created.txt').diff, /\+created-by-agent/u)
+  assert.match(review.files.find(file => file.path === 'tracked.txt').diff, /-pre-turn/u)
+  assert.match(review.files.find(file => file.path === 'tracked.txt').diff, /\+agent-change/u)
 
   const trackedEntry = view.turns[0].files.find(file => file.path === 'tracked.txt')
   const reverted = await freshReader.revert({
@@ -145,6 +159,51 @@ test('turn ledger survives a fresh reader and safe revert preserves pre-turn dir
   await assert.rejects(() => access(join(root, 'created.txt')), /ENOENT/)
   await freshReader.undo({ cwd: root, receiptId: removed.receiptId })
   assert.equal(await readFile(join(root, 'created.txt'), 'utf8'), 'created-by-agent\n')
+})
+
+test('Turn Undo restores every file atomically and its receipt can reapply the Turn', async () => {
+  const root = await fixture()
+  await writeFile(join(root, 'tracked.txt'), 'turn-before\n')
+  const ledger = new TurnLedger()
+  const session = { id: 'turn-undo-session', header: { id: 'turn-undo-session', cwd: root } }
+  ledger.observe(session, { type: 'turn/start', time: 100, data: { turn: 1 } })
+  await ledger.settle('turn-undo-session')
+  await writeFile(join(root, 'tracked.txt'), 'turn-after\n')
+  await writeFile(join(root, 'turn-created.txt'), 'created\n')
+  ledger.observe(session, {
+    type: 'turn/end', time: 200, data: { turn: 1, reason: { kind: 'completed' } },
+  })
+  const view = await ledger.view(root, 'turn-undo-session')
+  assert.deepEqual(view.turns[0].files.map(file => file.path), ['tracked.txt', 'turn-created.txt'])
+
+  const reverted = await ledger.revertTurn({ cwd: root, sessionId: 'turn-undo-session', turn: 1 })
+  assert.equal(await readFile(join(root, 'tracked.txt'), 'utf8'), 'turn-before\n')
+  await assert.rejects(() => access(join(root, 'turn-created.txt')), /ENOENT/u)
+  assert.deepEqual(reverted.files, ['tracked.txt', 'turn-created.txt'])
+
+  await ledger.undo({ cwd: root, receiptId: reverted.receiptId })
+  assert.equal(await readFile(join(root, 'tracked.txt'), 'utf8'), 'turn-after\n')
+  assert.equal(await readFile(join(root, 'turn-created.txt'), 'utf8'), 'created\n')
+})
+
+test('Turn Undo rejects the whole batch before mutation when one file drifted', async () => {
+  const root = await fixture()
+  const ledger = new TurnLedger()
+  const session = { id: 'turn-drift-session', header: { id: 'turn-drift-session', cwd: root } }
+  ledger.observe(session, { type: 'turn/start', time: 100, data: { turn: 1 } })
+  await ledger.settle('turn-drift-session')
+  await writeFile(join(root, 'tracked.txt'), 'turn-result\n')
+  await writeFile(join(root, 'second.txt'), 'turn-result\n')
+  ledger.observe(session, {
+    type: 'turn/end', time: 200, data: { turn: 1, reason: { kind: 'completed' } },
+  })
+  await ledger.view(root, 'turn-drift-session')
+  await writeFile(join(root, 'second.txt'), 'later-edit\n')
+  await assert.rejects(() => ledger.revertTurn({
+    cwd: root, sessionId: 'turn-drift-session', turn: 1,
+  }), /changed since/u)
+  assert.equal(await readFile(join(root, 'tracked.txt'), 'utf8'), 'turn-result\n')
+  assert.equal(await readFile(join(root, 'second.txt'), 'utf8'), 'later-edit\n')
 })
 
 test('safe revert rejects a file that drifted after the recorded turn', async () => {

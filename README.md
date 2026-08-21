@@ -52,7 +52,7 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3080
 
 ## M1：Workspace & Changes
 
-`@aezy/project` 使用公开 `ctx.webServer`、`session/event`、`dsh.client`、`conversation.view` 和 `conversation.chat.turnTail` seam 提供结构化 repository status/diff、Local Environment 信息、持久 turn-scoped change ledger、每轮最终回复下方的 Changed files 摘要，以及有 fingerprint 冲突拒绝和 Undo receipt 的安全单文件 revert。它不修改 DSH API Proxy、SessionEvent 内核或参考树。
+`@aezy/project` 使用公开 `ctx.webServer`、`session/event`、`dsh.client`、`conversation.view` 和 `conversation.chat.turnTail` seam 提供结构化 repository status/diff、Local Environment 信息、持久 turn-scoped change ledger，以及 Codex 式 Turn change card：总/逐文件 `+/-` 行统计、历史 diff Review、fingerprint 门控的整轮 Undo/Redo 和安全单文件 revert。它不修改 DSH API Proxy 或 SessionEvent 内核。
 
 ```bash
 pnpm run build:m1

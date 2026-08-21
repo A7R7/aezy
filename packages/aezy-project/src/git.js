@@ -7,6 +7,7 @@ import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 const MAX_GIT_BYTES = 4 * 1024 * 1024
+const MAX_BLOB_BYTES = 8 * 1024 * 1024
 const MAX_DIFF_BYTES = 2 * 1024 * 1024
 const GIT_TIMEOUT_MS = 15_000
 
@@ -28,6 +29,27 @@ export async function git(cwd, args, allowedExitCodes = [0]) {
     }
     const message = error instanceof Error ? error.message : String(error)
     throw new Error(`git ${args[0] ?? ''} failed: ${message}`)
+  }
+}
+
+/** Read one validated Git blob without UTF-8 coercion for historical Turn diffs. */
+export async function readGitBlob(cwd, object) {
+  if (typeof object !== 'string' || !/^[a-f0-9]{40,64}$/u.test(object)) {
+    throw new Error('Git blob id is invalid')
+  }
+  try {
+    const result = await execFileAsync('git', ['--no-optional-locks', 'cat-file', 'blob', object], {
+      cwd,
+      encoding: null,
+      timeout: GIT_TIMEOUT_MS,
+      maxBuffer: MAX_BLOB_BYTES,
+      windowsHide: true,
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: '0', LC_ALL: 'C' },
+    })
+    return result.stdout
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`git cat-file failed: ${message}`)
   }
 }
 

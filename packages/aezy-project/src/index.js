@@ -93,6 +93,14 @@ function createHandler(ledger, security, warn) {
         json(res, 200, await ledger.view(query(url, 'cwd'), query(url, 'sessionId')))
         return
       }
+      if (req.method === 'GET' && url.pathname === `${ROUTE}/turn-review`) {
+        json(res, 200, await ledger.review(
+          query(url, 'cwd'),
+          query(url, 'sessionId'),
+          Number(query(url, 'turn')),
+        ))
+        return
+      }
       if (req.method === 'POST' && url.pathname === `${ROUTE}/revert`) {
         const body = await readJson(req)
         const result = await ledger.revert(body)
@@ -115,6 +123,20 @@ function createHandler(ledger, security, warn) {
           cwd: body.cwd,
           callId: body.receiptId,
           explanation: 'Allowed by the explicit Aezy Web Undo action.',
+        }).catch(warn)
+        json(res, 200, result)
+        return
+      }
+      if (req.method === 'POST' && url.pathname === `${ROUTE}/revert-turn`) {
+        const body = await readJson(req)
+        const result = await ledger.revertTurn(body)
+        await security.auditUserAction({
+          tool: 'aezy.project.revert-turn',
+          cwd: body.cwd,
+          sessionId: body.sessionId,
+          turn: body.turn,
+          callId: result.receiptId,
+          explanation: 'Allowed by the explicit Aezy Web Turn Undo action.',
         }).catch(warn)
         json(res, 200, result)
         return
