@@ -2,7 +2,10 @@
 
 ## 决策摘要
 
-截至 2026-08-21，Aezy 已升级并验证 `dsh-v0.1.1-rc.1`。后续工作继续分成两条明确轨道：
+截至 2026-08-21，Aezy 运行基线为已验证的 `dsh-v0.1.1-rc.1`，M3 开工复核时已观察到
+`dsh-v0.1.1-rc.2`。rc.2 主要交付统一 image/attachment 管线、DeepSeek Files API
+和权限默认值修正，没有新增 Worktree/Handoff；因此 M3 所有权不变，升级不夹带在
+M3 中。后续工作继续分成两条明确轨道：
 
 1. **Aezy 立即实现的产品域**：DSH 没有公开近期落地信号、又直接阻塞本地编程闭环的能力，通过参考树外的 plugin、bundle、profile patch、adapter 或应用实现。
 2. **等待 DSH 或只做薄集成的内核域**：DSH 已有 seam、实现、roadmap 文字或详细 proposed note 的能力，不在 Aezy 中复制第二套状态机、协议或生命周期；当前版本只做启停、配置、状态透传和必要的 Web 装配。
@@ -87,7 +90,7 @@ dsh plugin --profile <name> add <package-or-git-spec>
 
 ### M1：Workspace & Changes——第一个产品垂直切片
 
-**状态：Complete（2026-08-21 rc.1 复验）。** 真实 rc.8 模型跨文件 Turn、Changes UI diff、部分撤销、刷新恢复和 Undo 已按 [M1 签收记录](../milestones/m1.md) 完成；0.1.1-rc.1 的自动、真实 profile 和 HTTP 回归均通过。下一主里程碑是 M3 Worktree/Handoff。
+**状态：Complete（2026-08-21 rc.1 复验）。** 真实 rc.8 模型跨文件 Turn、Changes UI diff、部分撤销、刷新恢复和 Undo 已按 [M1 签收记录](../milestones/m1.md) 完成；0.1.1-rc.1 的自动、真实 profile 和 HTTP 回归均通过。后续 M3 也已完成，当前主里程碑是 M4。
 
 交付：
 
@@ -105,7 +108,7 @@ M1 不包含 stage/commit/push/PR、Worktree、完整文件树、用户 PTY、�
 
 ### M2：可持续自治的权限边界
 
-**状态：Complete（2026-08-20）。** 外置 `@aezy/security` 已完成持久规则、global/repository Network Policy、Security Web view、匹配解释、审计、restart persistence 与真实模型 deny dogfood；详见 [M2 签收记录](../milestones/m2.md)。下一主里程碑是 M3 Worktree/Handoff。
+**状态：Complete（2026-08-20）。** 外置 `@aezy/security` 已完成持久规则、global/repository Network Policy、Security Web view、匹配解释、审计、restart persistence 与真实模型 deny dogfood；详见 [M2 签收记录](../milestones/m2.md)。后续 M3 已复用该审计边界并完成，当前主里程碑是 M4。
 
 交付：
 
@@ -118,6 +121,11 @@ M1 不包含 stage/commit/push/PR、Worktree、完整文件树、用户 PTY、�
 完成门槛：常见 build/test/package-manager 流程能够依规则运行，未授权命令和网络仍 fail closed，用户能明确知道一次操作为什么被允许或拒绝。
 
 ### M3：Worktree 与 Handoff
+
+**状态：Complete（2026-08-21）。** 外置 `@aezy/project` 已交付受管 Worktree
+identity/lifecycle、真实 DSH Workspace/Session 绑定、结构化 handoff、M2 audit 与
+fail-closed cleanup；自动、真实 rc.1 HTTP 和 Aezy 自仓库模型 dogfood 均通过。
+详见 [M3 签收记录](../milestones/m3.md)。下一主里程碑是 M4。
 
 交付：
 

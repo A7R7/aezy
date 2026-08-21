@@ -9,7 +9,7 @@ Aezy 是基于 DeepSeek Harness（DSH）公开扩展机制构建的独立编程 
 - `doc/`：Aezy 的功能基线、DSH 插件审计和 Codex Desktop 差距报告。
 - `packages/aezy-base/`、`packages/aezy-web/`：Aezy 的外置 composition 与默认 Agent preset。
 - `packages/aezy-brand/`：占据 DSH 通用品牌 slots 的最薄文字品牌插件；暂以字母 `A` 作为图形占位。
-- `packages/aezy-project/`：M1 Project/Repository/Local Environment、Git Changes、turn ledger 与安全 revert 插件。
+- `packages/aezy-project/`：M1 Project/Repository/Changes/turn ledger，以及 M3 Worktree/Session binding/结构化 Handoff 插件。
 - `packages/aezy-security/`：M2 持久 Approval Rules、独立 Network Policy、决策解释与审计插件。
 - Aezy 源码只放在参考树外的独立插件、bundle 和应用目录中，不写入 `.local/deepseek-harness/`。
 
@@ -78,7 +78,32 @@ pnpm run test:m2:http
 pnpm run dogfood:m2
 ```
 
-M2 已完成自动与真实模型签收；人工浏览器主题/交互复核项保留在 [M2 安全检查清单](doc/dogfood/m2-safety-checklist.md)。下一主里程碑是 M3 Worktree/Handoff。
+M2 已完成自动与真实模型签收；人工浏览器主题/交互复核项保留在 [M2 安全检查清单](doc/dogfood/m2-safety-checklist.md)。
+
+## M3：Worktree & Handoff
+
+`@aezy/project` 现在提供受管 Worktree identity/lifecycle、DSH Workspace/Session
+绑定、结构化 handoff 与 fail-closed cleanup。创建只接收短名称和精确 Git commit，
+目标固定派生在 `DSH_HOME/aezy/worktrees/<repository-identity>/`，不会接受任意路径；
+dirty Local 必须明确确认，且其 staged/unstaged/untracked 内容不会被暗中复制。
+
+Web `Worktrees` view 可从 Local 创建并打开隔离 Session，在 Worktree 内生成包含
+base/head、branch、已提交/未提交文件、Git status、验证结果和接手说明的 handoff，
+再归档/释放当前 Session 并回到 Local。清理会拒绝 dirty/conflict、活动 Session、
+所有权或路径/branch 漂移、以及没有与当前 HEAD 匹配的 clean handoff；成功时只执行
+非强制 `git worktree remove`，保留 branch 和 commits。
+
+```bash
+pnpm run build:m3
+pnpm run test:m3
+pnpm run test:m3:http
+# 已启动带真实模型配置的 Aezy Host 时：
+AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run dogfood:m3
+```
+
+M3 已完成真实 rc.1 HTTP 与 Aezy 自仓库模型 dogfood 签收；完整证据、Session、
+handoff 和保留分支见 [M3 里程碑记录](doc/milestones/m3.md)。下一主里程碑转为
+M4 的 dogfood 驱动工作台入口，不扩展到 Cloud/Remote/PR。
 
 ## 研究资料
 

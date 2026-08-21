@@ -2,7 +2,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import {
   lstat, mkdir, readFile, realpath, rename, writeFile,
 } from 'node:fs/promises'
-import { basename, dirname, isAbsolute, relative, resolve, sep } from 'node:path'
+import { homedir } from 'node:os'
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import {
   describeProject, git, gitCommonMetadataRoot, repositoryFor,
 } from './git.js'
@@ -133,7 +134,26 @@ function parseWorktreeList(raw) {
   return result
 }
 
-async function repositoryContext(cwd) {
+function parseNameStatus(raw) {
+  const tokens = raw.split('\0')
+  const files = []
+  for (let index = 0; index < tokens.length;) {
+    const status = tokens[index++]
+    if (status === '') break
+    const firstPath = tokens[index++]
+    if (firstPath === undefined || firstPath === '') throw new Error('Git returned an invalid committed-file record')
+    if (status.startsWith('R') || status.startsWith('C')) {
+      const path = tokens[index++]
+      if (path === undefined || path === '') throw new Error('Git returned an invalid rename/copy record')
+      files.push({ path, previousPath: firstPath, status })
+    } else {
+      files.push({ path: firstPath, status })
+    }
+  }
+  return files
+}
+
+async function repositoryContext(cwd, managedBase) {
   const current = await repositoryFor(cwd)
   const commonDir = await gitCommonMetadataRoot(current.root)
   const listed = parseWorktreeList((await git(current.root, ['worktree', 'list', '--porcelain', '-z'])).stdout)
@@ -144,12 +164,13 @@ async function repositoryContext(cwd) {
   const repositoryRoot = await realpath(primary.path)
   const currentRoot = await realpath(current.root)
   const owner = `${basename(repositoryRoot)}-${createHash('sha256').update(commonDir).digest('hex').slice(0, 12)}`
-  const managedRoot = resolve(dirname(repositoryRoot), '.aezy-worktrees', owner)
+  const managedRoot = resolve(managedBase, owner)
   return {
     currentRoot,
     repositoryRoot,
     commonDir,
     metaRoot: resolve(commonDir, 'aezy'),
+    managedBase,
     managedRoot,
     listed,
   }
@@ -164,10 +185,9 @@ async function assertDirectory(path) {
 }
 
 async function ensureManagedRoot(context) {
-  const container = resolve(dirname(context.repositoryRoot), '.aezy-worktrees')
-  for (const path of [container, context.managedRoot]) {
+  for (const path of [context.managedBase, context.managedRoot]) {
     try {
-      await mkdir(path, { mode: 0o700 })
+      await mkdir(path, { recursive: path === context.managedBase, mode: 0o700 })
     } catch (error) {
       if (error?.code !== 'EEXIST') throw error
     }
@@ -253,17 +273,20 @@ export { parseWorktreeList }
 
 /** Durable, repository-scoped M3 worktree lifecycle and handoff owner. */
 export class WorktreeManager {
+  #baseDir
   #queues = new Map()
   #sessions
   #warn
 
   constructor(options = {}) {
+    const home = process.env.DSH_HOME ?? join(homedir(), '.aezy', 'dsh')
+    this.#baseDir = resolve(options.baseDir ?? join(home, 'aezy', 'worktrees'))
     this.#sessions = options.sessions
     this.#warn = options.warn ?? (() => {})
   }
 
   async list(cwd) {
-    const context = await repositoryContext(cwd)
+    const context = await repositoryContext(cwd, this.#baseDir)
     return this.#serial(context.commonDir, async () => {
       const registry = await readRegistry(context.metaRoot, context.repositoryRoot, context.commonDir)
       const current = registry.worktrees.find(item => item.path === context.currentRoot)
@@ -280,7 +303,7 @@ export class WorktreeManager {
   async create(request) {
     const name = validateName(request?.name)
     const base = validateBase(request?.base)
-    const context = await repositoryContext(request?.cwd)
+    const context = await repositoryContext(request?.cwd, this.#baseDir)
     if (context.currentRoot !== context.repositoryRoot) {
       throw new Error('new managed worktrees must be created from the primary Local environment')
     }
@@ -345,7 +368,7 @@ export class WorktreeManager {
     if (typeof handoffId !== 'string' || !/^[a-f0-9-]{36}$/u.test(handoffId)) {
       throw new Error('handoffId is invalid')
     }
-    const context = await repositoryContext(cwd)
+    const context = await repositoryContext(cwd, this.#baseDir)
     return this.#serial(context.commonDir, async () => {
       const registry = await readRegistry(context.metaRoot, context.repositoryRoot, context.commonDir)
       const owned = registry.worktrees.some(record => record.handoffs?.some(item => item.id === handoffId))
@@ -358,7 +381,7 @@ export class WorktreeManager {
 
   async bind(request) {
     if (!validSessionId(request?.sessionId)) throw new Error('sessionId is invalid')
-    const context = await repositoryContext(request?.cwd)
+    const context = await repositoryContext(request?.cwd, this.#baseDir)
     return this.#serial(context.commonDir, async () => {
       const registry = await readRegistry(context.metaRoot, context.repositoryRoot, context.commonDir)
       const record = recordFor(registry, request.worktreeId)
@@ -390,7 +413,7 @@ export class WorktreeManager {
     if (!validSessionId(sessionId) || typeof cwd !== 'string') return
     let context
     try {
-      context = await repositoryContext(cwd)
+      context = await repositoryContext(cwd, this.#baseDir)
     } catch {
       return
     }
@@ -417,7 +440,7 @@ export class WorktreeManager {
     if (!validSessionId(request?.sessionId)) throw new Error('sessionId is invalid')
     const instructions = validateInstructions(request?.instructions)
     const validations = validateValidations(request?.validations ?? [])
-    const context = await repositoryContext(request?.cwd)
+    const context = await repositoryContext(request?.cwd, this.#baseDir)
     return this.#serial(context.commonDir, async () => {
       const registry = await readRegistry(context.metaRoot, context.repositoryRoot, context.commonDir)
       const record = registry.worktrees.find(item => item.path === context.currentRoot)
@@ -429,7 +452,11 @@ export class WorktreeManager {
       if (binding.activeTurn) throw new Error('handoff cannot be generated during an active Turn')
       const listed = await currentListedWorktree(context, record)
       const project = await describeProject(record.path)
-      const counts = (await git(record.path, ['rev-list', '--left-right', '--count', `${record.base}...HEAD`])).stdout.trim().split(/\s+/u).map(Number)
+      const [countsResult, committedResult] = await Promise.all([
+        git(record.path, ['rev-list', '--left-right', '--count', `${record.base}...HEAD`]),
+        git(record.path, ['diff', '--name-status', '-z', `${record.base}...HEAD`]),
+      ])
+      const counts = countsResult.stdout.trim().split(/\s+/u).map(Number)
       const handoff = {
         version: 1,
         id: randomUUID(),
@@ -448,7 +475,8 @@ export class WorktreeManager {
           commitsBehindBase: Number.isFinite(counts[0]) ? counts[0] : 0,
           commitsAheadOfBase: Number.isFinite(counts[1]) ? counts[1] : 0,
           clean: project.repository.clean,
-          files: project.files.map(file => ({
+          committedFiles: parseNameStatus(committedResult.stdout),
+          workingFiles: project.files.map(file => ({
             path: file.path,
             kind: file.kind,
             indexStatus: file.indexStatus,
@@ -478,7 +506,7 @@ export class WorktreeManager {
 
   async release(request) {
     if (!validSessionId(request?.sessionId)) throw new Error('sessionId is invalid')
-    const context = await repositoryContext(request?.cwd)
+    const context = await repositoryContext(request?.cwd, this.#baseDir)
     return this.#serial(context.commonDir, async () => {
       const registry = await readRegistry(context.metaRoot, context.repositoryRoot, context.commonDir)
       const record = recordFor(registry, request.worktreeId)
@@ -495,7 +523,7 @@ export class WorktreeManager {
   }
 
   async cleanup(request) {
-    const context = await repositoryContext(request?.cwd)
+    const context = await repositoryContext(request?.cwd, this.#baseDir)
     return this.#serial(context.commonDir, async () => {
       const registry = await readRegistry(context.metaRoot, context.repositoryRoot, context.commonDir)
       const record = recordFor(registry, request.worktreeId)

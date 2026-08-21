@@ -41,8 +41,8 @@ Security audit projection without adding a second approval prompt.
 
 The same out-of-tree plugin now owns a repository-scoped Worktree lifecycle.
 Creation accepts a short validated name and an exact commit id, derives branch
-`aezy/<name>`, and derives its target only under a repository-specific sibling
-directory. It never accepts an arbitrary target path. A dirty Local source is
+`aezy/<name>`, and derives its target only under the repository-specific
+`DSH_HOME/aezy/worktrees/<identity>/` directory. It never accepts an arbitrary target path. A dirty Local source is
 allowed only after explicit confirmation because its staged, unstaged, and
 untracked state is intentionally not copied into the new Worktree.
 

@@ -3,7 +3,7 @@
 > 交接日期：2026-08-21<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 当前分支：`main`<br>
-> 功能基线：`07f9218150 chore: upgrade Aezy to DSH 0.1.1-rc.1`
+> 功能基线：`c16eee7bf8 feat: add managed worktree handoff lifecycle`
 
 ## 1. 最终目标与不可破坏的边界
 
@@ -43,7 +43,7 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 - `packages/aezy-base`：Host/base composition patch，禁用非核心能力并收敛默认 Harness。
 - `packages/aezy-web`：Web composition 与 Aezy preset 装配。
 - `packages/aezy-brand`：最薄品牌 occupant，占据 DSH 通用品牌 slots；当前继续使用字母 `A`，未设计新图标。
-- `packages/aezy-project`：M1 Project/Repository/Local Environment、结构化 Git、Turn ledger、Changes 与 Codex 式 change card。
+- `packages/aezy-project`：M1 Project/Repository/Changes/Turn ledger，以及 M3 受管 Worktree/Session binding/结构化 Handoff。
 - `packages/aezy-security`：M2 持久 Approval Rules、Network Policy、解释与审计。
 
 默认运行状态位于 `~/.aezy/dsh/`，除非显式设置 `DSH_HOME`。pnpm store 位于仓库已忽略的 `.local/pnpm-store/`。
@@ -115,7 +115,34 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 
 详见 `doc/milestones/m2.md`。
 
-## 4. DSH 0.1.1-rc.1 调查结论
+### M3：Worktree + Handoff
+
+状态：Complete，真实 rc.1 HTTP 和 Aezy 自仓库模型 dogfood 均已签收。
+
+已完成：
+
+- exact base + `aezy/<name>` 的受管 Worktree 创建；
+- 固定派生的 `DSH_HOME/aezy/worktrees/<repository-identity>/` 路径，不接受任意 target；
+- dirty Local 明示确认，且不隐式复制其 staged/unstaged/untracked 内容；
+- 公开 DSH Workspace/Session seam 的 cwd 绑定、导航、archive/release；
+- Local/Worktree identity 和每个 linked worktree 独立 Turn ledger；
+- base/head、committed/working files、status、验证结果、接手说明的结构化 handoff；
+- active Session、active Turn、dirty/conflict、路径/branch drift、stale handoff 的 fail-closed cleanup；
+- 非强制 `git worktree remove`，branch/commits 永远保留；
+- create/bind/handoff/release/cleanup 进入 M2 Security user-confirmation audit；
+- 两个不同 worktree 的重叠 Turn 均保持 `concurrent: false` 且 ledger 互不可见。
+
+真实 dogfood retained branch：`aezy/m3-dogfood-mt3192wf`；handoff：
+`6df715fd-151e-40a0-994b-77ba9bdba52a`。完整证据见 `doc/milestones/m3.md`。
+
+## 4. DSH 基线与最新上游复核
+
+M3 开工时已发现 `dsh-v0.1.1-rc.2`（commit `b150a551…`，tree
+`53915efe…`）。rc.2 没有新增 Worktree/Handoff 或相关环境内核，M3 所有权不变；
+Aezy 本轮仍运行已完整验证的 rc.1，rc.2 升级应保持为独立 reviewed revision
+replacement。复核结果已写入 `compatibility/dsh.json` 和 M3 里程碑记录。
+
+### 0.1.1-rc.1 调查结论
 
 rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,679/-11,723，workspace packages 从 226 增至 227。大量路径是 Agent Notes、双语文档、站点生成物、快照和统一版本更新，不能把总文件数当成运行时重写规模。
 
@@ -142,9 +169,12 @@ rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,67
 - `pnpm run test:brand` → 1/1
 - `pnpm run test:m1` → 10/10
 - `pnpm run test:m2` → 11/11
+- `pnpm run test:m3` → 6/6
 - `pnpm run test:m0` → composition/Web/Workspace/Session/preset smoke passed
 - `pnpm run test:m1:http` → Turn Review、batch Undo/Redo、request fence passed
 - `pnpm run test:m2:http` → policy、precedence、request fence、restart persistence passed
+- `pnpm run test:m3:http` → Worktree Session、handoff、拒绝路径、retained branch、Security audit passed
+- `pnpm run dogfood:m3` → Aezy 自仓库真实模型隔离 Turn、test、handoff、cleanup passed
 - `git diff --check` → passed
 
 交接时 Aezy Web 正运行于：
@@ -162,10 +192,10 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3090
 
 ## 6. Git 与用户文件状态
 
-交接时的功能基线提交（其后仅增加本交接文档）：
+交接时的功能基线提交（其后仅增加签收文档与 committed-file handoff 增强）：
 
 ```text
-07f9218150 chore: upgrade Aezy to DSH 0.1.1-rc.1
+c16eee7bf8 feat: add managed worktree handoff lifecycle
 ```
 
 用户已有三个未跟踪项，必须保留、不得纳入普通实现提交：
@@ -184,48 +214,22 @@ git status --short
 
 不要使用 `git add -A` 或 `git add .`；应精确列出本步骤文件。
 
-## 7. 下一步：M3 Worktree + Handoff
+## 7. 下一步：M4 dogfood 驱动的工作台入口
 
-当前主里程碑是 M3，不是继续扩展 M1/M2，也不是实现 DSH 很可能自行维护的内核。
+M3 已完成。下一步不要继续把 Worktree 扩大成 PR/Cloud/Remote，也不要实现 DSH
+很可能自行维护的 Task/Session/Subagent/merge-back 内核。
 
-### M3 要解决的问题
+按真实 dogfood 的可复现摩擦，一次只选择一个 M4 垂直切片：
 
-当前多个 Session/Agent 仍可能共享一个 checkout，因此 M1 的 Turn 归因只能是观察式的。M3 应让一次执行拥有明确、隔离、可审计的 Git worktree/environment，再把结果安全交回主工作区或另一个人/Agent。
+1. file tree + code/Markdown/image preview；
+2. 在上游 `@file/@session` 之上补 `@directory` / `@diff`；
+3. 使用上游 PTY backend 的用户 Integrated Terminal UI；
+4. Activity / Status / Usage / Notifications 薄投影；
+5. localhost Browser + browser interaction。
 
-建议首个垂直切片：
-
-1. 在现有 Repository/Local Environment 模型上增加 Worktree identity 和 lifecycle。
-2. 创建 worktree 前检查 repository、branch/ref、目标路径与当前 Git 状态。
-3. 默认在仓库专属、可验证的目录下创建，不接受未解析的 broad path、glob 或危险环境变量。
-4. 将 Session 明确绑定到 worktree Local Environment；shell、Git status/diff、Turn ledger 都从该环境获得 cwd。
-5. 创建、失败、进入使用、handoff、归档/清理都生成可审计状态。
-6. Handoff 至少包含 repository、base/head、worktree path、Git status、changed files、验证结果和接手说明。
-7. 清理前 fail closed：有未提交变化、活动 Session、无法确认所有权或路径漂移时拒绝删除。
-8. M2 Security 应覆盖 worktree create/remove/handoff 等有副作用操作，并记录 user-confirmation/Agent policy 来源。
-
-### M3 不应做的事
-
-- 不修改 DSH Session、Subagent、Job 或 Task Surface 内核。
-- 不把 DSH Experimental Agent Teams 当成 Worktree 隔离。
-- 不先实现 Cloud/SSH/Container environment provider。
-- 不在第一版实现完整 PR、push、remote review 或自动 merge。
-- 不用共享 checkout 的文件时间戳推断作者，再把它包装成强隔离。
-- 不自动删除用户不明确拥有的 worktree 或 branch。
-
-### M3 完成门槛建议
-
-Aezy 在自身仓库中：
-
-1. 从明确 base 创建隔离 worktree；
-2. 创建绑定该 worktree 的 Session；
-3. 完成跨文件 Turn 和真实 build/test；
-4. Changes/Turn card 只展示该 worktree 的变化，且不再因其他 Session 产生 `concurrent`；
-5. 生成可供另一个新会话接手的结构化 handoff；
-6. 在有脏状态时拒绝清理；
-7. 在用户明确处理变化后安全清理；
-8. 全程不修改 `.local/deepseek-harness/`。
-
-M3 开工前先读 `doc/reports/aezy-upstream-ownership-roadmap.md`，并再次检查是否有新的 DSH tag。上游变化只用于重新评估所有权，不能自动扩大到修改 DSH 源码。
+开始前重新检查上游 tag 与 runtime diff，确认选中能力仍由 Aezy 拥有。若实现需要改写
+PTY、Task、Session、MCP、Subagent 或 compaction 内核，应暂停并重新评估 seam，
+不能通过修改 `.local/deepseek-harness/` 绕开。
 
 ## 8. 关键文件地图
 
@@ -235,11 +239,11 @@ M3 开工前先读 `doc/reports/aezy-upstream-ownership-roadmap.md`，并再次�
 | DSH 参考 revision | `reference/dsh.lock.json` |
 | 支持的 DSH/runtime composition | `compatibility/dsh.json` |
 | 外置 base/web composition | `packages/aezy-base/`、`packages/aezy-web/` |
-| M1 Host、Git、ledger、client | `packages/aezy-project/` |
+| M1/M3 Project、Git、ledger、Worktree、Handoff、client | `packages/aezy-project/` |
 | M2 policy、store、client | `packages/aezy-security/` |
 | 品牌 slots | `packages/aezy-brand/` |
 | Profile 同步/启动 | `scripts/sync-profile.mjs`、`scripts/run-profile.mjs`、`scripts/lib/profile.mjs` |
-| M0/M1/M2 签收 | `doc/milestones/m0.md`、`m1.md`、`m2.md` |
+| M0-M3 签收 | `doc/milestones/m0.md`、`m1.md`、`m2.md`、`m3.md` |
 | 当前路线和所有权 | `doc/reports/aezy-upstream-ownership-roadmap.md` |
 | DSH rc.1 影响 | `doc/reports/dsh-0.1.1-rc1-update-impact-report.md` |
 | DSH 插件审计 | `doc/reports/dsh-plugin-function-report.md` |
@@ -255,7 +259,7 @@ M3 开工前先读 `doc/reports/aezy-upstream-ownership-roadmap.md`，并再次�
 5. authorization 包已发布但默认 composition/UI 未完成，不能把它当作已交付的 Models 登录产品面。
 6. vision model 不是 Browser automation。
 7. M2 Network Policy 不是 OS firewall；描述能力时必须保留这一限制。
-8. Turn ledger 是边界观察，不是逐写入 provenance。Worktree 完成前 concurrent Turn 必须 fail closed。
+8. Turn ledger 是边界观察，不是逐写入 provenance。同一 checkout 的 concurrent Turn 仍必须 fail closed；受管 linked worktree 通过不同 root/metadata 隔离。
 9. 旧 Codex Desktop computer-use 任务曾保留迁移前 `/mnt/d` sandbox metadata，导致 WSL → Windows URI 校验拒绝自动浏览器操作；这不是 Aezy Web 本身的错误。
 10. 网络命令遵守代理环境变量；缺失时回退 `http://127.0.0.1:7890`。
 
@@ -269,9 +273,8 @@ doc/reports/aezy-upstream-ownership-roadmap.md，检查 git status、当前 DSH 
 以及 3090 Aezy Host 状态。遵守只读 .local/deepseek-harness、只用外置插件扩展、
 保留三个既有未跟踪 dogfood/test 项、每个大步骤单独提交的边界。
 
-接下来开始 M3 Worktree + Handoff：先研究现有 @aezy/project 的
-Repository/Local Environment、Turn ledger、Undo/Redo 与 @aezy/security seam，
-形成一个最小端到端垂直切片计划，然后实现、用 Aezy 自己 dogfood 并签收。
-不要修改 DSH 源码，不要实现第二套 Session/Subagent/Task 内核，也不要提前扩展
-Cloud/Remote/PR。
+M3 Worktree + Handoff 已完成；先阅读 doc/milestones/m3.md 并复验相关测试。
+接下来按真实 dogfood 摩擦从 M4 候选中一次选择一个最小工作台垂直切片。
+不要修改 DSH 源码，不要实现第二套 Session/Subagent/Task/PTY/compaction 内核，
+也不要提前扩展 Cloud/Remote/PR。
 ```

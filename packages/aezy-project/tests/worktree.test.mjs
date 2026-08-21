@@ -11,6 +11,10 @@ function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
 }
 
+function managerForTests() {
+  return new WorktreeManager({ baseDir: '/tmp/aezy-worktree-manager-tests' })
+}
+
 async function fixture() {
   const root = await mkdtemp('/tmp/aezy-worktree-')
   git(root, 'init', '--quiet')
@@ -42,11 +46,13 @@ test('worktree porcelain parser preserves explicit identity records', () => {
 
 test('managed worktree binds a Session, emits handoff, rejects unsafe cleanup, and retains its branch', async () => {
   const root = await fixture()
+  let managedRoot
   try {
-    const manager = new WorktreeManager()
+    const manager = managerForTests()
     const base = git(root, 'rev-parse', 'HEAD')
     const created = await manager.create({ cwd: root, name: 'm3-slice', base })
     const worktree = created.worktree
+    managedRoot = (await manager.list(root)).managedRoot
     assert.equal(worktree.branch, 'aezy/m3-slice')
     assert.equal(worktree.base, base)
     assert.equal(worktree.state, 'active')
@@ -85,6 +91,8 @@ test('managed worktree binds a Session, emits handoff, rejects unsafe cleanup, a
     assert.equal(finalHandoff.handoff.git.clean, true)
     assert.equal(finalHandoff.handoff.git.head, finalHead)
     assert.equal(finalHandoff.handoff.git.commitsAheadOfBase, 1)
+    assert.deepEqual(finalHandoff.handoff.git.committedFiles, [{ path: 'tracked.txt', status: 'M' }])
+    assert.deepEqual(finalHandoff.handoff.git.workingFiles, [])
     assert.equal((await manager.readHandoff(root, finalHandoff.handoff.id)).instructions, finalHandoff.handoff.instructions)
 
     await manager.release({ cwd: worktree.path, worktreeId: worktree.id, sessionId: 'm3-session-2' })
@@ -94,14 +102,17 @@ test('managed worktree binds a Session, emits handoff, rejects unsafe cleanup, a
     assert.equal(git(root, 'show-ref', '--verify', 'refs/heads/aezy/m3-slice').split(/\s+/u)[0], finalHead)
     assert.equal((await manager.list(root)).worktrees[0].state, 'cleaned')
   } finally {
+    if (managedRoot !== undefined) await rm(managedRoot, { recursive: true, force: true })
     await rm(root, { recursive: true, force: true })
   }
 })
 
 test('dirty Local creation is fail-closed until explicitly confirmed', async () => {
   const root = await fixture()
+  let worktreePath
+  let managedRoot
   try {
-    const manager = new WorktreeManager()
+    const manager = managerForTests()
     const base = git(root, 'rev-parse', 'HEAD')
     await writeFile(join(root, 'user-untracked.txt'), 'preserve me\n')
     await assert.rejects(
@@ -109,10 +120,18 @@ test('dirty Local creation is fail-closed until explicitly confirmed', async () 
       /explicit confirmation/u,
     )
     const created = await manager.create({ cwd: root, name: 'dirty-source', base, confirmDirty: true })
+    worktreePath = created.worktree.path
+    managedRoot = (await manager.list(root)).managedRoot
     assert.equal(created.worktree.sourceDirty, true)
     assert.equal(await readFile(join(root, 'user-untracked.txt'), 'utf8'), 'preserve me\n')
     await assert.rejects(() => access(join(created.worktree.path, 'user-untracked.txt')), /ENOENT/u)
   } finally {
+    if (worktreePath !== undefined) {
+      try {
+        git(root, 'worktree', 'remove', '--force', '--', worktreePath)
+      } catch {}
+    }
+    if (managedRoot !== undefined) await rm(managedRoot, { recursive: true, force: true })
     await rm(root, { recursive: true, force: true })
   }
 })
@@ -122,7 +141,7 @@ test('overlapping Turns in separate managed worktrees keep independent ledgers',
   const paths = []
   let managedRoot
   try {
-    const manager = new WorktreeManager()
+    const manager = managerForTests()
     const base = git(root, 'rev-parse', 'HEAD')
     const first = (await manager.create({ cwd: root, name: 'parallel-a', base })).worktree
     const second = (await manager.create({ cwd: root, name: 'parallel-b', base })).worktree

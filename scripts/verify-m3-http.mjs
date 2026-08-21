@@ -188,6 +188,8 @@ try {
   assert.equal(final.handoff.git.clean, true)
   assert.equal(final.handoff.git.head, head)
   assert.equal(final.handoff.git.commitsAheadOfBase, 1)
+  assert.deepEqual(final.handoff.git.committedFiles, [{ path: 'tracked.txt', status: 'M' }])
+  assert.deepEqual(final.handoff.git.workingFiles, [])
   const persisted = await request(`/aezy/api/project/worktrees/handoff?${new URLSearchParams({
     cwd: repository,
     handoffId: final.handoff.id,

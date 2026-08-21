@@ -170,7 +170,8 @@ type Handoff = {
     commitsBehindBase: number
     commitsAheadOfBase: number
     clean: boolean
-    files: Array<{ path: string; indexStatus: string; worktreeStatus: string; conflict: boolean }>
+    committedFiles: Array<{ path: string; previousPath?: string; status: string }>
+    workingFiles: Array<{ path: string; indexStatus: string; worktreeStatus: string; conflict: boolean }>
   }
   validations: Array<{ command: string; status: 'passed' | 'failed' | 'skipped'; summary?: string }>
   instructions: string

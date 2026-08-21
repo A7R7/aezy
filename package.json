@@ -24,6 +24,7 @@
     "test:m3": "node --test packages/aezy-project/tests/worktree.test.mjs packages/aezy-project/tests/client-bundle.test.mjs",
     "test:m3:http": "node scripts/verify-m3-http.mjs",
     "dogfood:m2": "node scripts/dogfood-m2.mjs",
+    "dogfood:m3": "node scripts/dogfood-m3.mjs",
     "dogfood:turn-summary": "node scripts/dogfood-turn-summary.mjs"
   },
   "devDependencies": {
