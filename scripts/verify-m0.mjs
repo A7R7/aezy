@@ -1,7 +1,7 @@
 import './sync-profile.mjs'
 import { createServer } from 'node:net'
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import { dshHome, profileName, repoRoot, runDsh, spawnDsh } from './lib/profile.mjs'
 
 function invariant(condition, message) {
@@ -86,6 +86,19 @@ const expectedLocalPlugins = {
 for (const [name, path] of Object.entries(expectedLocalPlugins)) {
   invariant(profile.dependencies?.[name] === `link:${path}`, `${name} profile link does not follow the current checkout`)
 }
+const profileModules = JSON.parse(readFileSync(join(
+  dshHome,
+  'profiles',
+  profileName,
+  'node_modules',
+  '.modules.yaml',
+), 'utf8'))
+const expectedStoreRoot = resolve(repoRoot, '.local', 'pnpm-store')
+const actualStore = resolve(profileModules.storeDir)
+invariant(
+  actualStore === expectedStoreRoot || actualStore.startsWith(`${expectedStoreRoot}${sep}`),
+  `Aezy profile is linked to a stale pnpm store: ${actualStore}`,
+)
 const expectedBundles = [
   '@deepseek-ai/dsh-base',
   '@aezy/base',

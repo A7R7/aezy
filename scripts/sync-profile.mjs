@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import {
   compatibilityPath,
@@ -59,6 +59,11 @@ if (existsSync(profileManifestPath)) {
 
 if (install) {
   mkdirSync(dirname(profileManifestPath), { recursive: true })
+  // pnpm binds node_modules to the store path recorded at install time. A
+  // checkout move changes Aezy's repository-local store, so an otherwise
+  // reusable profile directory must discard only this generated dependency
+  // tree before DSH asks pnpm to install the current local plugins.
+  rmSync(join(profileDir, 'node_modules'), { recursive: true, force: true })
   const result = runDsh([
     'plugin', '--profile', profileName, 'add',
     baseBundle,
