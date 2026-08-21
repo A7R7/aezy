@@ -33,7 +33,7 @@
 
 ## 端到端
 
-- [x] 全新临时 `DSH_HOME` 安装真实 rc.8 profile 并启动 Web Host。
+- [x] 全新临时 `DSH_HOME` 安装真实 rc.1 profile 并启动 Web Host。
 - [x] HTTP request fence、规则优先级和 restart persistence 通过。
 - [x] 真实模型发起的 `bash curl` 在 dispatch 前被 Network deny 阻断并审计。
 - [x] client bundle 与真实 Host module manifest 包含 Security view。

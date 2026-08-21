@@ -1,6 +1,6 @@
 # DSH 第一方包与插件逐项清单
 
-> rc.7 自动生成的历史研究附录。当前 rc.8 已从 219 个 workspace 包变为 226 个，并改变 Web bundle roster；增量见 [rc.8 更新报告](dsh-rc8-update-impact-report.md)。下表保留用于审计 rc.7，不代表 rc.8 的完整逐包名录。不要把“包”与“默认运行中的插件实例”混为一谈。
+> rc.7 自动生成的历史研究附录。rc.8 从 219 个 workspace 包变为 226 个，0.1.1-rc.1 再增加 `@deepseek-ai/dsh-authorization` 至 227 个；增量见 [rc.8](dsh-rc8-update-impact-report.md) 和 [0.1.1-rc.1](dsh-0.1.1-rc1-update-impact-report.md) 更新报告。下表保留用于审计 rc.7，不代表当前版本的完整逐包名录。不要把“包”与“默认运行中的插件实例”混为一谈。
 
 本清单只描述上游 DSH。Aezy 通过包的公开发布入口和扩展接口消费这些能力，不从参考树相对导入源码，也不在清单所指路径中实现修复。
 

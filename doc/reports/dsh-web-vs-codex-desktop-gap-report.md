@@ -1,6 +1,6 @@
 # DSH Web 与 Codex Desktop 功能差距报告
 
-> 本报告的 72 项矩阵以 rc.7 为基线。rc.8 已补充 `@file/@session`、动态 Web renderer、Windows 持久 PowerShell 与多项 Subagent/Session 能力；差距变化和 Aezy 决策见 [rc.8 更新报告](dsh-rc8-update-impact-report.md)。Project/Git/ledger/Worktree/Approval Rules/Network Policy 等核心缺口仍成立。
+> 本报告的 72 项矩阵以 rc.7 为基线。rc.8 补充了 `@file/@session`、动态 Web renderer、Windows 持久 PowerShell等能力；0.1.1-rc.1 又补充 credentials/authorization 内核、Subagent lineage、Session projection、vision 与 Web 细节。增量见 [rc.8](dsh-rc8-update-impact-report.md) 和 [0.1.1-rc.1](dsh-0.1.1-rc1-update-impact-report.md) 更新报告。Project/Git/ledger/Worktree/Approval Rules/Network Policy 等核心缺口仍成立。
 
 ## 结论
 

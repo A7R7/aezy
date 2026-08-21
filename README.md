@@ -4,7 +4,7 @@ Aezy 是基于 DeepSeek Harness（DSH）公开扩展机制构建的独立编程 
 
 ## 仓库布局
 
-- `.local/deepseek-harness/`：只读 DSH 上游参考源码，当前固定在 `dsh-v0.1.0-rc.8`（`141eb6fef83422698aef7a981029e843e8161534`）。
+- `.local/deepseek-harness/`：只读 DSH 上游参考源码，当前固定在 `dsh-v0.1.1-rc.1`（`528c682e061696f5a160f363f236ecbf53cbd006`）。
 - `reference/dsh.lock.json`：DSH 来源、revision、Git tree 和本地参考路径的机器可读锁定记录。
 - `doc/`：Aezy 的功能基线、DSH 插件审计和 Codex Desktop 差距报告。
 - `packages/aezy-base/`、`packages/aezy-web/`：Aezy 的外置 composition 与默认 Agent preset。
@@ -17,7 +17,7 @@ DSH 参考树不进入 Aezy 的 Git index，以免数千个上游文件拖慢日
 
 ```bash
 git clone https://github.com/deepseek-ai/deepseek-harness.git .local/deepseek-harness
-git -C .local/deepseek-harness checkout --detach 141eb6fef83422698aef7a981029e843e8161534
+git -C .local/deepseek-harness checkout --detach 528c682e061696f5a160f363f236ecbf53cbd006
 ```
 
 恢复后应保持该目录只读使用；Aezy 构建和运行仍只消费发布到 npm 的 DSH package，不依赖本地参考树。
@@ -30,7 +30,7 @@ DSH 更新以新的已审核上游 revision 整体替换参考树。Aezy 插件�
 
 ## M0：运行 Aezy profile
 
-Aezy 当前固定使用 DSH `0.1.0-rc.8`。依赖缓存写入仓库中已忽略的 `.local/pnpm-store/`；包含凭据、设置、profile 和 session 的运行状态默认写入 `~/.aezy/dsh/`，以确保 DSH 能在 WSL 的原生 Linux 文件系统上执行 owner-only 权限校验。可用 `DSH_HOME` 显式覆盖该位置。首次运行会从旧的 `.local/dsh/` 复制现有状态，但不会复制必须重新生成的 profile `node_modules`。
+Aezy 当前固定使用 DSH `0.1.1-rc.1`。依赖缓存写入仓库中已忽略的 `.local/pnpm-store/`；包含凭据、设置、profile 和 session 的运行状态默认写入 `~/.aezy/dsh/`，以确保 DSH 能在 WSL 的原生 Linux 文件系统上执行 owner-only 权限校验。可用 `DSH_HOME` 显式覆盖该位置。首次运行会从旧的 `.local/dsh/` 复制现有状态，但不会复制必须重新生成的 profile `node_modules`。
 
 ```bash
 pnpm install
@@ -62,11 +62,11 @@ AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run dogfood:turn-summary
 pnpm run test:m1:http
 ```
 
-M1 已完成签收：真实 rc.8 模型在 Aezy Workspace 中完成跨文件 Turn，随后通过实际 Web `Changes` 查看 diff、部分撤销、整页刷新恢复和 receipt Undo。签收证据、Session id 和 fail-closed 边界见 [M1 里程碑记录](doc/milestones/m1.md)。
+M1 已完成签收：真实模型在 Aezy Workspace 中完成跨文件 Turn，随后通过实际 Web `Changes` 查看 diff、部分撤销、整页刷新恢复和 receipt Undo。签收证据、Session id 和 fail-closed 边界见 [M1 里程碑记录](doc/milestones/m1.md)。
 
 ## M2：Security Boundary
 
-`@aezy/security` 使用 DSH rc.8 的公开 `tools/pre-execute` 与单调 `tools.guard()` seam，在 DSH 原生一次性审批之前执行持久规则。Security view 可设置 global/repository Network Policy，添加、查看和撤销 deny/ask/allow 规则，并查看经过脱敏的近期决策审计。
+`@aezy/security` 使用 DSH rc.1 的公开 `tools/pre-execute` 与单调 `tools.guard()` seam，在 DSH 原生一次性审批之前执行持久规则。Security view 可设置 global/repository Network Policy，添加、查看和撤销 deny/ask/allow 规则，并查看经过脱敏的近期决策审计。
 
 默认 Network Policy 为 `ask`。它覆盖 Agent 发起的网络工具与 shell 命令；未知 shell 在 `ask`/`deny` 下按 `possible network` 保守处理。模型服务和 DSH control-plane 流量不在此工具边界内，这也不是操作系统级网络沙箱。M2 的完整签收证据见 [M2 里程碑记录](doc/milestones/m2.md)。
 
@@ -87,4 +87,5 @@ M2 已完成自动与真实模型签收；人工浏览器主题/交互复核项�
 - [DSH 第一方包与插件逐项清单](doc/reports/dsh-first-party-package-inventory.md)
 - [DSH Web 与 Codex Desktop 功能差距报告](doc/reports/dsh-web-vs-codex-desktop-gap-report.md)
 - [DSH v0.1.0-rc.8 更新与 Aezy 影响报告](doc/reports/dsh-rc8-update-impact-report.md)
+- [DSH v0.1.1-rc.1 更新与 Aezy 影响报告](doc/reports/dsh-0.1.1-rc1-update-impact-report.md)
 - [Aezy 上游等待边界与实施路线图](doc/reports/aezy-upstream-ownership-roadmap.md)

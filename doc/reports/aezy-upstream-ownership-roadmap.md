@@ -2,25 +2,25 @@
 
 ## 决策摘要
 
-截至 2026-08-20，Aezy 已升级并验证 `dsh-v0.1.0-rc.8`。后续工作继续分成两条明确轨道：
+截至 2026-08-21，Aezy 已升级并验证 `dsh-v0.1.1-rc.1`。后续工作继续分成两条明确轨道：
 
 1. **Aezy 立即实现的产品域**：DSH 没有公开近期落地信号、又直接阻塞本地编程闭环的能力，通过参考树外的 plugin、bundle、profile patch、adapter 或应用实现。
 2. **等待 DSH 或只做薄集成的内核域**：DSH 已有 seam、实现、roadmap 文字或详细 proposed note 的能力，不在 Aezy 中复制第二套状态机、协议或生命周期；当前版本只做启停、配置、状态透传和必要的 Web 装配。
 
 因此，近期唯一正确的起点是先建立最小 `aezy-base` / `aezy-web` 外置 composition，并用当前真实 DSH profile dogfood。第一个产品垂直切片固定为 **Project / Repository / Local Environment + Git status/diff + turn-scoped change ledger + 安全 revert**；随后依次实现 **Approval Rules + Network Policy** 和 **Worktree + Handoff**。
 
-rc.8 已交付上游 `@file/@session`、Windows 持久 PowerShell、可安装 Product Subagent bundle 和多项 Subagent/Session 最后一公里能力。Aezy 对这些能力只做薄接入；文件树、用户终端 UI、Activity 和 Browser 仍按真实 dogfood 痛点推进。Task Surface、Interactive Side Sessions、Recallable Compaction、Subagent/Job 内核、PTY backend 和 MCP/ACP transport 仍不进入 Aezy 的近期重型实现计划。完整复盘见 [rc.8 更新与影响报告](dsh-rc8-update-impact-report.md)。
+rc.8 已交付 `@file/@session`、Windows 持久 PowerShell、可安装 Product Subagent bundle 和多项 Session 能力；0.1.1-rc.1 又补充 credential record/authorization flow、Subagent lineage header、Session projection 正确性、Web index injection、DeepSeek vision 和 bwrap PID 隔离。Aezy 对这些能力只做薄接入；文件树、用户终端 UI、Activity 和 Browser 仍按真实 dogfood 痛点推进。Task Surface、Interactive Side Sessions、Recallable Compaction、Subagent/Job 内核、PTY backend 和 MCP/ACP transport 仍不进入 Aezy 的近期重型实现计划。增量复盘见 [0.1.1-rc.1 更新与影响报告](dsh-0.1.1-rc1-update-impact-report.md)。
 
 ## 上游信号的解释边界
 
-2026-08-19 上游发布 `dsh-v0.1.0-rc.8`（`141eb6f`），结束了 rc.7 与公开 master 相同、没有更晚 release 的历史状态。rc.8 相对 rc.7 有 536 个 commit 和 1,604 个变更文件，因此后续判断以 tag/release 和本地 source diff 为准，不能再沿用 rc.7 的静态结论。仍应遵守：
+2026-08-21 上游发布 `dsh-v0.1.1-rc.1`（`528c682e`）。它相对 rc.8 有 172 个 commit 和 2,368 个变更文件，但大部分路径属于 Agent Notes、双语文档、站点生成物和统一版本更新；后续判断继续以 tag/release 与运行时 source diff 为准，不能仅凭总文件数推断功能规模。仍应遵守：
 
 - package README 中的 roadmap 文字只表示设计方向，不是版本承诺；
 - `.agents/notes/proposed/` 中的 Agent Note 是实现信号，不是排期承诺；
 - “最可能在下一到两个 RC 完善”只用于避免 Aezy 抢先复制内核，不用于依赖一个确定发布日期；
 - 每个 Aezy 里程碑开始时重新检查 upstream；没有新版本就继续按本路线推进 Aezy 自有产品域，不因等待上游而停工。
 
-此前预测的 profile bundle/插件设置、Subagent + Job、Windows PTY 和 Session 正确性已在 rc.8 中强或部分命中；MCP runtime closure 有进展，但通用 reconnect 没有交付。这个结果强化了“不抢写已有 seam 内核”的策略，但不构成对下一个 RC 的新承诺。
+此前预测的“已有 seam 最后一公里”继续部分命中：0.1.1-rc.1 实际集中在 credentials/authorization、Subagent header、Session projection 和 Web 细节；PTY、MCP/ACP、compaction、Task Surface、Side Session 与 recall 没有新的运行时落地。这个结果强化了“不抢写已有 seam 内核”的策略，但不构成对下一个 RC 的新承诺。
 
 三个 proposed 方向有比普通 backlog 更强的设计信号，但仍不得当作承诺：
 
@@ -45,8 +45,8 @@ rc.8 已交付上游 `@file/@session`、Windows 持久 PowerShell、可安装 Pr
 | 用户 Integrated Terminal UI | **dogfood 驱动；复用 rc.8 backend** | 未来在 Aezy Web 增加用户 PTY tabs、cwd/environment 绑定；当前继续用 shell/job | 不 fork PTY/Windows persistent PowerShell，不重写 job/terminal lifecycle | 真实交互命令阻塞 M1-M3 |
 | Activity / Status / Usage / Notifications | **薄投影后按痛点增强** | 汇总现有 Session、Job、Subagent、approval、trajectory 投影 | 不另建 Task runtime 或第二套状态机 | 状态不可见开始阻塞多任务 dogfood |
 | Browser automation | **后续 Aezy 产品能力** | 前端 dogfood 成为主要场景后实现 localhost、screenshot、click/type/scroll | 不阻塞本地通用 coding loop；不先扩展到 Computer Use | 前端任务无法仅靠 shell/test 验收 |
-| Profile bundle / plugin settings | **rc.8 继续交付，Aezy 薄封装** | 提供 Aezy 默认 bundle、必要配置和兼容性检查；按需挂载上游 Product Subagent bundle | 不另建插件市场、安装器、依赖解析或设置内核 | 当前接口确实阻塞 Aezy bundle |
-| Subagent + Job、Experimental Agent Teams、Task Surface | **上游薄集成；Task Surface 继续等待** | 保留当前 subagent/job；按需透传 rc.8 失败事实和状态；Agent Teams 保持实验禁用 | 不创建第二套 Task Surface；不把共享 checkout 的 Agent Teams 当作 Worktree 隔离 | Task Surface 转 implemented；或缺口阻塞 M3 |
+| Profile bundle / plugin settings / credential authorization | **上游继续交付，Aezy 薄封装** | 提供 Aezy 默认 bundle、必要配置和兼容性检查；消费上游 credential/authorization seam | 不另建插件市场、安装器、OAuth/refresh 协议或凭据存储内核 | 当前接口确实阻塞 Aezy bundle/onboarding |
+| Subagent + Job、Experimental Agent Teams、Task Surface | **上游薄集成；Task Surface 继续等待** | 保留当前 subagent/job；复用 rc.1 lineage header；Agent Teams 保持实验禁用 | 不创建第二套 Task Surface；不把共享 checkout 的 Agent Teams 当作 Worktree 隔离 | Task Surface 转 implemented；或缺口阻塞 M3 |
 | Interactive Side Sessions / merge-back | **等待上游** | 暂用现有 fork/subagent，必要时只做无新持久协议的轻入口 | 不实现平行 Session 内核、merge-back 事件体系或专用存储 | proposed note 转 implemented 或产品需求成为 P0 |
 | Compaction / recall / Session projection | **等待上游** | 使用现有 compaction、token meter、history paging；可薄展示压力 | 不实现第二套摘要、`history_read`/`history_search`、日志索引或 Session projection | 新 RC；或长任务 dogfood 出现可复现数据丢失 |
 | PTY/persistent shell backend | **rc.8 已补 Windows 持久 PowerShell，Aezy 薄集成** | 复用 terminal seam/provider；真实 Windows 验证后用 preset patch 启用 | 不 fork backend，不自行补 ConPTY | 用户终端 UI 需要新的公开 seam |
@@ -87,7 +87,7 @@ dsh plugin --profile <name> add <package-or-git-spec>
 
 ### M1：Workspace & Changes——第一个产品垂直切片
 
-**状态：Complete（2026-08-20）。** 真实 rc.8 模型跨文件 Turn、Changes UI diff、部分撤销、刷新恢复和 Undo 已按 [M1 签收记录](../milestones/m1.md) 完成；下一主里程碑是 M2。
+**状态：Complete（2026-08-21 rc.1 复验）。** 真实 rc.8 模型跨文件 Turn、Changes UI diff、部分撤销、刷新恢复和 Undo 已按 [M1 签收记录](../milestones/m1.md) 完成；0.1.1-rc.1 的自动、真实 profile 和 HTTP 回归均通过。下一主里程碑是 M3 Worktree/Handoff。
 
 交付：
 

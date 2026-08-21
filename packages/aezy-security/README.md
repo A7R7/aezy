@@ -1,6 +1,6 @@
 # @aezy/security
 
-Aezy's out-of-tree M2 policy layer for DSH rc.8. It contributes a Security
+Aezy's out-of-tree M2 policy layer for DSH rc.1. It contributes a Security
 conversation view and enforces durable Approval Rules plus Network Policy at
 the public `tools/pre-execute` / `tools.guard()` boundary.
 

@@ -4,7 +4,7 @@
 
 ## 参考树不可变性
 
-- [ ] 不修改、生成、patch `.local/deepseek-harness/` 下任何文件；该路径保持只读快照（rc.8 `141eb6fef8…`）。
+- [ ] 不修改、生成、patch `.local/deepseek-harness/` 下任何文件；该路径保持只读快照（rc.1 `528c682e06…`）。
 - [ ] Aezy 源码不通过相对路径导入参考树文件，只消费发布版 DSH package 与公开 seam（`webServer`、`session/event`、client-module、`conversation.view`）。
 - [ ] 参考树更新只允许以整体审核后的 upstream revision 替换，并在根 README 与兼容性元数据中记录 revision。
 

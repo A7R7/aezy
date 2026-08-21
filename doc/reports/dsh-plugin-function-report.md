@@ -1,6 +1,6 @@
 # DSH 内置与第一方插件功能报告
 
-> 本报告主体是 rc.7 的完整审计快照。当前 Aezy 基线已升级到 rc.8；新增/移除包、bundle 变化和路线影响见 [rc.8 更新报告](dsh-rc8-update-impact-report.md)。本文的架构结论仍有效，但数量和逐包名录不应当作 rc.8 的完整清单。
+> 本报告主体是 rc.7 的完整审计快照。当前 Aezy 基线是 0.1.1-rc.1；rc.8 与 rc.1 的新增/移除包、bundle 变化和路线影响分别见 [rc.8 更新报告](dsh-rc8-update-impact-report.md) 与 [0.1.1-rc.1 更新报告](dsh-0.1.1-rc1-update-impact-report.md)。本文的架构结论仍有效，但数量和逐包名录不应当作当前版本的完整清单。
 
 ## 结论
 
