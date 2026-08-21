@@ -9,7 +9,7 @@ Aezy 是基于 DeepSeek Harness（DSH）公开扩展机制构建的独立编程 
 - `doc/`：Aezy 的功能基线、DSH 插件审计和 Codex Desktop 差距报告。
 - `packages/aezy-base/`、`packages/aezy-web/`：Aezy 的外置 composition 与默认 Agent preset。
 - `packages/aezy-brand/`：占据 DSH 通用品牌 slots 的最薄文字品牌插件；暂以字母 `A` 作为图形占位。
-- `packages/aezy-project/`：M1 Project/Repository/Changes/turn ledger，以及 M3 Worktree/Session binding/结构化 Handoff 插件。
+- `packages/aezy-project/`：M1 Project/Repository/Changes/turn ledger、M3 Worktree/Session binding/结构化 Handoff，以及 M4.1A structured Review Side Panel 插件。
 - `packages/aezy-security/`：M2 持久 Approval Rules、独立 Network Policy、决策解释与审计插件。
 - Aezy 源码只放在参考树外的独立插件、bundle 和应用目录中，不写入 `.local/deepseek-harness/`。
 
@@ -52,7 +52,7 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3080
 
 ## M1：Workspace & Changes
 
-`@aezy/project` 使用公开 `ctx.webServer`、`session/event`、`dsh.client`、`conversation.view` 和 `conversation.chat.turnTail` seam 提供结构化 repository status/diff、Local Environment 信息、持久 turn-scoped change ledger，以及 Codex 式 Turn change card：总/逐文件 `+/-` 行统计、历史 diff Review、fingerprint 门控的整轮 Undo/Redo 和安全单文件 revert。它不修改 DSH API Proxy 或 SessionEvent 内核。
+`@aezy/project` 使用公开 `ctx.webServer`、`session/event`、`dsh.client`、`conversation.view`、`conversation.chat.turnTail` 和 `shell.overlay` seam 提供结构化 repository status/diff、Local Environment 信息、持久 turn-scoped change ledger，以及 Codex 式 Turn change card：总/逐文件 `+/-` 行统计、右侧 structured historical Review、fingerprint 门控的整轮 Undo/Redo 和安全单文件 revert。它不修改 DSH API Proxy、SessionEvent 或 conversation scroll 内核。
 
 ```bash
 pnpm run build:m1
@@ -102,8 +102,23 @@ AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run dogfood:m3
 ```
 
 M3 已完成真实 rc.1 HTTP 与 Aezy 自仓库模型 dogfood 签收；完整证据、Session、
-handoff 和保留分支见 [M3 里程碑记录](doc/milestones/m3.md)。下一主里程碑转为
-M4 的 dogfood 驱动工作台入口，不扩展到 Cloud/Remote/PR。
+handoff 和保留分支见 [M3 里程碑记录](doc/milestones/m3.md)。
+
+## M4.1A：Modern Review Side Panel
+
+Turn card 不再在消息流内展开 raw unified diff。Review 与文件行现在打开 Aezy
+Session-scoped 右侧 panel：桌面可拖拽，窄屏为全宽 overlay，开关不改变 conversation
+scroll。Working 与 Historical Turn 读取同一 structured DTO renderer，但来源与 identity
+严格分离；Historical 继续读取 ledger object，后续 worktree 漂移不会改变快照。
+
+Renderer 提供 old/new line number、addition/deletion gutter、sticky file/hunk header、
+changed-file lazy navigation，以及 added/deleted/renamed/binary/truncated 和 malformed
+raw fallback 状态。完整自动、真实 rc.1 HTTP、Aezy 自身模型 dogfood 与浏览器 QA
+见 [M4.1A 签收记录](doc/milestones/m4.md)。
+
+后续顺序固定为 M4.1B File Tree + code/Markdown/image Preview（复用同一 panel），
+再做 M4.2 `@directory` / `@diff` + 当前 Session Contextual Ask。真正 Side Chat 等待
+DSH Interactive Side Sessions/fork/merge-back seam，不在 Aezy 中复制持久会话内核。
 
 ## 研究资料
 

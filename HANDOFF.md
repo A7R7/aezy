@@ -1,9 +1,9 @@
 # Aezy 项目交接
 
-> 交接日期：2026-08-21<br>
+> 交接日期：2026-08-22<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 当前分支：`main`<br>
-> 功能基线：`c16eee7bf8 feat: add managed worktree handoff lifecycle`
+> 功能基线：`8278f4a31d feat(project): move reviews into side panel`
 
 ## 1. 最终目标与不可破坏的边界
 
@@ -43,7 +43,7 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 - `packages/aezy-base`：Host/base composition patch，禁用非核心能力并收敛默认 Harness。
 - `packages/aezy-web`：Web composition 与 Aezy preset 装配。
 - `packages/aezy-brand`：最薄品牌 occupant，占据 DSH 通用品牌 slots；当前继续使用字母 `A`，未设计新图标。
-- `packages/aezy-project`：M1 Project/Repository/Changes/Turn ledger，以及 M3 受管 Worktree/Session binding/结构化 Handoff。
+- `packages/aezy-project`：M1 Project/Repository/Changes/Turn ledger、M3 受管 Worktree/Session binding/结构化 Handoff，以及 M4.1A structured Review Side Panel。
 - `packages/aezy-security`：M2 持久 Approval Rules、Network Policy、解释与审计。
 
 默认运行状态位于 `~/.aezy/dsh/`，除非显式设置 `DSH_HOME`。pnpm store 位于仓库已忽略的 `.local/pnpm-store/`。
@@ -135,12 +135,31 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 真实 dogfood retained branch：`aezy/m3-dogfood-mt3192wf`；handoff：
 `6df715fd-151e-40a0-994b-77ba9bdba52a`。完整证据见 `doc/milestones/m3.md`。
 
+### M4.1A：Modern Review Side Panel
+
+状态：Complete，真实 rc.1 HTTP、Aezy 自仓库模型 dogfood 与浏览器响应式 QA 已签收。
+
+已完成：
+
+- Turn card 删除消息流内 inline raw diff，只保留摘要、状态、Undo/Redo 与 Review；
+- 基于公开 additive `shell.overlay` 的 transient Session-scoped 右侧 panel；
+- desktop resize、narrow full overlay，开关不改变 conversation scroll；
+- Working/Historical 共用 structured diff DTO 与 renderer；
+- old/new line number、addition/deletion/status gutter、sticky file/hunk header；
+- added/deleted/renamed/binary/truncated/malformed raw fallback；
+- Historical path-required 单文件 object lazy load，后续 worktree 漂移不改变快照；
+- AbortController + generation + active identity 防止快速切换旧响应覆盖；
+- Light/Dark、1440/1280/680 viewport 与多文件 Working navigation 浏览器验证。
+
+完整证据见 `doc/milestones/m4.md`。
+
 ## 4. DSH 基线与最新上游复核
 
-M3 开工时已发现 `dsh-v0.1.1-rc.2`（commit `b150a551…`，tree
+M4.1A 开工时再次确认最新公开 tag 仍为 `dsh-v0.1.1-rc.2`（commit `b150a551…`，tree
 `53915efe…`）。rc.2 没有新增 Worktree/Handoff 或相关环境内核，M3 所有权不变；
-Aezy 本轮仍运行已完整验证的 rc.1，rc.2 升级应保持为独立 reviewed revision
-replacement。复核结果已写入 `compatibility/dsh.json` 和 M3 里程碑记录。
+关键 layout/slot/theme 文件也没有新增 generic/additive details panel router。Aezy 本轮
+仍运行已完整验证的 rc.1，rc.2 升级应保持为独立 reviewed revision replacement。
+复核结果已写入 `compatibility/dsh.json` 和 M4.1A 里程碑记录。
 
 ### 0.1.1-rc.1 调查结论
 
@@ -167,7 +186,7 @@ rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,67
 - `pnpm exec dsh --version` → `0.1.1-rc.1`
 - `pnpm peers check` → no issues
 - `pnpm run test:brand` → 1/1
-- `pnpm run test:m1` → 10/10
+- `pnpm run test:m1` → 13/13
 - `pnpm run test:m2` → 11/11
 - `pnpm run test:m3` → 6/6
 - `pnpm run test:m0` → composition/Web/Workspace/Session/preset smoke passed
@@ -175,6 +194,8 @@ rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,67
 - `pnpm run test:m2:http` → policy、precedence、request fence、restart persistence passed
 - `pnpm run test:m3:http` → Worktree Session、handoff、拒绝路径、retained branch、Security audit passed
 - `pnpm run dogfood:m3` → Aezy 自仓库真实模型隔离 Turn、test、handoff、cleanup passed
+- M4.1A Aezy 自身真实模型 dogfood → Session `m4-review-qa-home`，13/13 passed
+- M4.1A browser QA → Historical/Working、581→694 resize、680 overlay、Light/Dark、scrollTop 391 preserved
 - `git diff --check` → passed
 
 交接时 Aezy Web 正运行于：
@@ -214,18 +235,15 @@ git status --short
 
 不要使用 `git add -A` 或 `git add .`；应精确列出本步骤文件。
 
-## 7. 下一步：M4 dogfood 驱动的工作台入口
+## 7. 下一步：M4.1B File Tree + Preview
 
-M3 已完成。下一步不要继续把 Worktree 扩大成 PR/Cloud/Remote，也不要实现 DSH
-很可能自行维护的 Task/Session/Subagent/merge-back 内核。
+M4.1A 已完成。下一切片固定为 **M4.1B File Tree + code/Markdown/image Preview**：
+复用同一个 Aezy side panel，并让 Changes/Turn/Handoff 能跳转。完成后才进入
+**M4.2 `@directory` / `@diff` + 当前 Session Contextual Ask**。
 
-按真实 dogfood 的可复现摩擦，一次只选择一个 M4 垂直切片：
-
-1. file tree + code/Markdown/image preview；
-2. 在上游 `@file/@session` 之上补 `@directory` / `@diff`；
-3. 使用上游 PTY backend 的用户 Integrated Terminal UI；
-4. Activity / Status / Usage / Notifications 薄投影；
-5. localhost Browser + browser interaction。
+不要继续把 Worktree 扩大成 PR/Cloud/Remote，也不要实现 DSH 很可能自行维护的
+Task/Session/Subagent/merge-back 内核。真正 Side Chat 等 DSH Interactive Side
+Sessions/fork/merge-back 公开 seam 成熟后再做。
 
 开始前重新检查上游 tag 与 runtime diff，确认选中能力仍由 Aezy 拥有。若实现需要改写
 PTY、Task、Session、MCP、Subagent 或 compaction 内核，应暂停并重新评估 seam，
@@ -243,7 +261,7 @@ PTY、Task、Session、MCP、Subagent 或 compaction 内核，应暂停并重新
 | M2 policy、store、client | `packages/aezy-security/` |
 | 品牌 slots | `packages/aezy-brand/` |
 | Profile 同步/启动 | `scripts/sync-profile.mjs`、`scripts/run-profile.mjs`、`scripts/lib/profile.mjs` |
-| M0-M3 签收 | `doc/milestones/m0.md`、`m1.md`、`m2.md`、`m3.md` |
+| M0-M4.1A 签收 | `doc/milestones/m0.md`、`m1.md`、`m2.md`、`m3.md`、`m4.md` |
 | 当前路线和所有权 | `doc/reports/aezy-upstream-ownership-roadmap.md` |
 | DSH rc.1 影响 | `doc/reports/dsh-0.1.1-rc1-update-impact-report.md` |
 | DSH 插件审计 | `doc/reports/dsh-plugin-function-report.md` |
@@ -273,8 +291,9 @@ doc/reports/aezy-upstream-ownership-roadmap.md，检查 git status、当前 DSH 
 以及 3090 Aezy Host 状态。遵守只读 .local/deepseek-harness、只用外置插件扩展、
 保留三个既有未跟踪 dogfood/test 项、每个大步骤单独提交的边界。
 
-M3 Worktree + Handoff 已完成；先阅读 doc/milestones/m3.md 并复验相关测试。
-接下来按真实 dogfood 摩擦从 M4 候选中一次选择一个最小工作台垂直切片。
+M4.1A Modern Review Side Panel 已完成；先阅读 doc/milestones/m4.md 并复验相关测试。
+接下来实施 M4.1B File Tree + code/Markdown/image Preview，复用同一 side panel；
+随后才做 M4.2 @directory/@diff + 当前 Session Contextual Ask。
 不要修改 DSH 源码，不要实现第二套 Session/Subagent/Task/PTY/compaction 内核，
 也不要提前扩展 Cloud/Remote/PR。
 ```
