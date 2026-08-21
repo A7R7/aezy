@@ -381,9 +381,9 @@ export async function describeDiff(cwd, path) {
       oldPath: row.originalPath ?? (status === 'added' ? null : normalized),
       newPath: status === 'deleted' ? null : normalized,
       status,
-      additions: stagedStats.additions === null || worktreeStats.additions === null
+      additions: binary || stagedStats.additions === null || worktreeStats.additions === null
         ? null : stagedStats.additions + worktreeStats.additions,
-      deletions: stagedStats.deletions === null || worktreeStats.deletions === null
+      deletions: binary || stagedStats.deletions === null || worktreeStats.deletions === null
         ? null : stagedStats.deletions + worktreeStats.deletions,
       binary,
       truncated: stagedBound.truncated || worktreeBound.truncated,

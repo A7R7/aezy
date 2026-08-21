@@ -121,6 +121,7 @@ export function parseUnifiedDiff(raw, options = {}) {
 }
 
 export function countStructuredLines(part) {
+  if (part?.state === 'empty') return { additions: 0, deletions: 0 }
   if (part?.state !== 'structured') return { additions: null, deletions: null }
   let additions = 0
   let deletions = 0

@@ -62,6 +62,8 @@ test('diff reads only current status paths and fingerprints exact content', asyn
   assert.equal(tracked.version, 2)
   assert.equal(tracked.source.kind, 'working')
   assert.equal(tracked.file.status, 'modified')
+  assert.equal(tracked.file.additions, 1)
+  assert.equal(tracked.file.deletions, 1)
   assert.deepEqual(tracked.parts[1].hunks[0].lines.map(line => [line.kind, line.oldLine, line.newLine, line.text]), [
     ['deletion', 1, null, 'before'],
     ['addition', null, 1, 'after'],
