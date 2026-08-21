@@ -4,6 +4,7 @@ import { createReadStream } from 'node:fs'
 import { lstat, readFile, realpath } from 'node:fs/promises'
 import { basename, isAbsolute, relative, resolve, sep } from 'node:path'
 import { promisify } from 'node:util'
+import { countStructuredLines, parseUnifiedDiff } from './diff.js'
 
 const execFileAsync = promisify(execFile)
 const MAX_GIT_BYTES = 4 * 1024 * 1024
@@ -357,16 +358,41 @@ export async function describeDiff(cwd, path) {
   }
   const stagedBound = boundedDiff(staged)
   const worktreeBound = boundedDiff(worktree)
+  const stagedPart = parseUnifiedDiff(stagedBound.value, { truncated: stagedBound.truncated })
+  const worktreePart = parseUnifiedDiff(worktreeBound.value, { truncated: worktreeBound.truncated })
+  const stagedStats = countStructuredLines(stagedPart)
+  const worktreeStats = countStructuredLines(worktreePart)
+  const status = row.kind === 'renamed' ? 'renamed'
+    : row.kind === 'untracked' || row.indexStatus === 'A' || row.worktreeStatus === 'A' ? 'added'
+      : row.indexStatus === 'D' || row.worktreeStatus === 'D' ? 'deleted'
+        : binary ? 'binary' : 'modified'
+  const fingerprint = await fingerprintPath(project.project.root, normalized, row)
   return {
-    version: 1,
-    project: project.project,
-    repository: project.repository,
-    file: row,
-    staged: stagedBound.value,
-    worktree: worktreeBound.value,
-    binary,
-    truncated: stagedBound.truncated || worktreeBound.truncated,
-    fingerprint: await fingerprintPath(project.project.root, normalized, row),
+    version: 2,
+    source: {
+      kind: 'working',
+      label: 'Working changes',
+      repositoryRoot: project.project.root,
+      fingerprint,
+    },
+    identity: `working\0${project.project.root}\0${normalized}\0${fingerprint}`,
+    file: {
+      path: normalized,
+      oldPath: row.originalPath ?? (status === 'added' ? null : normalized),
+      newPath: status === 'deleted' ? null : normalized,
+      status,
+      additions: stagedStats.additions === null || worktreeStats.additions === null
+        ? null : stagedStats.additions + worktreeStats.additions,
+      deletions: stagedStats.deletions === null || worktreeStats.deletions === null
+        ? null : stagedStats.deletions + worktreeStats.deletions,
+      binary,
+      truncated: stagedBound.truncated || worktreeBound.truncated,
+    },
+    fingerprint,
+    parts: [
+      { scope: 'staged', label: 'Staged', ...stagedPart },
+      { scope: 'worktree', label: 'Working tree', ...worktreePart },
+    ],
   }
 }
 

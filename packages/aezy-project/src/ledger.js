@@ -16,6 +16,7 @@ import {
   snapshotChangedFiles,
   treeEntry,
 } from './git.js'
+import { parseUnifiedDiff } from './diff.js'
 
 const MAX_CAPTURE_BYTES = 8 * 1024 * 1024
 const MAX_REVIEW_DIFF_BYTES = 512 * 1024
@@ -64,6 +65,9 @@ async function storeObject(metaRoot, bytes) {
 }
 
 async function readObject(metaRoot, id) {
+  if (typeof id !== 'string' || !/^[a-f0-9]{64}$/u.test(id)) {
+    throw new Error('Aezy review object id is invalid')
+  }
   return readFile(resolve(metaRoot, 'objects', id.slice(0, 2), id.slice(2)))
 }
 
@@ -78,17 +82,19 @@ async function worktreeBytes(root, metaRoot, state) {
   return undefined
 }
 
-function normalizeReviewDiff(raw, path, beforeMissing, afterMissing) {
+function normalizeReviewDiff(raw, oldPath, newPath, beforeMissing, afterMissing) {
   const lines = raw.split('\n')
-  if (lines[0]?.startsWith('diff --git ')) lines[0] = `diff --git a/${path} b/${path}`
+  const left = oldPath ?? newPath
+  const right = newPath ?? oldPath
+  if (lines[0]?.startsWith('diff --git ')) lines[0] = `diff --git a/${left} b/${right}`
   const beforeAt = lines.findIndex(line => line.startsWith('--- '))
   const afterAt = lines.findIndex(line => line.startsWith('+++ '))
-  if (beforeAt >= 0) lines[beforeAt] = beforeMissing ? '--- /dev/null' : `--- a/${path}`
-  if (afterAt >= 0) lines[afterAt] = afterMissing ? '+++ /dev/null' : `+++ b/${path}`
+  if (beforeAt >= 0) lines[beforeAt] = beforeMissing ? '--- /dev/null' : `--- a/${left}`
+  if (afterAt >= 0) lines[afterAt] = afterMissing ? '+++ /dev/null' : `+++ b/${right}`
   return lines.join('\n')
 }
 
-async function reviewForStates(root, path, metaRoot, before, after) {
+async function reviewForStates(root, path, metaRoot, before, after, oldPath = path) {
   const [beforeBytes, afterBytes] = await Promise.all([
     worktreeBytes(root, metaRoot, before),
     worktreeBytes(root, metaRoot, after),
@@ -132,6 +138,7 @@ async function reviewForStates(root, path, metaRoot, before, after) {
     }
     const normalized = normalizeReviewDiff(
       raw,
+      oldPath,
       path,
       before.worktree.kind === 'missing',
       after.worktree.kind === 'missing',
@@ -269,6 +276,9 @@ function publicTurn(turn, root) {
     additions: file.review?.additions ?? null,
     deletions: file.review?.deletions ?? null,
     binary: file.review?.binary ?? false,
+    truncated: file.review?.truncated ?? false,
+    status: file.review?.status ?? (file.review?.binary ? 'binary' : 'modified'),
+    oldPath: file.review?.oldPath ?? null,
   }))
   return {
     turn: turn.turn,
@@ -373,16 +383,27 @@ export class TurnLedger {
       const afterFingerprint = afterState?.fingerprint
         ?? await fingerprintPath(baseline.root, path, undefined)
       if (beforeState?.fingerprint === afterFingerprint) continue
+      const renamedRow = afterState?.row?.kind === 'renamed' ? afterState.row
+        : beforeState?.row?.kind === 'renamed' ? beforeState.row : undefined
+      const oldPath = renamedRow?.originalPath ?? path
       const before = baseline.restore.get(path)
-        ?? await cleanBaselineState(baseline.root, baseline.head, path)
+        ?? baseline.restore.get(oldPath)
+        ?? await cleanBaselineState(baseline.root, baseline.head, oldPath)
       const afterRestore = await captureRestoreState(baseline.root, path, baseline.metaRoot)
+      const reviewStatus = renamedRow !== undefined && renamedRow.originalPath !== path ? 'renamed'
+        : before.worktree.kind === 'missing' && afterRestore.worktree.kind !== 'missing' ? 'added'
+          : before.worktree.kind !== 'missing' && afterRestore.worktree.kind === 'missing' ? 'deleted'
+            : 'modified'
       let review
       try {
-        review = await reviewForStates(baseline.root, path, baseline.metaRoot, before, afterRestore)
+        review = await reviewForStates(baseline.root, path, baseline.metaRoot, before, afterRestore, oldPath)
       } catch (error) {
         this.#warn(error)
         review = { additions: null, deletions: null, binary: true, truncated: false, object: null }
       }
+      review.status = review.binary ? 'binary' : reviewStatus
+      review.oldPath = reviewStatus === 'added' ? null : oldPath
+      review.newPath = reviewStatus === 'deleted' ? null : path
       files.push({
         path,
         change: changeKind(beforeState?.fingerprint ?? null, afterFingerprint),
@@ -455,31 +476,48 @@ export class TurnLedger {
     })
   }
 
-  async review(cwd, sessionId, turn) {
+  async review(cwd, sessionId, turn, path) {
     if (!validSessionId(sessionId)) throw new Error('sessionId is invalid')
     if (!Number.isSafeInteger(turn) || turn < 1) throw new Error('turn must be a positive integer')
     const { root } = await repositoryFor(cwd)
+    const normalized = safeRelativePath(root, path)
     const metaRoot = resolve(await gitMetadataRoot(root), 'aezy')
     return this.#serial(root, async () => {
       const ledger = await readLedger(metaRoot)
       const record = ledger.sessions[sessionId]?.turns?.find(item => item.turn === turn)
       if (record === undefined) throw new Error('turn ledger entry does not exist')
+      const file = record.files.find(item => item.path === normalized)
+      if (file === undefined) throw new Error('turn ledger entry does not match the requested file')
+      const snapshotId = file.review?.object ?? createHash('sha256')
+        .update(JSON.stringify({ before: file.before, after: file.after, review: file.review }))
+        .digest('hex')
+      const raw = typeof file.review?.object === 'string'
+        ? (await readObject(metaRoot, file.review.object)).toString('utf8')
+        : ''
+      const part = parseUnifiedDiff(raw, { truncated: file.review?.truncated === true })
+      const status = file.review?.status ?? (file.review?.binary ? 'binary' : 'modified')
       return {
-        version: 1,
-        sessionId,
-        turn,
-        files: await Promise.all(record.files.map(async file => ({
+        version: 2,
+        identity: `turn\0${sessionId}\0${root}\0${turn}\0${normalized}\0${snapshotId}`,
+        source: {
+          kind: 'turn',
+          label: 'Historical Turn snapshot',
+          sessionId,
+          turn,
+          repositoryRoot: root,
+          snapshotId,
+        },
+        file: {
           path: file.path,
-          openPath: resolve(root, safeRelativePath(root, file.path)),
-          change: file.change,
+          oldPath: file.review?.oldPath ?? (status === 'added' ? null : file.path),
+          newPath: file.review?.newPath ?? (status === 'deleted' ? null : file.path),
+          status,
           additions: file.review?.additions ?? null,
           deletions: file.review?.deletions ?? null,
           binary: file.review?.binary ?? false,
           truncated: file.review?.truncated ?? false,
-          diff: typeof file.review?.object === 'string'
-            ? (await readObject(metaRoot, file.review.object)).toString('utf8')
-            : '',
-        }))),
+        },
+        parts: [{ scope: 'turn', label: `Turn ${turn}`, ...part }],
       }
     })
   }

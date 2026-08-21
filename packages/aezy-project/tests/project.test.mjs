@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import {
-  basename, describeDiff, describeProject, parsePorcelainV2, summarizeTurn, TurnLedger,
+  basename, describeDiff, describeProject, parsePorcelainV2, parseUnifiedDiff, summarizeTurn, TurnLedger,
 } from '../src/index.js'
 
 function git(cwd, ...args) {
@@ -59,17 +59,57 @@ test('project discovery returns structured local environment and Git status', as
 test('diff reads only current status paths and fingerprints exact content', async () => {
   const root = await fixture()
   const tracked = await describeDiff(root, 'tracked.txt')
-  assert.match(tracked.worktree, /-before/)
-  assert.match(tracked.worktree, /\+after/)
+  assert.equal(tracked.version, 2)
+  assert.equal(tracked.source.kind, 'working')
+  assert.equal(tracked.file.status, 'modified')
+  assert.deepEqual(tracked.parts[1].hunks[0].lines.map(line => [line.kind, line.oldLine, line.newLine, line.text]), [
+    ['deletion', 1, null, 'before'],
+    ['addition', null, 1, 'after'],
+  ])
   assert.match(tracked.fingerprint, /^[a-f0-9]{64}$/)
 
   const untracked = await describeDiff(root, 'new file.txt')
-  assert.match(untracked.worktree, /new file mode/)
-  assert.match(untracked.worktree, /\+one/)
-  assert.equal(untracked.binary, false)
+  assert.equal(untracked.file.status, 'added')
+  assert.equal(untracked.file.binary, false)
+  assert.equal(untracked.parts[1].hunks[0].lines[0].text, 'one')
 
   await assert.rejects(() => describeDiff(root, '../outside.txt'), /repository-relative|escapes/)
   await assert.rejects(() => describeDiff(root, 'not-in-status.txt'), /not present/)
+})
+
+test('strict unified parser projects line numbers and fails closed to bounded raw', () => {
+  const parsed = parseUnifiedDiff([
+    'diff --git a/a.txt b/a.txt',
+    '--- a/a.txt',
+    '+++ b/a.txt',
+    '@@ -2,3 +2,4 @@ section',
+    ' same',
+    '-old',
+    '+new',
+    '+extra',
+    ' tail',
+    '\\ No newline at end of file',
+    '',
+  ].join('\n'))
+  assert.equal(parsed.state, 'structured')
+  assert.deepEqual(parsed.hunks[0].lines.map(line => [line.kind, line.oldLine, line.newLine]), [
+    ['context', 2, 2],
+    ['deletion', 3, null],
+    ['addition', null, 3],
+    ['addition', null, 4],
+    ['context', 4, 5],
+    ['meta', null, null],
+  ])
+  const malformed = parseUnifiedDiff('@@ -1,2 +1,2 @@\n-old\n+new\n')
+  assert.equal(malformed.state, 'fallback')
+  assert.deepEqual(malformed.hunks, [])
+  assert.match(malformed.rawFallback, /-old/u)
+  assert.equal(parseUnifiedDiff('@@@ -1,1 -1,1 +1,1 @@@\n x\n').state, 'fallback')
+  const rename = parseUnifiedDiff('diff --git a/old name.txt b/new name.txt\nsimilarity index 100%\nrename from old name.txt\nrename to new name.txt\n')
+  assert.equal(rename.state, 'empty')
+  assert.deepEqual(rename.metadata, { oldPath: 'old name.txt', newPath: 'new name.txt', status: 'renamed' })
+  const binary = parseUnifiedDiff('diff --git a/image.png b/image.png\nBinary files a/image.png and b/image.png differ\n')
+  assert.equal(binary.metadata.status, 'binary')
 })
 
 test('Turn summary is bounded to one ledger turn and preserves removed-file facts', () => {
@@ -92,7 +132,12 @@ test('Turn summary is bounded to one ledger turn and preserves removed-file fact
     additions: 4,
     deletions: 2,
     statsComplete: true,
-    files: ledger.turns[0].files,
+    files: ledger.turns[0].files.map(file => ({
+      ...file,
+      truncated: false,
+      status: file.binary ? 'binary' : 'modified',
+      oldPath: null,
+    })),
   })
   assert.equal(summarizeTurn(ledger, 1), null)
   assert.equal(basename('src/changed.ts'), 'changed.ts')
@@ -129,10 +174,20 @@ test('turn ledger survives a fresh reader and safe revert preserves pre-turn dir
   assert.equal(view.turns[0].additions, 2)
   assert.equal(view.turns[0].deletions, 1)
 
-  const review = await freshReader.review(root, 'ledger-session', 1)
-  assert.match(review.files.find(file => file.path === 'created.txt').diff, /\+created-by-agent/u)
-  assert.match(review.files.find(file => file.path === 'tracked.txt').diff, /-pre-turn/u)
-  assert.match(review.files.find(file => file.path === 'tracked.txt').diff, /\+agent-change/u)
+  const createdReview = await freshReader.review(root, 'ledger-session', 1, 'created.txt')
+  assert.equal(createdReview.source.kind, 'turn')
+  assert.equal(createdReview.file.status, 'added')
+  assert.equal(createdReview.parts[0].hunks[0].lines[0].text, 'created-by-agent')
+  const trackedReview = await freshReader.review(root, 'ledger-session', 1, 'tracked.txt')
+  assert.equal(trackedReview.file.status, 'modified')
+  assert.ok(trackedReview.parts[0].hunks[0].lines.some(line => line.kind === 'deletion' && line.text === 'pre-turn'))
+  assert.ok(trackedReview.parts[0].hunks[0].lines.some(line => line.kind === 'addition' && line.text === 'agent-change'))
+
+  // Historical review is object-backed and must not drift with later worktree edits.
+  await writeFile(join(root, 'tracked.txt'), 'later-worktree-drift\n')
+  assert.deepEqual(await freshReader.review(root, 'ledger-session', 1, 'tracked.txt'), trackedReview)
+  await assert.rejects(() => freshReader.review(root, 'ledger-session', 1, '../outside.txt'), /repository-relative|escapes/u)
+  await writeFile(join(root, 'tracked.txt'), 'agent-change\n')
 
   const trackedEntry = view.turns[0].files.find(file => file.path === 'tracked.txt')
   const reverted = await freshReader.revert({
@@ -159,6 +214,50 @@ test('turn ledger survives a fresh reader and safe revert preserves pre-turn dir
   await assert.rejects(() => access(join(root, 'created.txt')), /ENOENT/)
   await freshReader.undo({ cwd: root, receiptId: removed.receiptId })
   assert.equal(await readFile(join(root, 'created.txt'), 'utf8'), 'created-by-agent\n')
+})
+
+test('historical review records a Turn rename without weakening fail-closed revert', async () => {
+  const root = await fixture()
+  await writeFile(join(root, 'tracked.txt'), 'before\n')
+  await access(join(root, 'new file.txt')).then(() => {})
+  git(root, 'clean', '-fd')
+  const ledger = new TurnLedger()
+  const session = { id: 'rename-session', header: { id: 'rename-session', cwd: root } }
+  ledger.observe(session, { type: 'turn/start', time: 100, data: { turn: 1 } })
+  await ledger.settle('rename-session')
+  git(root, 'mv', 'tracked.txt', 'renamed.txt')
+  ledger.observe(session, { type: 'turn/end', time: 200, data: { turn: 1, reason: { kind: 'completed' } } })
+  const view = await ledger.view(root, 'rename-session')
+  assert.equal(view.turns[0].files[0].status, 'renamed')
+  assert.equal(view.turns[0].files[0].oldPath, 'tracked.txt')
+  assert.equal(view.turns[0].files[0].revertable, false)
+  const review = await ledger.review(root, 'rename-session', 1, 'renamed.txt')
+  assert.equal(review.file.status, 'renamed')
+  assert.equal(review.file.oldPath, 'tracked.txt')
+  assert.equal(review.file.newPath, 'renamed.txt')
+  assert.equal(review.parts[0].state, 'empty')
+})
+
+test('historical review lazily reads only the requested Turn file object', async () => {
+  const root = await fixture()
+  const ledger = new TurnLedger()
+  const session = { id: 'lazy-review-session', header: { id: 'lazy-review-session', cwd: root } }
+  ledger.observe(session, { type: 'turn/start', time: 100, data: { turn: 1 } })
+  await ledger.settle('lazy-review-session')
+  await writeFile(join(root, 'tracked.txt'), 'first-after\n')
+  await writeFile(join(root, 'second.txt'), 'second-after\n')
+  ledger.observe(session, { type: 'turn/end', time: 200, data: { turn: 1, reason: { kind: 'completed' } } })
+  await ledger.view(root, 'lazy-review-session')
+
+  const ledgerPath = join(root, '.git', 'aezy', 'ledger.json')
+  const persisted = JSON.parse(await readFile(ledgerPath, 'utf8'))
+  const second = persisted.sessions['lazy-review-session'].turns[0].files.find(file => file.path === 'second.txt')
+  second.review.object = 'f'.repeat(64)
+  await writeFile(ledgerPath, `${JSON.stringify(persisted, null, 2)}\n`)
+
+  const first = await ledger.review(root, 'lazy-review-session', 1, 'tracked.txt')
+  assert.equal(first.file.path, 'tracked.txt')
+  await assert.rejects(() => ledger.review(root, 'lazy-review-session', 1, 'second.txt'), /ENOENT/u)
 })
 
 test('Turn Undo restores every file atomically and its receipt can reapply the Turn', async () => {

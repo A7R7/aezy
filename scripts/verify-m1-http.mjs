@@ -58,10 +58,12 @@ try {
   assert.equal(entry.deletions, 1)
 
   const review = await request(`/aezy/api/project/turn-review?${new URLSearchParams({
-    cwd: root, sessionId: 'http-session', turn: '1',
+    cwd: root, sessionId: 'http-session', turn: '1', path: 'file.txt',
   })}`)
-  assert.match(review.files[0].diff, /-before/u)
-  assert.match(review.files[0].diff, /\+after/u)
+  assert.equal(review.source.kind, 'turn')
+  assert.equal(review.file.path, 'file.txt')
+  assert.ok(review.parts[0].hunks[0].lines.some(line => line.kind === 'deletion' && line.text === 'before'))
+  assert.ok(review.parts[0].hunks[0].lines.some(line => line.kind === 'addition' && line.text === 'after'))
 
   const reverted = await request('/aezy/api/project/revert-turn', {
     method: 'POST',

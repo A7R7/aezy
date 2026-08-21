@@ -6,13 +6,14 @@ import {
 import { TurnLedger } from './ledger.js'
 import { basename, summarizeTurn } from './summary.js'
 import { parseWorktreeList, WorktreeManager } from './worktree.js'
+import { countStructuredLines, parseUnifiedDiff } from './diff.js'
 
 const ROUTE = '/aezy/api/project'
 const MAX_BODY_BYTES = 32 * 1024
 
 export {
   basename, describeDiff, describeProject, parsePorcelainV2, parseWorktreeList,
-  summarizeTurn, TurnLedger, WorktreeManager,
+  countStructuredLines, parseUnifiedDiff, summarizeTurn, TurnLedger, WorktreeManager,
 }
 export const inject = ['webServer', 'sessions', 'aezySecurity']
 
@@ -102,6 +103,7 @@ function createHandler(ledger, worktrees, security, warn) {
           query(url, 'cwd'),
           query(url, 'sessionId'),
           Number(query(url, 'turn')),
+          query(url, 'path'),
         ))
         return
       }

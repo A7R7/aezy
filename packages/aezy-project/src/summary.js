@@ -18,6 +18,9 @@ export function summarizeTurn(ledger, turnNumber) {
       additions: file.additions ?? null,
       deletions: file.deletions ?? null,
       binary: file.binary === true,
+      truncated: file.truncated === true,
+      status: file.status ?? (file.binary === true ? 'binary' : 'modified'),
+      oldPath: file.oldPath ?? null,
     })),
   }
 }
