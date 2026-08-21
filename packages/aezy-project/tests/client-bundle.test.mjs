@@ -20,8 +20,8 @@ test('built client bundle registers and mounts the Changes view', async () => {
 
   const require = createRequire(new URL('../package.json', import.meta.url))
   const plugin = handoff.factory(specifier => require(specifier))
-  let injectedSlot
-  let registration
+  const injectedSlots = []
+  const registrations = []
   const dispose = () => {}
   plugin.apply({
     sessions: {
@@ -31,21 +31,27 @@ test('built client bundle registers and mounts the Changes view', async () => {
     },
     slots: {
       inject(name, mount) {
-        injectedSlot = name
+        injectedSlots.push(name)
         mount()
       },
       register(options, component) {
-        registration = { options, component }
+        registrations.push({ options, component })
         return dispose
       },
     },
   })
 
-  assert.equal(injectedSlot, 'conversation.view')
-  assert.equal(registration.options.id, 'changes')
-  assert.equal(registration.options.label(), 'Changes')
-  assert.deepEqual(registration.options.inject('session'), { cwd: '/repo', sessionId: 'session' })
-  assert.equal(typeof registration.component, 'function')
+  assert.deepEqual(injectedSlots, ['conversation.chat.turnTail', 'conversation.view'])
+  const tail = registrations.find(entry => entry.options.name === 'conversation.chat.turnTail')
+  assert.equal(tail.options.priority, -10)
+  assert.deepEqual(tail.options.select({ turn: { turn: 3, status: 'closed' } }), { turn: 3 })
+  assert.equal(tail.options.select({ turn: { turn: 3, status: 'open' } }), null)
+  assert.deepEqual(tail.options.inject('session'), { cwd: '/repo', sessionId: 'session' })
+  assert.equal(typeof tail.component, 'function')
+  const view = registrations.find(entry => entry.options.id === 'changes')
+  assert.equal(view.options.label(), 'Changes')
+  assert.deepEqual(view.options.inject('session'), { cwd: '/repo', sessionId: 'session' })
+  assert.equal(typeof view.component, 'function')
 })
 
 test('built Changes view consumes DSH theme aliases without dark-only fallbacks', async () => {
@@ -54,5 +60,7 @@ test('built Changes view consumes DSH theme aliases without dark-only fallbacks'
   assert.match(bundle, /--dsw-alias-bg-module-platform/)
   assert.match(bundle, /--dsw-alias-markdown-code-block/)
   assert.match(bundle, /--dsw-alias-label-primary/)
+  assert.match(bundle, /Changed files/)
+  assert.match(bundle, /data-aezy-turn-files/)
   assert.doesNotMatch(bundle, /--color-bg/)
 })

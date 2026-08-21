@@ -4,11 +4,12 @@ import {
   parsePorcelainV2,
 } from './git.js'
 import { TurnLedger } from './ledger.js'
+import { basename, summarizeTurn } from './summary.js'
 
 const ROUTE = '/aezy/api/project'
 const MAX_BODY_BYTES = 32 * 1024
 
-export { describeDiff, describeProject, parsePorcelainV2, TurnLedger }
+export { basename, describeDiff, describeProject, parsePorcelainV2, summarizeTurn, TurnLedger }
 export const inject = ['webServer', 'sessions', 'aezySecurity']
 
 function json(res, status, value) {

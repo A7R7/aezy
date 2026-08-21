@@ -42,13 +42,18 @@ try {
     time: 200,
     data: { turn: 1, reason: { kind: 'completed' } },
   })
-  await ledger.settle('http-session')
+
+  // The post-turn summary read is the synchronization boundary; callers do
+  // not need a private settle hook before the first authoritative response.
+  const settled = await ledger.view(root, 'http-session')
+  assert.equal(settled.turns[0].files.length, 1)
 
   const query = new URLSearchParams({ cwd: root, sessionId: 'http-session' })
   const view = await request(`/aezy/api/project/ledger?${query}`)
   assert.equal(view.turns.length, 1)
   const entry = view.turns[0].files[0]
   assert.equal(entry.path, 'file.txt')
+  assert.equal(entry.openPath, join(root, 'file.txt'))
 
   const reverted = await request('/aezy/api/project/revert', {
     method: 'POST',
@@ -72,7 +77,7 @@ try {
 
   const forbidden = await fetch(`${baseUrl}/aezy/api/project?${new URLSearchParams({ cwd: root })}`)
   assert.equal(forbidden.status, 403)
-  process.stdout.write('M1 real DSH HTTP ledger, safe revert, undo, and request fence passed.\n')
+  process.stdout.write('M1 real DSH HTTP post-turn summary, safe revert, undo, and request fence passed.\n')
 } finally {
   await rm(root, { recursive: true, force: true })
 }

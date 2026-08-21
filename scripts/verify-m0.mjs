@@ -127,6 +127,7 @@ try {
   invariant(/<!doctype html>/i.test(html), 'Aezy Web root did not serve the DSH frontend')
   invariant(html.includes('"id":"@aezy/brand"'), 'Aezy Web did not load the Aezy brand occupant')
   invariant(html.includes('"id":"@aezy/security"'), 'Aezy Web did not load the Aezy Security view')
+  invariant(html.includes('"id":"@aezy/project"'), 'Aezy Web did not load the Aezy Project views')
   invariant(
     !html.includes('"id":"@deepseek-ai/dsh-client-ui-brand-official"'),
     'Aezy Web still loads the disabled official DSH brand occupant',

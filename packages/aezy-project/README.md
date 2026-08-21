@@ -5,6 +5,14 @@ Git repository and exposes bounded structured status/diff reads under
 `/aezy/api/project/*`. The browser half contributes a `Changes` tab through
 DSH's public client-module and `conversation.view` slot seams.
 
+The same browser module takes priority `-10` in the public
+`conversation.chat.turnTail` chain. After a completed Turn it reads the
+authoritative Git ledger, waits for the asynchronous end scan to settle, and
+renders a compact Changed files row under the final assistant message. Unlike
+DSH's tool-location-derived Produced files row, this includes shell-created,
+modified, and removed files and suppresses files restored to their baseline
+within the same Turn.
+
 The HTTP boundary requires a non-simple `X-Aezy-Client: web` request header and
 a loopback authority, uses no shell interpolation, caps Git output, and
 validates every requested file against the repository's current structured

@@ -165,7 +165,7 @@ async function restoreState(root, path, metaRoot, state) {
   }
 }
 
-function publicTurn(turn) {
+function publicTurn(turn, root) {
   return {
     turn: turn.turn,
     startedAt: turn.startedAt,
@@ -174,6 +174,7 @@ function publicTurn(turn) {
     concurrent: turn.concurrent,
     files: turn.files.map(file => ({
       path: file.path,
+      openPath: resolve(root, safeRelativePath(root, file.path)),
       change: file.change,
       beforeFingerprint: file.beforeFingerprint,
       afterFingerprint: file.afterFingerprint,
@@ -193,6 +194,7 @@ export class TurnLedger {
   #active = new Map()
   #activeRoots = new Map()
   #sessionQueues = new Map()
+  #sessionErrors = new Map()
   #repoQueues = new Map()
   #warn
 
@@ -207,9 +209,16 @@ export class TurnLedger {
     if (!validSessionId(sessionId) || typeof cwd !== 'string') return
     const previous = this.#sessionQueues.get(sessionId) ?? Promise.resolve()
     const next = previous.then(async () => {
-      if (event.type === 'turn/start') await this.#start(sessionId, cwd, event)
-      else await this.#end(sessionId, cwd, event)
-    }).catch(error => { this.#warn(error) })
+      if (event.type === 'turn/start') {
+        await this.#start(sessionId, cwd, event)
+        this.#sessionErrors.delete(sessionId)
+      } else {
+        await this.#end(sessionId, cwd, event)
+      }
+    }).catch(error => {
+      this.#sessionErrors.set(sessionId, error)
+      this.#warn(error)
+    })
     this.#sessionQueues.set(sessionId, next)
   }
 
@@ -302,6 +311,14 @@ export class TurnLedger {
 
   async view(cwd, sessionId) {
     if (!validSessionId(sessionId)) throw new Error('sessionId is invalid')
+    // A turn/end reaches Web clients before this observer's Git scan and
+    // atomic ledger write necessarily finish. Waiting here makes the first
+    // post-turn summary request authoritative instead of race-dependent.
+    await this.settle(sessionId)
+    const failure = this.#sessionErrors.get(sessionId)
+    if (failure !== undefined) {
+      throw new Error(`Aezy could not summarize the latest turn: ${failure instanceof Error ? failure.message : String(failure)}`)
+    }
     const { root } = await repositoryFor(cwd)
     const metaRoot = resolve(await gitMetadataRoot(root), 'aezy')
     return this.#serial(root, async () => {
@@ -316,7 +333,13 @@ export class TurnLedger {
           status: receipt.status,
           createdAt: receipt.createdAt,
         }))
-      return { version: 1, sessionId, turns: turns.map(publicTurn), receipts }
+      return {
+        version: 1,
+        sessionId,
+        repositoryRoot: root,
+        turns: turns.map(turn => publicTurn(turn, root)),
+        receipts,
+      }
     })
   }
 

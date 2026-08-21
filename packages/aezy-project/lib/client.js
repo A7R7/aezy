@@ -6,6 +6,29 @@ window.__ModuleLoader__.load({
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 		let react = require("react");
 		let react_jsx_runtime = require("react/jsx-runtime");
+		//#region src/summary.js
+		/** Final, browser-safe projection of one authoritative ledger turn. */
+		function summarizeTurn(ledger, turnNumber) {
+			if (!Number.isSafeInteger(turnNumber) || turnNumber < 1) return null;
+			const turn = ledger?.turns?.find((candidate) => candidate.turn === turnNumber);
+			if (turn === void 0 || !Array.isArray(turn.files) || turn.files.length === 0) return null;
+			return {
+				turn: turn.turn,
+				concurrent: turn.concurrent === true,
+				files: turn.files.map((file) => ({
+					path: file.path,
+					openPath: file.openPath,
+					change: file.change,
+					afterFingerprint: file.afterFingerprint
+				}))
+			};
+		}
+		/** Trailing path segment for a compact Turn-tail chip. */
+		function basename(path) {
+			const at = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+			return at < 0 ? path : path.slice(at + 1);
+		}
+		//#endregion
 		//#region src/client/index.tsx
 		const palette = {
 			panel: "var(--dsw-alias-bg-base, #ffffff)",
@@ -20,6 +43,115 @@ window.__ModuleLoader__.load({
 			warning: "var(--dsw-alias-state-warn-label, #b45309)",
 			error: "var(--dsw-alias-state-error-primary, #dc1313)"
 		};
+		const SUMMARY_CHIP_LIMIT = 6;
+		const ledgerRequests = /* @__PURE__ */ new Map();
+		function loadLedger(cwd, sessionId) {
+			const key = `${sessionId}\0${cwd}`;
+			const cached = ledgerRequests.get(key);
+			if (cached !== void 0 && Date.now() - cached.at < 1e3) return cached.promise;
+			const promise = request("/aezy/api/project/ledger", {
+				cwd,
+				sessionId
+			}).catch((error) => {
+				ledgerRequests.delete(key);
+				throw error;
+			});
+			ledgerRequests.set(key, {
+				at: Date.now(),
+				promise
+			});
+			return promise;
+		}
+		function TurnChangedFiles({ matched, cwd, sessionId, openFile }) {
+			const [summary, setSummary] = (0, react.useState)(void 0);
+			const [error, setError] = (0, react.useState)(null);
+			(0, react.useEffect)(() => {
+				let live = true;
+				setSummary(void 0);
+				setError(null);
+				loadLedger(cwd, sessionId).then((ledger) => {
+					if (live) setSummary(summarizeTurn(ledger, matched.turn));
+				}).catch((reason) => {
+					if (live) setError(reason instanceof Error ? reason.message : String(reason));
+				});
+				return () => {
+					live = false;
+				};
+			}, [
+				cwd,
+				matched.turn,
+				sessionId
+			]);
+			if (error !== null) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				title: error,
+				style: {
+					marginTop: 14,
+					color: palette.error,
+					fontSize: 12
+				},
+				children: "Changed files unavailable"
+			});
+			if (summary === void 0 || summary === null) return null;
+			const visible = summary.files.slice(0, SUMMARY_CHIP_LIMIT);
+			const hidden = summary.files.length - visible.length;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				"data-aezy-turn-files": summary.turn,
+				style: {
+					marginTop: 14,
+					display: "flex",
+					alignItems: "center",
+					gap: 8,
+					flexWrap: "wrap",
+					color: palette.muted,
+					fontSize: 12
+				},
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: ["Changed files · ", summary.files.length] }),
+					visible.map((file) => file.afterFingerprint === null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						title: `${file.path} (removed)`,
+						style: {
+							maxWidth: 260,
+							overflow: "hidden",
+							textOverflow: "ellipsis",
+							whiteSpace: "nowrap",
+							padding: "2px 7px",
+							borderRadius: 6,
+							background: palette.interactive,
+							textDecoration: "line-through"
+						},
+						children: basename(file.path)
+					}, file.path) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+						type: "button",
+						title: file.path,
+						onClick: () => openFile(file.openPath),
+						style: {
+							maxWidth: 260,
+							overflow: "hidden",
+							textOverflow: "ellipsis",
+							whiteSpace: "nowrap",
+							padding: "2px 7px",
+							border: 0,
+							borderRadius: 6,
+							background: palette.interactive,
+							color: palette.text,
+							cursor: "pointer",
+							font: "inherit"
+						},
+						children: basename(file.path)
+					}, file.path)),
+					hidden > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
+						"+",
+						hidden,
+						" more"
+					] }),
+					summary.concurrent && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						title: "Another Session was active in this repository during the Turn",
+						style: { color: palette.warning },
+						children: "concurrent"
+					})
+				]
+			});
+		}
 		async function request(path, params) {
 			const query = new URLSearchParams(params);
 			const response = await fetch(`${path}?${query}`, {
@@ -486,6 +618,19 @@ window.__ModuleLoader__.load({
 		}
 		const inject = ["slots", "sessions"];
 		function apply(ctx) {
+			ctx.slots.inject("conversation.chat.turnTail", () => ctx.slots.register({
+				name: "conversation.chat.turnTail",
+				priority: -10,
+				select: (owner) => owner.turn.status === "closed" ? { turn: owner.turn.turn } : null,
+				inject: (sessionId) => {
+					const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd;
+					if (cwd === void 0) throw new Error(`aezy-project: session "${sessionId}" has no working directory`);
+					return {
+						cwd,
+						sessionId
+					};
+				}
+			}, TurnChangedFiles));
 			ctx.slots.inject("conversation.view", () => ctx.slots.register({
 				name: "conversation.view",
 				id: "changes",

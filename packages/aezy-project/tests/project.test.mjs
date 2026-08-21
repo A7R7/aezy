@@ -4,7 +4,9 @@ import { access, mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { describeDiff, describeProject, parsePorcelainV2, TurnLedger } from '../src/index.js'
+import {
+  basename, describeDiff, describeProject, parsePorcelainV2, summarizeTurn, TurnLedger,
+} from '../src/index.js'
 
 function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' })
@@ -70,6 +72,27 @@ test('diff reads only current status paths and fingerprints exact content', asyn
   await assert.rejects(() => describeDiff(root, 'not-in-status.txt'), /not present/)
 })
 
+test('Turn summary is bounded to one ledger turn and preserves removed-file facts', () => {
+  const ledger = {
+    turns: [{
+      turn: 2,
+      concurrent: true,
+      files: [
+        { path: 'src/changed.ts', openPath: '/repo/src/changed.ts', change: 'modified', afterFingerprint: 'a'.repeat(64) },
+        { path: 'old/deleted.ts', openPath: '/repo/old/deleted.ts', change: 'restored-or-removed', afterFingerprint: null },
+      ],
+    }],
+  }
+  assert.deepEqual(summarizeTurn(ledger, 2), {
+    turn: 2,
+    concurrent: true,
+    files: ledger.turns[0].files,
+  })
+  assert.equal(summarizeTurn(ledger, 1), null)
+  assert.equal(basename('src/changed.ts'), 'changed.ts')
+  assert.equal(basename('src\\windows.ts'), 'windows.ts')
+})
+
 test('turn ledger survives a fresh reader and safe revert preserves pre-turn dirty state', async () => {
   const root = await fixture()
   await writeFile(join(root, 'tracked.txt'), 'pre-turn\n')
@@ -86,12 +109,16 @@ test('turn ledger survives a fresh reader and safe revert preserves pre-turn dir
     time: 200,
     data: { turn: 1, reason: { kind: 'completed' } },
   })
-  await ledger.settle('ledger-session')
+
+  // The first post-turn read itself must await the asynchronous Git scan/write.
+  const liveView = await ledger.view(root, 'ledger-session')
+  assert.equal(liveView.turns.length, 1)
 
   const freshReader = new TurnLedger()
   const view = await freshReader.view(root, 'ledger-session')
   assert.equal(view.turns.length, 1)
   assert.deepEqual(view.turns[0].files.map(file => file.path), ['created.txt', 'tracked.txt'])
+  assert.equal(view.turns[0].files[0].openPath, join(root, 'created.txt'))
 
   const trackedEntry = view.turns[0].files.find(file => file.path === 'tracked.txt')
   const reverted = await freshReader.revert({

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { basename, summarizeTurn } from '../summary.js'
 
 type FileRow = {
   path: string
@@ -43,6 +44,7 @@ type DiffView = {
 
 type LedgerFile = {
   path: string
+  openPath: string
   change: 'created-or-dirtied' | 'restored-or-removed' | 'modified'
   beforeFingerprint: string | null
   afterFingerprint: string | null
@@ -86,6 +88,19 @@ type ChangesProps = {
   sessionId: string
 }
 
+type TurnTailOwner = {
+  turn: { turn: number; status: 'open' | 'closed' | 'unknown' }
+}
+
+type TurnSummaryProps = {
+  matched: { turn: number }
+  cwd: string
+  sessionId: string
+  openFile(path: string): void
+}
+
+type TurnSummary = NonNullable<ReturnType<typeof summarizeTurn>>
+
 const palette = {
   panel: 'var(--dsw-alias-bg-base, #ffffff)',
   elevated: 'var(--dsw-alias-bg-module-platform, #f9fafb)',
@@ -98,6 +113,57 @@ const palette = {
   accent: 'var(--dsw-alias-state-business-primary, #4d6bfe)',
   warning: 'var(--dsw-alias-state-warn-label, #b45309)',
   error: 'var(--dsw-alias-state-error-primary, #dc1313)',
+}
+
+const SUMMARY_CHIP_LIMIT = 6
+const ledgerRequests = new Map<string, { at: number; promise: Promise<LedgerView> }>()
+
+function loadLedger(cwd: string, sessionId: string): Promise<LedgerView> {
+  const key = `${sessionId}\0${cwd}`
+  const cached = ledgerRequests.get(key)
+  // Historical Turn tails mount together. Briefly share their one authoritative
+  // read, while a genuinely later Turn gets a fresh post-settle snapshot.
+  if (cached !== undefined && Date.now() - cached.at < 1000) return cached.promise
+  const promise = request<LedgerView>('/aezy/api/project/ledger', { cwd, sessionId })
+    .catch((error) => {
+      ledgerRequests.delete(key)
+      throw error
+    })
+  ledgerRequests.set(key, { at: Date.now(), promise })
+  return promise
+}
+
+function TurnChangedFiles({ matched, cwd, sessionId, openFile }: TurnSummaryProps) {
+  const [summary, setSummary] = useState<TurnSummary | null | undefined>(undefined)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let live = true
+    setSummary(undefined)
+    setError(null)
+    loadLedger(cwd, sessionId).then((ledger) => {
+      if (live) setSummary(summarizeTurn(ledger, matched.turn))
+    }).catch((reason) => {
+      if (live) setError(reason instanceof Error ? reason.message : String(reason))
+    })
+    return () => { live = false }
+  }, [cwd, matched.turn, sessionId])
+
+  if (error !== null) {
+    return <div title={error} style={{ marginTop: 14, color: palette.error, fontSize: 12 }}>Changed files unavailable</div>
+  }
+  if (summary === undefined || summary === null) return null
+
+  const visible = summary.files.slice(0, SUMMARY_CHIP_LIMIT)
+  const hidden = summary.files.length - visible.length
+  return <div data-aezy-turn-files={summary.turn} style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', color: palette.muted, fontSize: 12 }}>
+    <span>Changed files · {summary.files.length}</span>
+    {visible.map(file => file.afterFingerprint === null
+      ? <span key={file.path} title={`${file.path} (removed)`} style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 7px', borderRadius: 6, background: palette.interactive, textDecoration: 'line-through' }}>{basename(file.path)}</span>
+      : <button key={file.path} type="button" title={file.path} onClick={() => openFile(file.openPath)} style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '2px 7px', border: 0, borderRadius: 6, background: palette.interactive, color: palette.text, cursor: 'pointer', font: 'inherit' }}>{basename(file.path)}</button>)}
+    {hidden > 0 && <span>+{hidden} more</span>}
+    {summary.concurrent && <span title="Another Session was active in this repository during the Turn" style={{ color: palette.warning }}>concurrent</span>}
+  </div>
 }
 
 async function request<T>(path: string, params: Record<string, string>): Promise<T> {
@@ -309,6 +375,19 @@ function ChangesView({ cwd, sessionId }: ChangesProps) {
 export const inject = ['slots', 'sessions']
 
 export function apply(ctx: ClientContext): void {
+  ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
+    name: 'conversation.chat.turnTail',
+    priority: -10,
+    select: (owner: TurnTailOwner) => owner.turn.status === 'closed'
+      ? { turn: owner.turn.turn }
+      : null,
+    inject: (sessionId: string): Omit<TurnSummaryProps, 'matched' | 'openFile'> => {
+      const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
+      if (cwd === undefined) throw new Error(`aezy-project: session "${sessionId}" has no working directory`)
+      return { cwd, sessionId }
+    },
+  }, TurnChangedFiles))
+
   ctx.slots.inject('conversation.view', () => ctx.slots.register({
     name: 'conversation.view',
     id: 'changes',
