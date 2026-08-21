@@ -36,3 +36,33 @@ capture limit fail closed instead of taking a lossy path.
 In the Aezy Web composition, M2's `aezySecurity` service is a required runtime
 dependency. Successful user-confirmed Revert and Undo actions enter the shared
 Security audit projection without adding a second approval prompt.
+
+## M3 Worktree and Handoff
+
+The same out-of-tree plugin now owns a repository-scoped Worktree lifecycle.
+Creation accepts a short validated name and an exact commit id, derives branch
+`aezy/<name>`, and derives its target only under a repository-specific sibling
+directory. It never accepts an arbitrary target path. A dirty Local source is
+allowed only after explicit confirmation because its staged, unstaged, and
+untracked state is intentionally not copied into the new Worktree.
+
+The Web `Worktrees` view uses DSH's public Workspace and Session services to
+register the created path, create or connect its blank Session, bind that
+Session to the Worktree, and open it. The Host also observes public Session
+lifecycle events, so Turn activity and disposal remain authoritative after a
+reload. Each linked Worktree has its own Git metadata directory and therefore
+its own Turn ledger, while lifecycle and handoff records live under the shared
+Git common metadata directory.
+
+A structured handoff records repository and Worktree ids, exact base/head,
+branch, commits ahead/behind, status rows, changed files, validation results,
+and bounded instructions. `Handoff to Local` generates a fresh record, uses
+the existing DSH archive action, releases the Worktree binding, and opens a
+Local Session. It does not merge, push, create a PR, or delete a branch.
+
+Cleanup fails closed unless the path is still the exact Git-registered Aezy
+Worktree, the branch has not drifted, no bound Session or Turn is active, the
+worktree is clean, and the latest clean handoff matches current HEAD. Cleanup
+calls ordinary `git worktree remove` without force and retains the branch and
+commits. Create, bind, handoff, release, and cleanup enter M2's shared Security
+audit as explicit user-confirmed actions.

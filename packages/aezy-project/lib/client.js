@@ -641,7 +641,8 @@ window.__ModuleLoader__.load({
 										fontSize: 11
 									},
 									children: [
-										"Local · ",
+										project.environment.kind === "worktree" ? "Worktree" : "Local",
+										" · ",
 										project.environment.platform,
 										"/",
 										project.environment.arch,
@@ -856,7 +857,613 @@ window.__ModuleLoader__.load({
 				]
 			});
 		}
-		const inject = ["slots", "sessions"];
+		function shortCommit(value) {
+			return value === null ? "unknown" : value.slice(0, 10);
+		}
+		function parseValidationLines(value) {
+			if (value.trim() === "") return [];
+			return value.split("\n").map((line, index) => {
+				const [rawStatus, rawCommand, ...rawSummary] = line.split("|");
+				const status = rawStatus?.trim();
+				const command = rawCommand?.trim() ?? "";
+				const summary = rawSummary.join("|").trim();
+				if (status !== "passed" && status !== "failed" && status !== "skipped") throw new Error(`Validation line ${index + 1} must start with passed, failed, or skipped`);
+				if (command === "") throw new Error(`Validation line ${index + 1} needs a command after "|"`);
+				return {
+					status,
+					command,
+					...summary === "" ? {} : { summary }
+				};
+			});
+		}
+		function WorktreesView({ cwd, sessionId, openWorktree, returnToLocal }) {
+			const [project, setProject] = (0, react.useState)(null);
+			const [registry, setRegistry] = (0, react.useState)(null);
+			const [name, setName] = (0, react.useState)("");
+			const [instructions, setInstructions] = (0, react.useState)("Review the recorded branch and continue from the exact handoff head.");
+			const [validationText, setValidationText] = (0, react.useState)("");
+			const [handoff, setHandoff] = (0, react.useState)(null);
+			const [loading, setLoading] = (0, react.useState)(false);
+			const [mutating, setMutating] = (0, react.useState)(false);
+			const [error, setError] = (0, react.useState)(null);
+			const refresh = (0, react.useCallback)(async () => {
+				setLoading(true);
+				setError(null);
+				try {
+					const [nextProject, nextRegistry] = await Promise.all([request("/aezy/api/project", { cwd }), request("/aezy/api/project/worktrees", { cwd })]);
+					setProject(nextProject);
+					setRegistry(nextRegistry);
+				} catch (reason) {
+					setError(reason instanceof Error ? reason.message : String(reason));
+				} finally {
+					setLoading(false);
+				}
+			}, [cwd]);
+			(0, react.useEffect)(() => {
+				refresh();
+			}, [refresh]);
+			const current = registry?.worktrees.find((item) => item.id === registry.currentWorktreeId);
+			const createWorktree = (0, react.useCallback)(async () => {
+				if (project?.repository.head === null || name.trim() === "") return;
+				let confirmDirty = false;
+				if (!project.repository.clean) {
+					confirmDirty = window.confirm("The Local repository is dirty. The Worktree will start from the displayed committed HEAD only; current staged, unstaged, and untracked changes stay in Local. Continue?");
+					if (!confirmDirty) return;
+				}
+				if (!window.confirm(`Create aezy/${name.trim()} from ${shortCommit(project.repository.head)} in Aezy's repository-specific Worktree directory?`)) return;
+				setMutating(true);
+				setError(null);
+				try {
+					const created = await mutate("/aezy/api/project/worktrees/create", {
+						cwd,
+						name: name.trim(),
+						base: project.repository.head,
+						confirmDirty
+					});
+					await openWorktree(created.worktree.path, created.worktree.id);
+				} catch (reason) {
+					setError(reason instanceof Error ? reason.message : String(reason));
+					await refresh();
+				} finally {
+					setMutating(false);
+				}
+			}, [
+				cwd,
+				name,
+				openWorktree,
+				project,
+				refresh
+			]);
+			const createHandoff = (0, react.useCallback)(async () => {
+				const result = await mutate("/aezy/api/project/worktrees/handoff", {
+					cwd,
+					sessionId,
+					instructions,
+					validations: parseValidationLines(validationText)
+				});
+				setHandoff(result.handoff);
+				await refresh();
+				return result.handoff;
+			}, [
+				cwd,
+				instructions,
+				refresh,
+				sessionId,
+				validationText
+			]);
+			const generateHandoff = (0, react.useCallback)(async () => {
+				setMutating(true);
+				setError(null);
+				try {
+					await createHandoff();
+				} catch (reason) {
+					setError(reason instanceof Error ? reason.message : String(reason));
+				} finally {
+					setMutating(false);
+				}
+			}, [createHandoff]);
+			const handoffToLocal = (0, react.useCallback)(async () => {
+				if (current === void 0 || registry === null) return;
+				if (!window.confirm("Generate a fresh handoff, archive this Worktree Session, release its binding, and open a Local Session?")) return;
+				setMutating(true);
+				setError(null);
+				try {
+					await createHandoff();
+					await returnToLocal(registry.repository.root, current.id, cwd, sessionId);
+				} catch (reason) {
+					setError(reason instanceof Error ? reason.message : String(reason));
+				} finally {
+					setMutating(false);
+				}
+			}, [
+				createHandoff,
+				current,
+				cwd,
+				registry,
+				returnToLocal,
+				sessionId
+			]);
+			const loadHandoff = (0, react.useCallback)(async (item) => {
+				if (item.latestHandoffId === null) return;
+				setError(null);
+				try {
+					setHandoff(await request("/aezy/api/project/worktrees/handoff", {
+						cwd,
+						handoffId: item.latestHandoffId
+					}));
+				} catch (reason) {
+					setError(reason instanceof Error ? reason.message : String(reason));
+				}
+			}, [cwd]);
+			const cleanup = (0, react.useCallback)(async (item) => {
+				if (!window.confirm(`Remove the clean Worktree directory for ${item.branch}? Aezy will retain the branch and its commits.`)) return;
+				setMutating(true);
+				setError(null);
+				try {
+					await mutate("/aezy/api/project/worktrees/cleanup", {
+						cwd,
+						worktreeId: item.id
+					});
+					await refresh();
+				} catch (reason) {
+					setError(reason instanceof Error ? reason.message : String(reason));
+				} finally {
+					setMutating(false);
+				}
+			}, [cwd, refresh]);
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				style: {
+					height: "100%",
+					overflow: "auto",
+					padding: "18px 22px",
+					background: palette.panel,
+					color: palette.text
+				},
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+						style: {
+							display: "flex",
+							alignItems: "flex-start",
+							justifyContent: "space-between",
+							gap: 16,
+							paddingBottom: 14,
+							borderBottom: `1px solid ${palette.border}`
+						},
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
+							style: { fontSize: 15 },
+							children: "Worktrees & Handoff"
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							title: registry?.managedRoot,
+							style: {
+								marginTop: 4,
+								color: palette.muted,
+								fontFamily: "monospace",
+								fontSize: 11
+							},
+							children: registry?.managedRoot ?? "Loading repository identity…"
+						})] }), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							onClick: () => void refresh(),
+							disabled: loading,
+							style: {
+								padding: "6px 10px",
+								borderRadius: 6,
+								border: `1px solid ${palette.border}`,
+								background: palette.button,
+								color: palette.text
+							},
+							children: loading ? "Refreshing…" : "Refresh"
+						})]
+					}),
+					error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						role: "alert",
+						style: {
+							marginTop: 14,
+							padding: 10,
+							border: `1px solid ${palette.error}`,
+							borderRadius: 7,
+							color: palette.error
+						},
+						children: error
+					}),
+					project?.environment.kind === "local" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						style: {
+							marginTop: 16,
+							padding: 14,
+							border: `1px solid ${palette.border}`,
+							borderRadius: 8,
+							background: palette.elevated
+						},
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
+								style: {
+									margin: "0 0 6px",
+									fontSize: 14
+								},
+								children: "Create isolated Worktree Session"
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								style: {
+									color: palette.muted,
+									fontSize: 12
+								},
+								children: [
+									"Exact base ",
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: project.repository.head ?? "unborn" }),
+									". Local changes are never copied implicitly."
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								style: {
+									display: "flex",
+									gap: 8,
+									marginTop: 12
+								},
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										style: {
+											alignSelf: "center",
+											color: palette.muted,
+											fontFamily: "monospace",
+											fontSize: 12
+										},
+										children: "aezy/"
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+										value: name,
+										onChange: (event) => setName(event.target.value.toLowerCase()),
+										placeholder: "task-name",
+										"aria-label": "Worktree name",
+										style: {
+											flex: "1 1 240px",
+											minWidth: 120,
+											padding: "7px 9px",
+											border: `1px solid ${palette.border}`,
+											borderRadius: 6,
+											background: palette.panel,
+											color: palette.text
+										}
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										onClick: () => void createWorktree(),
+										disabled: mutating || name.trim() === "" || project.repository.head === null,
+										style: {
+											padding: "7px 11px",
+											border: `1px solid ${palette.border}`,
+											borderRadius: 6,
+											background: palette.button,
+											color: palette.text
+										},
+										children: mutating ? "Creating…" : "Create & open Session"
+									})
+								]
+							}),
+							!project.repository.clean && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								style: {
+									marginTop: 8,
+									color: palette.warning,
+									fontSize: 12
+								},
+								children: "Local is dirty; creation requires an explicit confirmation and uses committed HEAD only."
+							})
+						]
+					}),
+					project?.environment.kind === "worktree" && current === void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						style: {
+							marginTop: 18,
+							padding: 14,
+							border: `1px solid ${palette.warning}`,
+							borderRadius: 8,
+							color: palette.warning
+						},
+						children: "This is a Git worktree, but it is not owned by Aezy's M3 registry. Lifecycle actions are disabled."
+					}),
+					current !== void 0 && registry !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						style: {
+							marginTop: 16,
+							padding: 14,
+							border: `1px solid ${palette.border}`,
+							borderRadius: 8,
+							background: palette.elevated
+						},
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								style: {
+									display: "flex",
+									justifyContent: "space-between",
+									gap: 12,
+									flexWrap: "wrap"
+								},
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
+									style: {
+										margin: 0,
+										fontSize: 14
+									},
+									children: current.branch
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									style: {
+										marginTop: 4,
+										color: palette.muted,
+										fontFamily: "monospace",
+										fontSize: 11
+									},
+									children: current.path
+								})] }), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									style: {
+										color: palette.accent,
+										fontSize: 12
+									},
+									children: [
+										current.state,
+										" · ",
+										shortCommit(current.head)
+									]
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+								style: {
+									display: "block",
+									marginTop: 14,
+									color: palette.muted,
+									fontSize: 12
+								},
+								children: ["Handoff instructions", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
+									value: instructions,
+									onChange: (event) => setInstructions(event.target.value),
+									rows: 4,
+									style: {
+										display: "block",
+										boxSizing: "border-box",
+										width: "100%",
+										marginTop: 6,
+										padding: 9,
+										resize: "vertical",
+										border: `1px solid ${palette.border}`,
+										borderRadius: 6,
+										background: palette.panel,
+										color: palette.text
+									}
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+								style: {
+									display: "block",
+									marginTop: 12,
+									color: palette.muted,
+									fontSize: 12
+								},
+								children: [
+									"Validation results — one per line: ",
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", { children: "passed | command | summary" }),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
+										value: validationText,
+										onChange: (event) => setValidationText(event.target.value),
+										rows: 3,
+										placeholder: "passed | pnpm test | 13 tests passed",
+										style: {
+											display: "block",
+											boxSizing: "border-box",
+											width: "100%",
+											marginTop: 6,
+											padding: 9,
+											resize: "vertical",
+											border: `1px solid ${palette.border}`,
+											borderRadius: 6,
+											background: palette.panel,
+											color: palette.text,
+											fontFamily: "monospace",
+											fontSize: 12
+										}
+									})
+								]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								style: {
+									display: "flex",
+									gap: 8,
+									marginTop: 12,
+									flexWrap: "wrap"
+								},
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									onClick: () => void generateHandoff(),
+									disabled: mutating || instructions.trim() === "",
+									style: {
+										padding: "7px 11px",
+										border: `1px solid ${palette.border}`,
+										borderRadius: 6,
+										background: palette.button,
+										color: palette.text
+									},
+									children: "Generate handoff"
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+									type: "button",
+									onClick: () => void handoffToLocal(),
+									disabled: mutating || instructions.trim() === "",
+									style: {
+										padding: "7px 11px",
+										border: `1px solid ${palette.accent}`,
+										borderRadius: 6,
+										background: palette.button,
+										color: palette.accent
+									},
+									children: "Handoff to Local"
+								})]
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								style: {
+									marginTop: 9,
+									color: palette.muted,
+									fontSize: 11
+								},
+								children: "Handoff records exact base/head, status, changed files, validations, and instructions. Returning archives and releases this Session; it does not merge or delete the branch."
+							})
+						]
+					}),
+					registry !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						style: { marginTop: 18 },
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
+								style: {
+									margin: "0 0 9px",
+									fontSize: 14
+								},
+								children: "Managed lifecycle"
+							}),
+							registry.worktrees.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								style: { color: palette.muted },
+								children: "No Aezy-managed worktrees."
+							}),
+							registry.worktrees.map((item) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								style: {
+									display: "grid",
+									gridTemplateColumns: "minmax(0, 1fr) auto",
+									gap: 12,
+									marginTop: 8,
+									padding: 11,
+									border: `1px solid ${palette.border}`,
+									borderRadius: 7
+								},
+								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									style: { minWidth: 0 },
+									children: [
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
+											style: {
+												fontFamily: "monospace",
+												fontSize: 12
+											},
+											children: item.branch
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											style: {
+												marginLeft: 8,
+												color: item.state === "failed" ? palette.error : palette.muted,
+												fontSize: 11
+											},
+											children: item.state
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+											title: item.path,
+											style: {
+												marginTop: 3,
+												overflow: "hidden",
+												textOverflow: "ellipsis",
+												whiteSpace: "nowrap",
+												color: palette.muted,
+												fontFamily: "monospace",
+												fontSize: 11
+											},
+											children: item.path
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+											style: {
+												marginTop: 3,
+												color: palette.muted,
+												fontSize: 11
+											},
+											children: [
+												item.sessions.filter((binding) => binding.status === "active").length,
+												" active Sessions · base ",
+												shortCommit(item.base),
+												" · head ",
+												shortCommit(item.head)
+											]
+										}),
+										item.error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+											style: {
+												marginTop: 4,
+												color: palette.error,
+												fontSize: 11
+											},
+											children: item.error
+										})
+									]
+								}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									style: {
+										display: "flex",
+										alignItems: "center",
+										gap: 6
+									},
+									children: [item.latestHandoffId !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										onClick: () => void loadHandoff(item),
+										style: {
+											padding: "5px 8px",
+											border: `1px solid ${palette.border}`,
+											borderRadius: 5,
+											background: palette.button,
+											color: palette.text
+										},
+										children: "View handoff"
+									}), project?.environment.kind === "local" && item.state !== "cleaned" && item.state !== "failed" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+										type: "button",
+										onClick: () => void cleanup(item),
+										disabled: mutating,
+										style: {
+											padding: "5px 8px",
+											border: `1px solid ${palette.warning}`,
+											borderRadius: 5,
+											background: palette.button,
+											color: palette.warning
+										},
+										children: "Clean up"
+									})]
+								})]
+							}, item.id))
+						]
+					}),
+					handoff !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+						style: { marginTop: 18 },
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							style: {
+								display: "flex",
+								alignItems: "center",
+								justifyContent: "space-between",
+								gap: 10
+							},
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("h2", {
+								style: {
+									margin: 0,
+									fontSize: 14
+								},
+								children: ["Structured handoff ", handoff.id]
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								onClick: () => void navigator.clipboard.writeText(JSON.stringify(handoff, null, 2)),
+								style: {
+									padding: "5px 8px",
+									border: `1px solid ${palette.border}`,
+									borderRadius: 5,
+									background: palette.button,
+									color: palette.text
+								},
+								children: "Copy JSON"
+							})]
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("pre", {
+							style: {
+								margin: "8px 0 0",
+								padding: 12,
+								maxHeight: 420,
+								overflow: "auto",
+								border: `1px solid ${palette.border}`,
+								borderRadius: 7,
+								background: palette.code,
+								color: palette.text,
+								fontSize: 11,
+								lineHeight: 1.5
+							},
+							children: JSON.stringify(handoff, null, 2)
+						})]
+					})
+				]
+			});
+		}
+		const inject = [
+			"slots",
+			"sessions",
+			"workspaces"
+		];
 		function apply(ctx) {
 			ctx.slots.inject("conversation.chat.turnTail", () => ctx.slots.register({
 				name: "conversation.chat.turnTail",
@@ -885,6 +1492,43 @@ window.__ModuleLoader__.load({
 					};
 				}
 			}, ChangesView));
+			ctx.slots.inject("conversation.view", () => ctx.slots.register({
+				name: "conversation.view",
+				id: "worktrees",
+				order: 6,
+				label: () => "Worktrees",
+				inject: (sessionId) => {
+					const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd;
+					if (cwd === void 0) throw new Error(`aezy-project: session "${sessionId}" has no working directory`);
+					return {
+						cwd,
+						sessionId
+					};
+				}
+			}, (props) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(WorktreesView, {
+				...props,
+				openWorktree: async (path, worktreeId) => {
+					const workspace = await ctx.workspaces.create({ path });
+					const sessionId = await ctx.workspaces.connectWorkspace(workspace.workspaceId);
+					await mutate("/aezy/api/project/worktrees/bind", {
+						cwd: path,
+						worktreeId,
+						sessionId
+					});
+					ctx.sessions.open(sessionId);
+				},
+				returnToLocal: async (repositoryRoot, worktreeId, cwd, sessionId) => {
+					const workspace = await ctx.workspaces.create({ path: repositoryRoot });
+					const localSessionId = await ctx.workspaces.connectWorkspace(workspace.workspaceId);
+					await ctx.workspaces.archiveSession(sessionId);
+					await mutate("/aezy/api/project/worktrees/release", {
+						cwd,
+						worktreeId,
+						sessionId
+					});
+					ctx.sessions.open(localSessionId);
+				}
+			})));
 		}
 		//#endregion
 		exports.apply = apply;

@@ -11,7 +11,7 @@ type FileRow = {
 }
 
 type ProjectView = {
-  project: { name: string; cwd: string; root: string; environment: 'local' }
+  project: { name: string; cwd: string; root: string; environment: 'local' | 'worktree' }
   repository: {
     branch: string | null
     detached: boolean
@@ -22,13 +22,15 @@ type ProjectView = {
     clean: boolean
   }
   environment: {
-    kind: 'local'
+    kind: 'local' | 'worktree'
     platform: string
     arch: string
     node: string
     git: string | null
     shell: string | null
     packageManager: string | null
+    gitDir: string
+    commonDir: string
   }
   files: FileRow[]
 }
@@ -102,7 +104,15 @@ type ClientContext = {
     inject(name: string, register: () => (() => void)): void
     register(options: Record<string, unknown>, component: unknown): () => void
   }
-  sessions: { list: Snapshot<SessionsState> }
+  sessions: {
+    list: Snapshot<SessionsState>
+    open(sessionId: string): void
+  }
+  workspaces: {
+    create(input: { path: string }): Promise<{ workspaceId: string }>
+    connectWorkspace(workspaceId: string): Promise<string>
+    archiveSession(sessionId: string): Promise<void>
+  }
 }
 
 type ChangesProps = {
@@ -122,6 +132,56 @@ type TurnSummaryProps = {
 }
 
 type TurnSummary = NonNullable<ReturnType<typeof summarizeTurn>>
+
+type WorktreeRecord = {
+  id: string
+  name: string
+  path: string
+  branch: string
+  base: string
+  head: string | null
+  state: 'creating' | 'active' | 'failed' | 'handed-off' | 'cleaned'
+  sourceDirty: boolean
+  error: string | null
+  latestHandoffId: string | null
+  sessions: Array<{
+    id: string
+    status: 'active' | 'released' | 'disposed'
+    activeTurn: boolean
+  }>
+}
+
+type WorktreeList = {
+  repository: { root: string; commonDir: string }
+  managedRoot: string
+  currentWorktreeId: string | null
+  worktrees: WorktreeRecord[]
+}
+
+type Handoff = {
+  id: string
+  createdAt: number
+  direction: 'worktree-to-local'
+  repository: { root: string; worktreePath: string; worktreeId: string }
+  git: {
+    branch: string
+    base: string
+    head: string
+    commitsBehindBase: number
+    commitsAheadOfBase: number
+    clean: boolean
+    files: Array<{ path: string; indexStatus: string; worktreeStatus: string; conflict: boolean }>
+  }
+  validations: Array<{ command: string; status: 'passed' | 'failed' | 'skipped'; summary?: string }>
+  instructions: string
+}
+
+type WorktreesProps = {
+  cwd: string
+  sessionId: string
+  openWorktree(path: string, worktreeId: string): Promise<void>
+  returnToLocal(repositoryRoot: string, worktreeId: string, cwd: string, sessionId: string): Promise<void>
+}
 
 const palette = {
   panel: 'var(--dsw-alias-bg-base, #ffffff)',
@@ -435,7 +495,7 @@ function ChangesView({ cwd, sessionId }: ChangesProps) {
         </div>
         <div title={project?.project.root} style={{ marginTop: 4, color: palette.muted, fontFamily: 'monospace', fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{project?.project.root ?? cwd}</div>
         {project !== null && <div style={{ marginTop: 5, color: palette.muted, fontSize: 11 }}>
-          Local · {project.environment.platform}/{project.environment.arch} · {project.environment.node}
+          {project.environment.kind === 'worktree' ? 'Worktree' : 'Local'} · {project.environment.platform}/{project.environment.arch} · {project.environment.node}
           {project.environment.packageManager ? ` · ${project.environment.packageManager}` : ''}
         </div>}
       </div>
@@ -482,7 +542,225 @@ function ChangesView({ cwd, sessionId }: ChangesProps) {
   </div>
 }
 
-export const inject = ['slots', 'sessions']
+function shortCommit(value: string | null): string {
+  return value === null ? 'unknown' : value.slice(0, 10)
+}
+
+function parseValidationLines(value: string): Handoff['validations'] {
+  if (value.trim() === '') return []
+  return value.split('\n').map((line, index) => {
+    const [rawStatus, rawCommand, ...rawSummary] = line.split('|')
+    const status = rawStatus?.trim()
+    const command = rawCommand?.trim() ?? ''
+    const summary = rawSummary.join('|').trim()
+    if (status !== 'passed' && status !== 'failed' && status !== 'skipped') {
+      throw new Error(`Validation line ${index + 1} must start with passed, failed, or skipped`)
+    }
+    if (command === '') throw new Error(`Validation line ${index + 1} needs a command after "|"`)
+    return { status, command, ...(summary === '' ? {} : { summary }) }
+  })
+}
+
+function WorktreesView({ cwd, sessionId, openWorktree, returnToLocal }: WorktreesProps) {
+  const [project, setProject] = useState<ProjectView | null>(null)
+  const [registry, setRegistry] = useState<WorktreeList | null>(null)
+  const [name, setName] = useState('')
+  const [instructions, setInstructions] = useState('Review the recorded branch and continue from the exact handoff head.')
+  const [validationText, setValidationText] = useState('')
+  const [handoff, setHandoff] = useState<Handoff | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [mutating, setMutating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [nextProject, nextRegistry] = await Promise.all([
+        request<ProjectView>('/aezy/api/project', { cwd }),
+        request<WorktreeList>('/aezy/api/project/worktrees', { cwd }),
+      ])
+      setProject(nextProject)
+      setRegistry(nextRegistry)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setLoading(false)
+    }
+  }, [cwd])
+
+  useEffect(() => { void refresh() }, [refresh])
+
+  const current = registry?.worktrees.find(item => item.id === registry.currentWorktreeId)
+
+  const createWorktree = useCallback(async () => {
+    if (project?.repository.head === null || name.trim() === '') return
+    let confirmDirty = false
+    if (!project.repository.clean) {
+      confirmDirty = window.confirm('The Local repository is dirty. The Worktree will start from the displayed committed HEAD only; current staged, unstaged, and untracked changes stay in Local. Continue?')
+      if (!confirmDirty) return
+    }
+    if (!window.confirm(`Create aezy/${name.trim()} from ${shortCommit(project.repository.head)} in Aezy's repository-specific Worktree directory?`)) return
+    setMutating(true)
+    setError(null)
+    try {
+      const created = await mutate<{ worktree: WorktreeRecord }>('/aezy/api/project/worktrees/create', {
+        cwd,
+        name: name.trim(),
+        base: project.repository.head,
+        confirmDirty,
+      })
+      await openWorktree(created.worktree.path, created.worktree.id)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+      await refresh()
+    } finally {
+      setMutating(false)
+    }
+  }, [cwd, name, openWorktree, project, refresh])
+
+  const createHandoff = useCallback(async (): Promise<Handoff> => {
+    const result = await mutate<{ handoff: Handoff }>('/aezy/api/project/worktrees/handoff', {
+      cwd,
+      sessionId,
+      instructions,
+      validations: parseValidationLines(validationText),
+    })
+    setHandoff(result.handoff)
+    await refresh()
+    return result.handoff
+  }, [cwd, instructions, refresh, sessionId, validationText])
+
+  const generateHandoff = useCallback(async () => {
+    setMutating(true)
+    setError(null)
+    try {
+      await createHandoff()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setMutating(false)
+    }
+  }, [createHandoff])
+
+  const handoffToLocal = useCallback(async () => {
+    if (current === undefined || registry === null) return
+    if (!window.confirm('Generate a fresh handoff, archive this Worktree Session, release its binding, and open a Local Session?')) return
+    setMutating(true)
+    setError(null)
+    try {
+      await createHandoff()
+      await returnToLocal(registry.repository.root, current.id, cwd, sessionId)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setMutating(false)
+    }
+  }, [createHandoff, current, cwd, registry, returnToLocal, sessionId])
+
+  const loadHandoff = useCallback(async (item: WorktreeRecord) => {
+    if (item.latestHandoffId === null) return
+    setError(null)
+    try {
+      setHandoff(await request<Handoff>('/aezy/api/project/worktrees/handoff', {
+        cwd,
+        handoffId: item.latestHandoffId,
+      }))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }
+  }, [cwd])
+
+  const cleanup = useCallback(async (item: WorktreeRecord) => {
+    if (!window.confirm(`Remove the clean Worktree directory for ${item.branch}? Aezy will retain the branch and its commits.`)) return
+    setMutating(true)
+    setError(null)
+    try {
+      await mutate('/aezy/api/project/worktrees/cleanup', { cwd, worktreeId: item.id })
+      await refresh()
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setMutating(false)
+    }
+  }, [cwd, refresh])
+
+  return <div style={{ height: '100%', overflow: 'auto', padding: '18px 22px', background: palette.panel, color: palette.text }}>
+    <header style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, paddingBottom: 14, borderBottom: `1px solid ${palette.border}` }}>
+      <div>
+        <strong style={{ fontSize: 15 }}>Worktrees &amp; Handoff</strong>
+        <div title={registry?.managedRoot} style={{ marginTop: 4, color: palette.muted, fontFamily: 'monospace', fontSize: 11 }}>{registry?.managedRoot ?? 'Loading repository identity…'}</div>
+      </div>
+      <button type="button" onClick={() => void refresh()} disabled={loading} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${palette.border}`, background: palette.button, color: palette.text }}>{loading ? 'Refreshing…' : 'Refresh'}</button>
+    </header>
+
+    {error !== null && <div role="alert" style={{ marginTop: 14, padding: 10, border: `1px solid ${palette.error}`, borderRadius: 7, color: palette.error }}>{error}</div>}
+
+    {project?.environment.kind === 'local' && <section style={{ marginTop: 16, padding: 14, border: `1px solid ${palette.border}`, borderRadius: 8, background: palette.elevated }}>
+      <h2 style={{ margin: '0 0 6px', fontSize: 14 }}>Create isolated Worktree Session</h2>
+      <div style={{ color: palette.muted, fontSize: 12 }}>Exact base <code>{project.repository.head ?? 'unborn'}</code>. Local changes are never copied implicitly.</div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+        <span style={{ alignSelf: 'center', color: palette.muted, fontFamily: 'monospace', fontSize: 12 }}>aezy/</span>
+        <input value={name} onChange={event => setName(event.target.value.toLowerCase())} placeholder="task-name" aria-label="Worktree name" style={{ flex: '1 1 240px', minWidth: 120, padding: '7px 9px', border: `1px solid ${palette.border}`, borderRadius: 6, background: palette.panel, color: palette.text }} />
+        <button type="button" onClick={() => void createWorktree()} disabled={mutating || name.trim() === '' || project.repository.head === null} style={{ padding: '7px 11px', border: `1px solid ${palette.border}`, borderRadius: 6, background: palette.button, color: palette.text }}>{mutating ? 'Creating…' : 'Create & open Session'}</button>
+      </div>
+      {!project.repository.clean && <div style={{ marginTop: 8, color: palette.warning, fontSize: 12 }}>Local is dirty; creation requires an explicit confirmation and uses committed HEAD only.</div>}
+    </section>}
+
+    {project?.environment.kind === 'worktree' && current === undefined && <div style={{ marginTop: 18, padding: 14, border: `1px solid ${palette.warning}`, borderRadius: 8, color: palette.warning }}>This is a Git worktree, but it is not owned by Aezy's M3 registry. Lifecycle actions are disabled.</div>}
+
+    {current !== undefined && registry !== null && <section style={{ marginTop: 16, padding: 14, border: `1px solid ${palette.border}`, borderRadius: 8, background: palette.elevated }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 14 }}>{current.branch}</h2>
+          <div style={{ marginTop: 4, color: palette.muted, fontFamily: 'monospace', fontSize: 11 }}>{current.path}</div>
+        </div>
+        <span style={{ color: palette.accent, fontSize: 12 }}>{current.state} · {shortCommit(current.head)}</span>
+      </div>
+      <label style={{ display: 'block', marginTop: 14, color: palette.muted, fontSize: 12 }}>
+        Handoff instructions
+        <textarea value={instructions} onChange={event => setInstructions(event.target.value)} rows={4} style={{ display: 'block', boxSizing: 'border-box', width: '100%', marginTop: 6, padding: 9, resize: 'vertical', border: `1px solid ${palette.border}`, borderRadius: 6, background: palette.panel, color: palette.text }} />
+      </label>
+      <label style={{ display: 'block', marginTop: 12, color: palette.muted, fontSize: 12 }}>
+        Validation results — one per line: <code>passed | command | summary</code>
+        <textarea value={validationText} onChange={event => setValidationText(event.target.value)} rows={3} placeholder="passed | pnpm test | 13 tests passed" style={{ display: 'block', boxSizing: 'border-box', width: '100%', marginTop: 6, padding: 9, resize: 'vertical', border: `1px solid ${palette.border}`, borderRadius: 6, background: palette.panel, color: palette.text, fontFamily: 'monospace', fontSize: 12 }} />
+      </label>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+        <button type="button" onClick={() => void generateHandoff()} disabled={mutating || instructions.trim() === ''} style={{ padding: '7px 11px', border: `1px solid ${palette.border}`, borderRadius: 6, background: palette.button, color: palette.text }}>Generate handoff</button>
+        <button type="button" onClick={() => void handoffToLocal()} disabled={mutating || instructions.trim() === ''} style={{ padding: '7px 11px', border: `1px solid ${palette.accent}`, borderRadius: 6, background: palette.button, color: palette.accent }}>Handoff to Local</button>
+      </div>
+      <div style={{ marginTop: 9, color: palette.muted, fontSize: 11 }}>Handoff records exact base/head, status, changed files, validations, and instructions. Returning archives and releases this Session; it does not merge or delete the branch.</div>
+    </section>}
+
+    {registry !== null && <section style={{ marginTop: 18 }}>
+      <h2 style={{ margin: '0 0 9px', fontSize: 14 }}>Managed lifecycle</h2>
+      {registry.worktrees.length === 0 && <div style={{ color: palette.muted }}>No Aezy-managed worktrees.</div>}
+      {registry.worktrees.map(item => <div key={item.id} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, marginTop: 8, padding: 11, border: `1px solid ${palette.border}`, borderRadius: 7 }}>
+        <div style={{ minWidth: 0 }}>
+          <strong style={{ fontFamily: 'monospace', fontSize: 12 }}>{item.branch}</strong>
+          <span style={{ marginLeft: 8, color: item.state === 'failed' ? palette.error : palette.muted, fontSize: 11 }}>{item.state}</span>
+          <div title={item.path} style={{ marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: palette.muted, fontFamily: 'monospace', fontSize: 11 }}>{item.path}</div>
+          <div style={{ marginTop: 3, color: palette.muted, fontSize: 11 }}>{item.sessions.filter(binding => binding.status === 'active').length} active Sessions · base {shortCommit(item.base)} · head {shortCommit(item.head)}</div>
+          {item.error !== null && <div style={{ marginTop: 4, color: palette.error, fontSize: 11 }}>{item.error}</div>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {item.latestHandoffId !== null && <button type="button" onClick={() => void loadHandoff(item)} style={{ padding: '5px 8px', border: `1px solid ${palette.border}`, borderRadius: 5, background: palette.button, color: palette.text }}>View handoff</button>}
+          {project?.environment.kind === 'local' && item.state !== 'cleaned' && item.state !== 'failed' && <button type="button" onClick={() => void cleanup(item)} disabled={mutating} style={{ padding: '5px 8px', border: `1px solid ${palette.warning}`, borderRadius: 5, background: palette.button, color: palette.warning }}>Clean up</button>}
+        </div>
+      </div>)}
+    </section>}
+
+    {handoff !== null && <section style={{ marginTop: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <h2 style={{ margin: 0, fontSize: 14 }}>Structured handoff {handoff.id}</h2>
+        <button type="button" onClick={() => void navigator.clipboard.writeText(JSON.stringify(handoff, null, 2))} style={{ padding: '5px 8px', border: `1px solid ${palette.border}`, borderRadius: 5, background: palette.button, color: palette.text }}>Copy JSON</button>
+      </div>
+      <pre style={{ margin: '8px 0 0', padding: 12, maxHeight: 420, overflow: 'auto', border: `1px solid ${palette.border}`, borderRadius: 7, background: palette.code, color: palette.text, fontSize: 11, lineHeight: 1.5 }}>{JSON.stringify(handoff, null, 2)}</pre>
+    </section>}
+  </div>
+}
+
+export const inject = ['slots', 'sessions', 'workspaces']
 
 export function apply(ctx: ClientContext): void {
   ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
@@ -509,4 +787,31 @@ export function apply(ctx: ClientContext): void {
       return { cwd, sessionId }
     },
   }, ChangesView))
+
+  ctx.slots.inject('conversation.view', () => ctx.slots.register({
+    name: 'conversation.view',
+    id: 'worktrees',
+    order: 6,
+    label: () => 'Worktrees',
+    inject: (sessionId: string): Omit<WorktreesProps, 'openWorktree' | 'returnToLocal'> => {
+      const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
+      if (cwd === undefined) throw new Error(`aezy-project: session "${sessionId}" has no working directory`)
+      return { cwd, sessionId }
+    },
+  }, (props: Omit<WorktreesProps, 'openWorktree' | 'returnToLocal'>) => <WorktreesView
+    {...props}
+    openWorktree={async (path, worktreeId) => {
+      const workspace = await ctx.workspaces.create({ path })
+      const sessionId = await ctx.workspaces.connectWorkspace(workspace.workspaceId)
+      await mutate('/aezy/api/project/worktrees/bind', { cwd: path, worktreeId, sessionId })
+      ctx.sessions.open(sessionId)
+    }}
+    returnToLocal={async (repositoryRoot, worktreeId, cwd, sessionId) => {
+      const workspace = await ctx.workspaces.create({ path: repositoryRoot })
+      const localSessionId = await ctx.workspaces.connectWorkspace(workspace.workspaceId)
+      await ctx.workspaces.archiveSession(sessionId)
+      await mutate('/aezy/api/project/worktrees/release', { cwd, worktreeId, sessionId })
+      ctx.sessions.open(localSessionId)
+    }}
+  />))
 }

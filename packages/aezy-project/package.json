@@ -2,7 +2,7 @@
   "name": "@aezy/project",
   "version": "0.0.0",
   "private": true,
-  "description": "Aezy Project, Repository and Local Environment vertical slice",
+  "description": "Aezy Project, Repository, Changes, Worktree, and Handoff vertical slices",
   "type": "module",
   "main": "src/index.js",
   "exports": {

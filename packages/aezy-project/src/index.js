@@ -5,11 +5,15 @@ import {
 } from './git.js'
 import { TurnLedger } from './ledger.js'
 import { basename, summarizeTurn } from './summary.js'
+import { parseWorktreeList, WorktreeManager } from './worktree.js'
 
 const ROUTE = '/aezy/api/project'
 const MAX_BODY_BYTES = 32 * 1024
 
-export { basename, describeDiff, describeProject, parsePorcelainV2, summarizeTurn, TurnLedger }
+export {
+  basename, describeDiff, describeProject, parsePorcelainV2, parseWorktreeList,
+  summarizeTurn, TurnLedger, WorktreeManager,
+}
 export const inject = ['webServer', 'sessions', 'aezySecurity']
 
 function json(res, status, value) {
@@ -73,7 +77,7 @@ function query(url, name) {
   return url.searchParams.get(name)
 }
 
-function createHandler(ledger, security, warn) {
+function createHandler(ledger, worktrees, security, warn) {
   return async (req, res) => {
     if (!requireWebClient(req)) {
       json(res, 403, { error: 'This endpoint accepts only Aezy Web requests.' })
@@ -99,6 +103,14 @@ function createHandler(ledger, security, warn) {
           query(url, 'sessionId'),
           Number(query(url, 'turn')),
         ))
+        return
+      }
+      if (req.method === 'GET' && url.pathname === `${ROUTE}/worktrees`) {
+        json(res, 200, await worktrees.list(query(url, 'cwd')))
+        return
+      }
+      if (req.method === 'GET' && url.pathname === `${ROUTE}/worktrees/handoff`) {
+        json(res, 200, await worktrees.readHandoff(query(url, 'cwd'), query(url, 'handoffId')))
         return
       }
       if (req.method === 'POST' && url.pathname === `${ROUTE}/revert`) {
@@ -141,10 +153,73 @@ function createHandler(ledger, security, warn) {
         json(res, 200, result)
         return
       }
+      if (req.method === 'POST' && url.pathname === `${ROUTE}/worktrees/create`) {
+        const body = await readJson(req)
+        const result = await worktrees.create(body)
+        await security.auditUserAction({
+          tool: 'aezy.project.worktree.create',
+          cwd: body.cwd,
+          callId: result.worktree.id,
+          explanation: 'Allowed by the explicit Aezy Web Create Worktree action.',
+        }).catch(warn)
+        json(res, 201, result)
+        return
+      }
+      if (req.method === 'POST' && url.pathname === `${ROUTE}/worktrees/bind`) {
+        const body = await readJson(req)
+        const result = await worktrees.bind(body)
+        await security.auditUserAction({
+          tool: 'aezy.project.worktree.bind',
+          cwd: body.cwd,
+          sessionId: body.sessionId,
+          callId: body.worktreeId,
+          explanation: 'Allowed by the user-started Aezy Worktree Session action.',
+        }).catch(warn)
+        json(res, 200, result)
+        return
+      }
+      if (req.method === 'POST' && url.pathname === `${ROUTE}/worktrees/handoff`) {
+        const body = await readJson(req)
+        const result = await worktrees.handoff(body)
+        await security.auditUserAction({
+          tool: 'aezy.project.worktree.handoff',
+          cwd: body.cwd,
+          sessionId: body.sessionId,
+          callId: result.handoff.id,
+          explanation: 'Allowed by the explicit Aezy Web Generate Handoff action.',
+        }).catch(warn)
+        json(res, 201, result)
+        return
+      }
+      if (req.method === 'POST' && url.pathname === `${ROUTE}/worktrees/release`) {
+        const body = await readJson(req)
+        const result = await worktrees.release(body)
+        await security.auditUserAction({
+          tool: 'aezy.project.worktree.release',
+          cwd: body.cwd,
+          sessionId: body.sessionId,
+          callId: body.worktreeId,
+          explanation: 'Allowed after the user explicitly archived and released the Worktree Session.',
+        }).catch(warn)
+        json(res, 200, result)
+        return
+      }
+      if (req.method === 'POST' && url.pathname === `${ROUTE}/worktrees/cleanup`) {
+        const body = await readJson(req)
+        const result = await worktrees.cleanup(body)
+        await security.auditUserAction({
+          tool: 'aezy.project.worktree.cleanup',
+          cwd: body.cwd,
+          callId: body.worktreeId,
+          explanation: 'Allowed by the explicit Aezy Web clean Worktree removal action; the branch was retained.',
+        }).catch(warn)
+        json(res, 200, result)
+        return
+      }
       json(res, 404, { error: 'Unknown Aezy Project endpoint.' })
     } catch (error) {
       const message = messageOf(error)
-      const conflict = /changed since|already undone|does not match/u.test(message)
+      const conflict = /changed since|already undone|does not match|dirty|uncommitted|conflict|active Session|matching the current|drifted|already exists|cannot be cleaned/u.test(message)
       json(res, conflict ? 409 : 400, { error: message })
     }
   }
@@ -156,7 +231,8 @@ export function apply(ctx) {
   const ledger = new TurnLedger({
     warn,
   })
-  const handler = createHandler(ledger, ctx.aezySecurity, warn)
+  const worktrees = new WorktreeManager({ sessions: ctx.sessions, warn })
+  const handler = createHandler(ledger, worktrees, ctx.aezySecurity, warn)
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',
     path: ROUTE,
@@ -164,5 +240,10 @@ export function apply(ctx) {
   }), 'aezy-project: repository API')
   ctx.on('session/event', (session, event) => {
     ledger.observe(session, event)
+    if (event.type === 'turn/start') void worktrees.observe(session, 'turn-start').catch(warn)
+    if (event.type === 'turn/end') void worktrees.observe(session, 'turn-end').catch(warn)
   })
+  ctx.on('session/created', session => { void worktrees.observe(session, 'created').catch(warn) })
+  ctx.on('session/disposed', session => { void worktrees.observe(session, 'disposed').catch(warn) })
+  for (const session of ctx.sessions.list()) void worktrees.observe(session, 'created').catch(warn)
 }

@@ -6,7 +6,7 @@ export const RULE_EFFECTS = ['deny', 'ask', 'allow']
 export const RULE_SCOPES = ['global', 'repository']
 
 const DIRECT_NETWORK_TOOL = /(?:^|[_.:/-])(web|http|https|fetch|browser|mcp|github|gitlab)(?:$|[_.:/-])/iu
-const KNOWN_LOCAL_TOOL = /^(?:bash|pwsh|read|write|edit|read_image|glob|grep|str_replace_editor|job_(?:output|list|kill)|skill|get_goal|create_goal|update_goal|send_message|interrupt_agent|list_agents|subagent(?:_fork)?|ask_user_question|todo_write|exit_plan_mode|aezy\.project\.(?:revert|undo))$/u
+const KNOWN_LOCAL_TOOL = /^(?:bash|pwsh|read|write|edit|read_image|glob|grep|str_replace_editor|job_(?:output|list|kill)|skill|get_goal|create_goal|update_goal|send_message|interrupt_agent|list_agents|subagent(?:_fork)?|ask_user_question|todo_write|exit_plan_mode|aezy\.project\.(?:revert(?:-turn)?|undo|worktree\.(?:create|bind|handoff|release|cleanup)))$/u
 const NETWORK_EXECUTABLE = /^(?:curl|wget|ssh|scp|sftp|ftp|telnet|ping|dig|nslookup|nc|ncat|netcat|gh|aws|az|gcloud|kubectl|helm)$/iu
 const NETWORK_PACKAGE_ACTION = /^(?:add|install|update|upgrade|publish|deploy|login|logout|whoami|view|info|search|audit)$/iu
 const SAFE_EXECUTABLE = /^(?:pwd|ls|dir|cat|head|tail|wc|stat|test|true|false|echo|printf|rg|grep|sed|awk|find|cmp|diff)$/u

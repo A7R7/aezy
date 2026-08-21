@@ -37,6 +37,7 @@ test('network classifier distinguishes required, possible, and known-local actio
   assert.equal(classifyAction('bash', { command: 'git diff -- README.md' }, '.').network, 'none')
   assert.equal(classifyAction('read', { path: 'README.md' }, '.').network, 'none')
   assert.equal(classifyAction('grep', { pattern: 'Aezy' }, '.').network, 'none')
+  assert.equal(classifyAction('aezy.project.worktree.cleanup', {}, '.').network, 'none')
   assert.equal(classifyAction('notion_create_page', {}, '.').network, 'possible')
 })
 

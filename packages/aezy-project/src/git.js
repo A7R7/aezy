@@ -184,13 +184,16 @@ export async function describeProject(cwd) {
   const repository = await repositoryFor(cwd)
   const status = await git(repository.root, ['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all'])
   const files = parsePorcelainV2(status.stdout)
-  const [branch, head, upstream, gitVersion, packageManager] = await Promise.all([
+  const [branch, head, upstream, gitVersion, packageManager, gitDir, commonDir] = await Promise.all([
     optionalGit(repository.root, ['symbolic-ref', '--quiet', '--short', 'HEAD']),
     optionalGit(repository.root, ['rev-parse', 'HEAD']),
     optionalGit(repository.root, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}']),
     optionalGit(repository.root, ['--version']),
     packageManagerAt(repository.root),
+    gitMetadataRoot(repository.root),
+    gitCommonMetadataRoot(repository.root),
   ])
+  const environmentKind = gitDir === commonDir ? 'local' : 'worktree'
   let ahead = 0
   let behind = 0
   if (upstream !== undefined) {
@@ -205,7 +208,7 @@ export async function describeProject(cwd) {
       name: basename(repository.root),
       cwd: repository.cwd,
       root: repository.root,
-      environment: 'local',
+      environment: environmentKind,
     },
     repository: {
       branch: branch ?? null,
@@ -217,13 +220,15 @@ export async function describeProject(cwd) {
       clean: files.length === 0,
     },
     environment: {
-      kind: 'local',
+      kind: environmentKind,
       platform: process.platform,
       arch: process.arch,
       node: process.version,
       git: gitVersion ?? null,
       shell: process.env.SHELL ? basename(process.env.SHELL) : null,
       packageManager: packageManager ?? null,
+      gitDir,
+      commonDir,
     },
     files,
   }
@@ -367,5 +372,11 @@ export async function describeDiff(cwd, path) {
 
 export async function gitMetadataRoot(root) {
   const value = await git(root, ['rev-parse', '--path-format=absolute', '--git-dir'])
+  return realpath(value.stdout.trim())
+}
+
+/** Resolve the Git common metadata directory shared by every linked worktree. */
+export async function gitCommonMetadataRoot(root) {
+  const value = await git(root, ['rev-parse', '--path-format=absolute', '--git-common-dir'])
   return realpath(value.stdout.trim())
 }

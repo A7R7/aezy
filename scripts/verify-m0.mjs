@@ -162,7 +162,7 @@ try {
   invariant(workspace.workspace?.path === repoRoot, 'workspace.create did not adopt the Aezy repository')
   const sessionId = `m0-smoke-${Date.now().toString(36)}`
   const session = await rpc(port, 'session.create', {
-    workspaceId: workspace.workspace.id,
+    workspaceId: workspace.workspace.workspaceId,
     sessionId,
     agentPreset: 'aezy',
   })
