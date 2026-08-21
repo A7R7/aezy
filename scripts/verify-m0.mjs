@@ -76,6 +76,16 @@ invariant(/- id: experimental-workflows[\s\S]*?disabled: true/.test(preset), 'Wo
 invariant(!preset.includes("name: '@deepseek-ai/dsh-tool-cordis'"), 'Dynamic Cordis must not enter the Aezy preset')
 
 const profile = JSON.parse(readFileSync(join(dshHome, 'profiles', profileName, 'package.json'), 'utf8'))
+const expectedLocalPlugins = {
+  '@aezy/base': join(repoRoot, 'packages', 'aezy-base'),
+  '@aezy/web': join(repoRoot, 'packages', 'aezy-web'),
+  '@aezy/brand': join(repoRoot, 'packages', 'aezy-brand'),
+  '@aezy/security': join(repoRoot, 'packages', 'aezy-security'),
+  '@aezy/project': join(repoRoot, 'packages', 'aezy-project'),
+}
+for (const [name, path] of Object.entries(expectedLocalPlugins)) {
+  invariant(profile.dependencies?.[name] === `link:${path}`, `${name} profile link does not follow the current checkout`)
+}
 const expectedBundles = [
   '@deepseek-ai/dsh-base',
   '@aezy/base',

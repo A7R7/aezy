@@ -27,21 +27,34 @@ const webBundle = join(repoRoot, 'packages', 'aezy-web')
 const brandPlugin = join(repoRoot, 'packages', 'aezy-brand')
 const securityPlugin = join(repoRoot, 'packages', 'aezy-security')
 const projectPlugin = join(repoRoot, 'packages', 'aezy-project')
+const localPlugins = [
+  ['@aezy/base', baseBundle],
+  ['@aezy/web', webBundle],
+  ['@aezy/brand', brandPlugin],
+  ['@aezy/security', securityPlugin],
+  ['@aezy/project', projectPlugin],
+]
 
 let install = true
 if (existsSync(profileManifestPath)) {
   const current = JSON.parse(readFileSync(profileManifestPath, 'utf8'))
   const dependencies = current.dependencies || {}
-  install = !('@aezy/base' in dependencies)
-    || !('@aezy/web' in dependencies)
-    || !('@aezy/brand' in dependencies)
-    || !('@aezy/security' in dependencies)
-    || !('@aezy/project' in dependencies)
-    || !existsSync(join(profileDir, 'node_modules', '@aezy', 'base', 'package.json'))
-    || !existsSync(join(profileDir, 'node_modules', '@aezy', 'web', 'package.json'))
-    || !existsSync(join(profileDir, 'node_modules', '@aezy', 'brand', 'package.json'))
-    || !existsSync(join(profileDir, 'node_modules', '@aezy', 'security', 'package.json'))
-    || !existsSync(join(profileDir, 'node_modules', '@aezy', 'project', 'package.json'))
+  install = localPlugins.some(([name, path]) => dependencies[name] !== `link:${path}`)
+    || localPlugins.some(([name]) => !existsSync(join(
+      profileDir,
+      'node_modules',
+      ...name.split('/'),
+      'package.json',
+    )))
+
+  // A profile may outlive the checkout path that installed it. Update stale
+  // link specs before invoking DSH so pnpm never follows the previous store or
+  // silently keeps non-existent local plugin targets after a repository move.
+  if (install) {
+    current.dependencies = dependencies
+    for (const [name, path] of localPlugins) dependencies[name] = `link:${path}`
+    writeFileSync(profileManifestPath, `${JSON.stringify(current, null, 2)}\n`)
+  }
 }
 
 if (install) {
