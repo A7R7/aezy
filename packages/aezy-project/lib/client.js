@@ -401,7 +401,7 @@ window.__ModuleLoader__.load({
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						style: {
 							position: "sticky",
-							top: 70,
+							top: 0,
 							zIndex: 2,
 							padding: "7px 12px",
 							borderBottom: `1px solid ${palette.border}`,
@@ -469,7 +469,7 @@ window.__ModuleLoader__.load({
 					part.state === "structured" && part.hunks.map((hunk, hunkIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						style: {
 							position: "sticky",
-							top: 96,
+							top: 27,
 							zIndex: 1,
 							padding: "6px 12px",
 							borderBottom: `1px solid ${palette.border}`,
@@ -555,29 +555,37 @@ window.__ModuleLoader__.load({
 				]
 			});
 		}
-		function ReviewPanel({ review, useSessions }) {
+		function ReviewPanel({ review, surface, closeReview, syncLayout, useSessions }) {
 			const target = (0, react.useSyncExternalStore)(review.subscribe, review.getSnapshot);
 			const currentSession = useSessions((state) => state.current);
 			const currentCwd = useSessions((state) => state.current === void 0 ? void 0 : state.byId[state.current]?.cwd);
 			const [document, setDocument] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
-			const [width, setWidth] = (0, react.useState)(580);
 			const [viewport, setViewport] = (0, react.useState)(() => window.innerWidth);
 			const generation = (0, react.useRef)(0);
-			const dragging = (0, react.useRef)(null);
 			const narrow = viewport < 760;
-			const visible = target !== null && target.sessionId === currentSession && target.cwd === currentCwd;
+			const currentSurface = narrow ? "overlay" : "details";
+			const matchesSession = target !== null && target.sessionId === currentSession && target.cwd === currentCwd;
+			const visible = matchesSession && surface === currentSurface;
 			(0, react.useEffect)(() => {
 				const onResize = () => setViewport(window.innerWidth);
 				window.addEventListener("resize", onResize);
 				return () => window.removeEventListener("resize", onResize);
 			}, []);
 			(0, react.useEffect)(() => {
-				if (target !== null && !visible) review.close();
+				if (target !== null && !matchesSession) closeReview();
 			}, [
-				review,
-				target,
-				visible
+				closeReview,
+				matchesSession,
+				target
+			]);
+			(0, react.useEffect)(() => {
+				if (target !== null && matchesSession) syncLayout(narrow);
+			}, [
+				matchesSession,
+				narrow,
+				syncLayout,
+				target
 			]);
 			(0, react.useEffect)(() => {
 				if (!visible || target === null) {
@@ -616,267 +624,238 @@ window.__ModuleLoader__.load({
 			(0, react.useEffect)(() => {
 				if (!visible) return;
 				const onKey = (event) => {
-					if (event.key === "Escape") review.close();
+					if (event.key === "Escape") closeReview();
 				};
 				window.addEventListener("keydown", onKey);
 				return () => window.removeEventListener("keydown", onKey);
-			}, [review, visible]);
+			}, [closeReview, visible]);
 			if (!visible || target === null) return null;
-			const selected = target.files.find((file) => file.path === target.path);
-			const startDrag = (event) => {
-				if (narrow) return;
-				event.currentTarget.setPointerCapture(event.pointerId);
-				dragging.current = {
-					start: event.clientX,
-					width
-				};
-			};
-			const drag = (event) => {
-				if (dragging.current === null) return;
-				setWidth(Math.max(380, Math.min(900, dragging.current.width + dragging.current.start - event.clientX)));
-			};
-			const endDrag = (event) => {
-				if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-				dragging.current = null;
-			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+			const panel = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
+				"aria-label": "Review changes",
+				style: {
+					width: "100%",
+					height: "100%",
+					display: "flex",
+					flexDirection: "column",
+					overflow: "hidden",
+					background: palette.panel,
+					color: palette.text
+				},
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("header", {
+					style: {
+						flex: "0 0 auto",
+						padding: "12px 14px 10px",
+						borderBottom: `1px solid ${palette.border}`,
+						background: palette.panel
+					},
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						style: {
+							display: "flex",
+							alignItems: "flex-start",
+							justifyContent: "space-between",
+							gap: 12
+						},
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							style: { minWidth: 0 },
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
+								style: {
+									display: "block",
+									fontSize: 14
+								},
+								children: "Review changes"
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								style: {
+									display: "inline-block",
+									marginTop: 4,
+									padding: "2px 7px",
+									borderRadius: 999,
+									background: palette.interactive,
+									color: target.source === "turn" ? palette.accent : palette.warning,
+									fontSize: 10.5,
+									fontWeight: 600
+								},
+								children: target.source === "turn" ? `Historical Turn ${target.turn} snapshot` : "Current Working changes"
+							})]
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							"aria-label": "Close Review panel",
+							onClick: closeReview,
+							style: {
+								border: 0,
+								padding: 4,
+								background: "transparent",
+								color: palette.muted,
+								cursor: "pointer",
+								fontSize: 20,
+								lineHeight: 1
+							},
+							children: "×"
+						})]
+					})
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("nav", {
+					"aria-label": "Changed file navigation",
+					style: {
+						flex: "1 1 auto",
+						minHeight: 0,
+						overflow: "auto"
+					},
+					children: target.files.map((file) => {
+						const expanded = file.path === target.path;
+						return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+							style: { borderBottom: `1px solid ${palette.border}` },
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+								type: "button",
+								onClick: () => review.select(file.path),
+								"aria-expanded": expanded,
+								title: file.path,
+								style: {
+									width: "100%",
+									minHeight: 42,
+									display: "grid",
+									gridTemplateColumns: "16px minmax(0, 1fr) auto",
+									alignItems: "center",
+									gap: 8,
+									padding: "8px 12px",
+									border: 0,
+									background: expanded ? palette.interactive : palette.panel,
+									color: expanded ? palette.accent : palette.text,
+									cursor: "pointer",
+									textAlign: "left"
+								},
+								children: [
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										"aria-hidden": true,
+										style: {
+											color: palette.muted,
+											fontSize: 10,
+											transform: expanded ? "rotate(90deg)" : void 0,
+											transition: "transform 120ms ease"
+										},
+										children: "▶"
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										style: {
+											minWidth: 0,
+											overflow: "hidden",
+											textOverflow: "ellipsis",
+											whiteSpace: "nowrap",
+											fontFamily: "var(--ds-font-family-code, monospace)",
+											fontSize: 11.5
+										},
+										children: [file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : "", file.path]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
+										additions: expanded ? document?.file.additions ?? file.additions ?? null : file.additions ?? null,
+										deletions: expanded ? document?.file.deletions ?? file.deletions ?? null : file.deletions ?? null
+									})
+								]
+							}), expanded && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								"data-aezy-expanded-file": file.path,
+								style: {
+									overflowX: "auto",
+									borderTop: `1px solid ${palette.border}`,
+									background: palette.panel
+								},
+								children: [
+									document === null && error === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+										style: {
+											padding: 24,
+											color: palette.muted,
+											textAlign: "center"
+										},
+										children: "Loading this file…"
+									}),
+									error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										role: "alert",
+										style: {
+											margin: 12,
+											padding: 12,
+											border: `1px solid ${palette.error}`,
+											borderRadius: 8,
+											color: palette.error
+										},
+										children: ["Review unavailable: ", error]
+									}),
+									document !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+											style: {
+												display: "flex",
+												alignItems: "center",
+												gap: 8,
+												padding: "7px 12px",
+												borderBottom: `1px solid ${palette.border}`,
+												background: palette.panel,
+												color: palette.muted,
+												fontSize: 11
+											},
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													style: {
+														color: document.file.binary ? palette.warning : palette.text,
+														fontWeight: 600
+													},
+													children: statusName(document.file.status)
+												}),
+												document.file.oldPath !== null && document.file.newPath !== null && document.file.oldPath !== document.file.newPath && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													title: `${document.file.oldPath} → ${document.file.newPath}`,
+													children: "rename"
+												}),
+												document.file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "binary" }),
+												document.file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													style: { color: palette.warning },
+													children: "truncated"
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+													style: { marginLeft: "auto" },
+													children: document.source.kind === "turn" ? `snapshot ${document.source.snapshotId?.slice(0, 8) ?? ""}` : `fingerprint ${document.source.fingerprint?.slice(0, 8) ?? ""}`
+												})
+											]
+										}),
+										document.file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+											style: {
+												padding: "30px 16px",
+												color: palette.muted,
+												textAlign: "center"
+											},
+											children: "Binary file snapshot. Textual lines are not available."
+										}),
+										document.file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+											style: {
+												margin: 12,
+												padding: 10,
+												border: `1px solid ${palette.warning}`,
+												borderRadius: 7,
+												color: palette.warning
+											},
+											children: "This diff exceeded Aezy’s bounded review limit. Only a safe fallback may be available."
+										}),
+										!document.file.binary && document.parts.map((part) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StructuredPart, { part }, part.scope))
+									] })
+								]
+							})]
+						}, file.path);
+					})
+				})]
+			});
+			return surface === "overlay" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 				"data-aezy-review-panel": true,
+				"data-surface": "overlay",
 				"data-source": target.source,
 				style: {
 					position: "absolute",
 					inset: 0,
-					pointerEvents: narrow ? "auto" : "none",
-					background: narrow ? "var(--dsw-alias-bg-overlay, rgba(0,0,0,.36))" : "transparent"
+					background: "var(--dsw-alias-bg-overlay, rgba(0,0,0,.36))"
 				},
-				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
-					"aria-label": "Review changes",
-					style: {
-						pointerEvents: "auto",
-						position: "absolute",
-						inset: narrow ? 0 : "0 0 0 auto",
-						width: narrow ? "100%" : Math.min(width, viewport - 40),
-						display: "flex",
-						flexDirection: "column",
-						overflow: "hidden",
-						borderLeft: narrow ? 0 : `1px solid ${palette.border}`,
-						background: palette.panel,
-						color: palette.text,
-						boxShadow: "0 0 34px rgba(0, 0, 0, .18)"
-					},
-					children: [
-						!narrow && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-							"aria-label": "Resize Review panel",
-							role: "separator",
-							onPointerDown: startDrag,
-							onPointerMove: drag,
-							onPointerUp: endDrag,
-							onPointerCancel: endDrag,
-							style: {
-								position: "absolute",
-								zIndex: 6,
-								inset: "0 auto 0 0",
-								width: 7,
-								cursor: "col-resize",
-								touchAction: "none"
-							}
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
-							style: {
-								flex: "0 0 auto",
-								padding: "12px 14px 10px",
-								borderBottom: `1px solid ${palette.border}`,
-								background: palette.panel
-							},
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								style: {
-									display: "flex",
-									alignItems: "flex-start",
-									justifyContent: "space-between",
-									gap: 12
-								},
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									style: { minWidth: 0 },
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
-										style: {
-											display: "block",
-											fontSize: 14
-										},
-										children: "Review changes"
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										style: {
-											display: "inline-block",
-											marginTop: 4,
-											padding: "2px 7px",
-											borderRadius: 999,
-											background: palette.interactive,
-											color: target.source === "turn" ? palette.accent : palette.warning,
-											fontSize: 10.5,
-											fontWeight: 600
-										},
-										children: target.source === "turn" ? `Historical Turn ${target.turn} snapshot` : "Current Working changes"
-									})]
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									"aria-label": "Close Review panel",
-									onClick: () => review.close(),
-									style: {
-										border: 0,
-										padding: 4,
-										background: "transparent",
-										color: palette.muted,
-										cursor: "pointer",
-										fontSize: 20,
-										lineHeight: 1
-									},
-									children: "×"
-								})]
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								title: target.path,
-								style: {
-									marginTop: 10,
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "space-between",
-									gap: 12
-								},
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-									style: {
-										minWidth: 0,
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-										fontFamily: "var(--ds-font-family-code, monospace)",
-										fontSize: 12
-									},
-									children: [selected?.oldPath && selected.oldPath !== target.path ? `${selected.oldPath} → ` : "", target.path]
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
-									additions: document?.file.additions ?? selected?.additions ?? null,
-									deletions: document?.file.deletions ?? selected?.deletions ?? null
-								})]
-							})]
-						}),
-						target.files.length > 1 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("nav", {
-							"aria-label": "Changed file navigation",
-							style: {
-								flex: "0 0 auto",
-								display: "flex",
-								gap: 6,
-								padding: "8px 10px",
-								overflowX: "auto",
-								borderBottom: `1px solid ${palette.border}`,
-								background: palette.elevated
-							},
-							children: target.files.map((file) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-								type: "button",
-								onClick: () => review.select(file.path),
-								"aria-current": file.path === target.path ? "page" : void 0,
-								title: file.path,
-								style: {
-									flex: "0 0 auto",
-									maxWidth: 220,
-									overflow: "hidden",
-									textOverflow: "ellipsis",
-									whiteSpace: "nowrap",
-									padding: "5px 8px",
-									border: `1px solid ${file.path === target.path ? palette.accent : palette.border}`,
-									borderRadius: 6,
-									background: file.path === target.path ? palette.interactive : palette.button,
-									color: file.path === target.path ? palette.accent : palette.text,
-									cursor: "pointer",
-									fontFamily: "var(--ds-font-family-code, monospace)",
-									fontSize: 11
-								},
-								children: file.path
-							}, file.path))
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							style: {
-								flex: "1 1 auto",
-								minHeight: 0,
-								overflow: "auto"
-							},
-							children: [
-								document === null && error === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									style: {
-										padding: 30,
-										color: palette.muted,
-										textAlign: "center"
-									},
-									children: "Loading one file…"
-								}),
-								error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									role: "alert",
-									style: {
-										margin: 16,
-										padding: 12,
-										border: `1px solid ${palette.error}`,
-										borderRadius: 8,
-										color: palette.error
-									},
-									children: ["Review unavailable: ", error]
-								}),
-								document !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										style: {
-											position: "sticky",
-											top: 0,
-											zIndex: 3,
-											display: "flex",
-											alignItems: "center",
-											gap: 8,
-											padding: "8px 12px",
-											borderBottom: `1px solid ${palette.border}`,
-											background: palette.panel,
-											color: palette.muted,
-											fontSize: 11
-										},
-										children: [
-											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-												style: {
-													color: document.file.binary ? palette.warning : palette.text,
-													fontWeight: 600
-												},
-												children: statusName(document.file.status)
-											}),
-											document.file.oldPath !== null && document.file.newPath !== null && document.file.oldPath !== document.file.newPath && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-												title: `${document.file.oldPath} → ${document.file.newPath}`,
-												children: "rename"
-											}),
-											document.file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "binary" }),
-											document.file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-												style: { color: palette.warning },
-												children: "truncated"
-											}),
-											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-												style: { marginLeft: "auto" },
-												children: document.source.kind === "turn" ? `snapshot ${document.source.snapshotId?.slice(0, 8) ?? ""}` : `fingerprint ${document.source.fingerprint?.slice(0, 8) ?? ""}`
-											})
-										]
-									}),
-									document.file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-										style: {
-											padding: "34px 18px",
-											color: palette.muted,
-											textAlign: "center"
-										},
-										children: "Binary file snapshot. Textual lines are not available."
-									}),
-									document.file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-										style: {
-											margin: 12,
-											padding: 10,
-											border: `1px solid ${palette.warning}`,
-											borderRadius: 7,
-											color: palette.warning
-										},
-										children: "This diff exceeded Aezy’s bounded review limit. Only a safe fallback may be available."
-									}),
-									!document.file.binary && document.parts.map((part) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StructuredPart, { part }, part.scope))
-								] })
-							]
-						})
-					]
-				})
+				children: panel
+			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				"data-aezy-review-panel": true,
+				"data-surface": "details",
+				"data-source": target.source,
+				style: {
+					width: "100%",
+					height: "100%"
+				},
+				children: panel
 			});
 		}
 		function ChangesView({ cwd, sessionId, openReview }) {
@@ -1910,15 +1889,43 @@ window.__ModuleLoader__.load({
 		const inject = [
 			"slots",
 			"sessions",
-			"workspaces"
+			"workspaces",
+			"layout"
 		];
 		function apply(ctx) {
 			const review = new ReviewController();
+			const closeReview = () => {
+				review.close();
+				ctx.layout.closeDetails();
+			};
+			const syncLayout = (narrow) => {
+				if (narrow) ctx.layout.closeDetails();
+				else ctx.layout.openDetails();
+			};
+			const openReview = (target) => {
+				review.open(target);
+				syncLayout(window.innerWidth < 760);
+			};
+			ctx.slots.inject("details", () => ctx.slots.register({
+				name: "details",
+				priority: -10,
+				inject: () => ({
+					review,
+					surface: "details",
+					closeReview,
+					syncLayout
+				})
+			}, ReviewPanel));
 			ctx.slots.inject("shell.overlay", () => ctx.slots.register({
 				name: "shell.overlay",
 				id: "aezy-review",
 				order: 100,
-				inject: () => ({ review })
+				inject: () => ({
+					review,
+					surface: "overlay",
+					closeReview,
+					syncLayout
+				})
 			}, ReviewPanel));
 			ctx.slots.inject("conversation.chat.turnTail", () => ctx.slots.register({
 				name: "conversation.chat.turnTail",
@@ -1930,7 +1937,7 @@ window.__ModuleLoader__.load({
 					return {
 						cwd,
 						sessionId,
-						openReview: (target) => review.open(target)
+						openReview
 					};
 				}
 			}, TurnChangedFiles));
@@ -1945,7 +1952,7 @@ window.__ModuleLoader__.load({
 					return {
 						cwd,
 						sessionId,
-						openReview: (target) => review.open(target)
+						openReview
 					};
 				}
 			}, ChangesView));

@@ -137,6 +137,10 @@ type ClientContext = {
     list: Snapshot<SessionsState>
     open(sessionId: string): void
   }
+  layout: {
+    openDetails(): void
+    closeDetails(): void
+  }
   workspaces: {
     create(input: { path: string }): Promise<{ workspaceId: string }>
     connectWorkspace(workspaceId: string): Promise<string>
@@ -431,7 +435,7 @@ function statusName(status: ReviewDocument['file']['status']): string {
 function StructuredPart({ part }: { part: DiffPart }) {
   const [rawOpen, setRawOpen] = useState(false)
   return <section style={{ borderBottom: `1px solid ${palette.border}` }}>
-    <div style={{ position: 'sticky', top: 70, zIndex: 2, padding: '7px 12px', borderBottom: `1px solid ${palette.border}`, background: palette.elevated, color: palette.muted, fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' }}>{part.label}</div>
+    <div style={{ position: 'sticky', top: 0, zIndex: 2, padding: '7px 12px', borderBottom: `1px solid ${palette.border}`, background: palette.elevated, color: palette.muted, fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' }}>{part.label}</div>
     {part.state === 'empty' && <div style={{ padding: '28px 16px', color: palette.muted, textAlign: 'center' }}>{part.message ?? 'No textual line changes.'}</div>}
     {part.state === 'fallback' && <div style={{ padding: 16 }}>
       <div role="status" style={{ padding: 12, border: `1px solid ${palette.warning}`, borderRadius: 8, color: palette.warning, background: palette.elevated }}>
@@ -443,7 +447,7 @@ function StructuredPart({ part }: { part: DiffPart }) {
       </div>}
     </div>}
     {part.state === 'structured' && part.hunks.map((hunk, hunkIndex) => <section key={`${hunk.header}-${hunkIndex}`}>
-      <div style={{ position: 'sticky', top: 96, zIndex: 1, padding: '6px 12px', borderBottom: `1px solid ${palette.border}`, background: 'var(--dsw-alias-bg-layer-2, #f3f5f8)', color: palette.accent, fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11, whiteSpace: 'pre', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hunk.header}</div>
+      <div style={{ position: 'sticky', top: 27, zIndex: 1, padding: '6px 12px', borderBottom: `1px solid ${palette.border}`, background: 'var(--dsw-alias-bg-layer-2, #f3f5f8)', color: palette.accent, fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11, whiteSpace: 'pre', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hunk.header}</div>
       <div role="table" aria-label={hunk.header} style={{ minWidth: 'max-content', width: '100%', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11.5, lineHeight: 1.55 }}>
         {hunk.lines.map((line, lineIndex) => {
           const addition = line.kind === 'addition'
@@ -466,21 +470,24 @@ function StructuredPart({ part }: { part: DiffPart }) {
 
 type ReviewPanelProps = {
   review: ReviewController
+  surface: 'details' | 'overlay'
+  closeReview(): void
+  syncLayout(narrow: boolean): void
   useSessions<T>(selector: (state: SessionsState) => T): T
 }
 
-function ReviewPanel({ review, useSessions }: ReviewPanelProps) {
+function ReviewPanel({ review, surface, closeReview, syncLayout, useSessions }: ReviewPanelProps) {
   const target = useSyncExternalStore(review.subscribe, review.getSnapshot)
   const currentSession = useSessions(state => state.current)
   const currentCwd = useSessions(state => state.current === undefined ? undefined : state.byId[state.current]?.cwd)
   const [document, setDocument] = useState<ReviewDocument | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [width, setWidth] = useState(580)
   const [viewport, setViewport] = useState(() => window.innerWidth)
   const generation = useRef(0)
-  const dragging = useRef<{ start: number; width: number } | null>(null)
   const narrow = viewport < 760
-  const visible = target !== null && target.sessionId === currentSession && target.cwd === currentCwd
+  const currentSurface = narrow ? 'overlay' : 'details'
+  const matchesSession = target !== null && target.sessionId === currentSession && target.cwd === currentCwd
+  const visible = matchesSession && surface === currentSurface
 
   useEffect(() => {
     const onResize = () => setViewport(window.innerWidth)
@@ -489,8 +496,12 @@ function ReviewPanel({ review, useSessions }: ReviewPanelProps) {
   }, [])
 
   useEffect(() => {
-    if (target !== null && !visible) review.close()
-  }, [review, target, visible])
+    if (target !== null && !matchesSession) closeReview()
+  }, [closeReview, matchesSession, target])
+
+  useEffect(() => {
+    if (target !== null && matchesSession) syncLayout(narrow)
+  }, [matchesSession, narrow, syncLayout, target])
 
   useEffect(() => {
     if (!visible || target === null) { setDocument(null); setError(null); return }
@@ -515,64 +526,62 @@ function ReviewPanel({ review, useSessions }: ReviewPanelProps) {
 
   useEffect(() => {
     if (!visible) return
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') review.close() }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') closeReview() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [review, visible])
+  }, [closeReview, visible])
 
   if (!visible || target === null) return null
-  const selected = target.files.find(file => file.path === target.path)
-  const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (narrow) return
-    event.currentTarget.setPointerCapture(event.pointerId)
-    dragging.current = { start: event.clientX, width }
-  }
-  const drag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (dragging.current === null) return
-    setWidth(Math.max(380, Math.min(900, dragging.current.width + dragging.current.start - event.clientX)))
-  }
-  const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-    dragging.current = null
-  }
 
-  return <div data-aezy-review-panel data-source={target.source} style={{ position: 'absolute', inset: 0, pointerEvents: narrow ? 'auto' : 'none', background: narrow ? 'var(--dsw-alias-bg-overlay, rgba(0,0,0,.36))' : 'transparent' }}>
-    <aside aria-label="Review changes" style={{ pointerEvents: 'auto', position: 'absolute', inset: narrow ? 0 : '0 0 0 auto', width: narrow ? '100%' : Math.min(width, viewport - 40), display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: narrow ? 0 : `1px solid ${palette.border}`, background: palette.panel, color: palette.text, boxShadow: '0 0 34px rgba(0, 0, 0, .18)' }}>
-      {!narrow && <div aria-label="Resize Review panel" role="separator" onPointerDown={startDrag} onPointerMove={drag} onPointerUp={endDrag} onPointerCancel={endDrag} style={{ position: 'absolute', zIndex: 6, inset: '0 auto 0 0', width: 7, cursor: 'col-resize', touchAction: 'none' }} />}
+  const panel = <aside aria-label="Review changes" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: palette.panel, color: palette.text }}>
       <header style={{ flex: '0 0 auto', padding: '12px 14px 10px', borderBottom: `1px solid ${palette.border}`, background: palette.panel }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ minWidth: 0 }}>
             <strong style={{ display: 'block', fontSize: 14 }}>Review changes</strong>
             <span style={{ display: 'inline-block', marginTop: 4, padding: '2px 7px', borderRadius: 999, background: palette.interactive, color: target.source === 'turn' ? palette.accent : palette.warning, fontSize: 10.5, fontWeight: 600 }}>{target.source === 'turn' ? `Historical Turn ${target.turn} snapshot` : 'Current Working changes'}</span>
           </div>
-          <button type="button" aria-label="Close Review panel" onClick={() => review.close()} style={{ border: 0, padding: 4, background: 'transparent', color: palette.muted, cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
-        </div>
-        <div title={target.path} style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 12 }}>{selected?.oldPath && selected.oldPath !== target.path ? `${selected.oldPath} → ` : ''}{target.path}</span>
-          <DiffStats additions={document?.file.additions ?? selected?.additions ?? null} deletions={document?.file.deletions ?? selected?.deletions ?? null} />
+          <button type="button" aria-label="Close Review panel" onClick={closeReview} style={{ border: 0, padding: 4, background: 'transparent', color: palette.muted, cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
         </div>
       </header>
-      {target.files.length > 1 && <nav aria-label="Changed file navigation" style={{ flex: '0 0 auto', display: 'flex', gap: 6, padding: '8px 10px', overflowX: 'auto', borderBottom: `1px solid ${palette.border}`, background: palette.elevated }}>
-        {target.files.map(file => <button key={file.path} type="button" onClick={() => review.select(file.path)} aria-current={file.path === target.path ? 'page' : undefined} title={file.path} style={{ flex: '0 0 auto', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '5px 8px', border: `1px solid ${file.path === target.path ? palette.accent : palette.border}`, borderRadius: 6, background: file.path === target.path ? palette.interactive : palette.button, color: file.path === target.path ? palette.accent : palette.text, cursor: 'pointer', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{file.path}</button>)}
-      </nav>}
-      <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto' }}>
-        {document === null && error === null && <div style={{ padding: 30, color: palette.muted, textAlign: 'center' }}>Loading one file…</div>}
-        {error !== null && <div role="alert" style={{ margin: 16, padding: 12, border: `1px solid ${palette.error}`, borderRadius: 8, color: palette.error }}>Review unavailable: {error}</div>}
-        {document !== null && <>
-          <div style={{ position: 'sticky', top: 0, zIndex: 3, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: `1px solid ${palette.border}`, background: palette.panel, color: palette.muted, fontSize: 11 }}>
-            <span style={{ color: document.file.binary ? palette.warning : palette.text, fontWeight: 600 }}>{statusName(document.file.status)}</span>
-            {document.file.oldPath !== null && document.file.newPath !== null && document.file.oldPath !== document.file.newPath && <span title={`${document.file.oldPath} → ${document.file.newPath}`}>rename</span>}
-            {document.file.binary && <span>binary</span>}
-            {document.file.truncated && <span style={{ color: palette.warning }}>truncated</span>}
-            <span style={{ marginLeft: 'auto' }}>{document.source.kind === 'turn' ? `snapshot ${document.source.snapshotId?.slice(0, 8) ?? ''}` : `fingerprint ${document.source.fingerprint?.slice(0, 8) ?? ''}`}</span>
-          </div>
-          {document.file.binary && <div style={{ padding: '34px 18px', color: palette.muted, textAlign: 'center' }}>Binary file snapshot. Textual lines are not available.</div>}
-          {document.file.truncated && <div style={{ margin: 12, padding: 10, border: `1px solid ${palette.warning}`, borderRadius: 7, color: palette.warning }}>This diff exceeded Aezy’s bounded review limit. Only a safe fallback may be available.</div>}
-          {!document.file.binary && document.parts.map(part => <StructuredPart key={part.scope} part={part} />)}
-        </>}
-      </div>
+      <nav aria-label="Changed file navigation" style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto' }}>
+        {target.files.map(file => {
+          const expanded = file.path === target.path
+          return <section key={file.path} style={{ borderBottom: `1px solid ${palette.border}` }}>
+            <button
+              type="button"
+              onClick={() => review.select(file.path)}
+              aria-expanded={expanded}
+              title={file.path}
+              style={{ width: '100%', minHeight: 42, display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto', alignItems: 'center', gap: 8, padding: '8px 12px', border: 0, background: expanded ? palette.interactive : palette.panel, color: expanded ? palette.accent : palette.text, cursor: 'pointer', textAlign: 'left' }}
+            >
+              <span aria-hidden style={{ color: palette.muted, fontSize: 10, transform: expanded ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }}>▶</span>
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11.5 }}>{file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : ''}{file.path}</span>
+              <DiffStats additions={expanded ? document?.file.additions ?? file.additions ?? null : file.additions ?? null} deletions={expanded ? document?.file.deletions ?? file.deletions ?? null : file.deletions ?? null} />
+            </button>
+            {expanded && <div data-aezy-expanded-file={file.path} style={{ overflowX: 'auto', borderTop: `1px solid ${palette.border}`, background: palette.panel }}>
+              {document === null && error === null && <div style={{ padding: 24, color: palette.muted, textAlign: 'center' }}>Loading this file…</div>}
+              {error !== null && <div role="alert" style={{ margin: 12, padding: 12, border: `1px solid ${palette.error}`, borderRadius: 8, color: palette.error }}>Review unavailable: {error}</div>}
+              {document !== null && <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderBottom: `1px solid ${palette.border}`, background: palette.panel, color: palette.muted, fontSize: 11 }}>
+                  <span style={{ color: document.file.binary ? palette.warning : palette.text, fontWeight: 600 }}>{statusName(document.file.status)}</span>
+                  {document.file.oldPath !== null && document.file.newPath !== null && document.file.oldPath !== document.file.newPath && <span title={`${document.file.oldPath} → ${document.file.newPath}`}>rename</span>}
+                  {document.file.binary && <span>binary</span>}
+                  {document.file.truncated && <span style={{ color: palette.warning }}>truncated</span>}
+                  <span style={{ marginLeft: 'auto' }}>{document.source.kind === 'turn' ? `snapshot ${document.source.snapshotId?.slice(0, 8) ?? ''}` : `fingerprint ${document.source.fingerprint?.slice(0, 8) ?? ''}`}</span>
+                </div>
+                {document.file.binary && <div style={{ padding: '30px 16px', color: palette.muted, textAlign: 'center' }}>Binary file snapshot. Textual lines are not available.</div>}
+                {document.file.truncated && <div style={{ margin: 12, padding: 10, border: `1px solid ${palette.warning}`, borderRadius: 7, color: palette.warning }}>This diff exceeded Aezy’s bounded review limit. Only a safe fallback may be available.</div>}
+                {!document.file.binary && document.parts.map(part => <StructuredPart key={part.scope} part={part} />)}
+              </>}
+            </div>}
+          </section>
+        })}
+      </nav>
     </aside>
-  </div>
+
+  return surface === 'overlay'
+    ? <div data-aezy-review-panel data-surface="overlay" data-source={target.source} style={{ position: 'absolute', inset: 0, background: 'var(--dsw-alias-bg-overlay, rgba(0,0,0,.36))' }}>{panel}</div>
+    : <div data-aezy-review-panel data-surface="details" data-source={target.source} style={{ width: '100%', height: '100%' }}>{panel}</div>
 }
 
 function ChangesView({ cwd, sessionId, openReview }: ChangesProps) {
@@ -963,16 +972,38 @@ function WorktreesView({ cwd, sessionId, openWorktree, returnToLocal }: Worktree
   </div>
 }
 
-export const inject = ['slots', 'sessions', 'workspaces']
+export const inject = ['slots', 'sessions', 'workspaces', 'layout']
 
 export function apply(ctx: ClientContext): void {
   const review = new ReviewController()
+  const closeReview = () => {
+    review.close()
+    ctx.layout.closeDetails()
+  }
+  const syncLayout = (narrow: boolean) => {
+    if (narrow) ctx.layout.closeDetails()
+    else ctx.layout.openDetails()
+  }
+  const openReview = (target: ReviewTarget) => {
+    review.open(target)
+    syncLayout(window.innerWidth < 760)
+  }
+
+  ctx.slots.inject('details', () => ctx.slots.register({
+    name: 'details',
+    priority: -10,
+    inject: (): Omit<ReviewPanelProps, 'useSessions'> => ({
+      review, surface: 'details', closeReview, syncLayout,
+    }),
+  }, ReviewPanel))
 
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({
     name: 'shell.overlay',
     id: 'aezy-review',
     order: 100,
-    inject: (): Pick<ReviewPanelProps, 'review'> => ({ review }),
+    inject: (): Omit<ReviewPanelProps, 'useSessions'> => ({
+      review, surface: 'overlay', closeReview, syncLayout,
+    }),
   }, ReviewPanel))
 
   ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
@@ -984,7 +1015,7 @@ export function apply(ctx: ClientContext): void {
     inject: (sessionId: string): Omit<TurnSummaryProps, 'matched'> => {
       const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
       if (cwd === undefined) throw new Error(`aezy-project: session "${sessionId}" has no working directory`)
-      return { cwd, sessionId, openReview: target => review.open(target) }
+      return { cwd, sessionId, openReview }
     },
   }, TurnChangedFiles))
 
@@ -996,7 +1027,7 @@ export function apply(ctx: ClientContext): void {
     inject: (sessionId: string): ChangesProps => {
       const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
       if (cwd === undefined) throw new Error(`aezy-project: session "${sessionId}" has no working directory`)
-      return { cwd, sessionId, openReview: target => review.open(target) }
+      return { cwd, sessionId, openReview }
     },
   }, ChangesView))
 

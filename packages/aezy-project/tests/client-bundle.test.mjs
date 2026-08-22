@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
-test('built client bundle registers the additive Review overlay, Changes, Worktrees, and Turn-tail surfaces', async () => {
+test('built client bundle registers docked details, narrow Review overlay, Changes, Worktrees, and Turn-tail surfaces', async () => {
   let handoff
   globalThis.window = {
     __ModuleLoader__: {
@@ -41,9 +41,14 @@ test('built client bundle registers the additive Review overlay, Changes, Worktr
     },
   })
 
-  assert.deepEqual(injectedSlots, ['shell.overlay', 'conversation.chat.turnTail', 'conversation.view', 'conversation.view'])
+  assert.deepEqual(injectedSlots, ['details', 'shell.overlay', 'conversation.chat.turnTail', 'conversation.view', 'conversation.view'])
+  const details = registrations.find(entry => entry.options.name === 'details')
+  assert.equal(details.options.priority, -10)
+  assert.equal(details.options.inject().surface, 'details')
+  assert.equal(typeof details.component, 'function')
   const panel = registrations.find(entry => entry.options.name === 'shell.overlay')
   assert.equal(panel.options.id, 'aezy-review')
+  assert.equal(panel.options.inject().surface, 'overlay')
   assert.equal(typeof panel.component, 'function')
   const tail = registrations.find(entry => entry.options.name === 'conversation.chat.turnTail')
   assert.equal(tail.options.priority, -10)
@@ -77,6 +82,9 @@ test('built structured Review surface uses DSH aliases and removes the Turn inli
   assert.match(bundle, /--dsw-alias-state-success-primary/)
   assert.match(bundle, /data-aezy-turn-files/)
   assert.match(bundle, /data-aezy-review-panel/)
+  assert.match(bundle, /data-aezy-expanded-file/)
+  assert.match(bundle, /aria-expanded/)
+  assert.match(bundle, /data-surface/)
   assert.match(bundle, /Historical Turn/)
   assert.match(bundle, /Current Working changes/)
   assert.match(bundle, /AbortController/)
