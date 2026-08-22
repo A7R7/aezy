@@ -52,7 +52,7 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3080
 
 ## M1：Workspace & Changes
 
-`@aezy/project` 使用公开 `ctx.webServer`、`session/event`、`dsh.client`、`conversation.view`、`conversation.chat.turnTail` 和 `shell.overlay` seam 提供结构化 repository status/diff、Local Environment 信息、持久 turn-scoped change ledger，以及 Codex 式 Turn change card：总/逐文件 `+/-` 行统计、右侧 structured historical Review、fingerprint 门控的整轮 Undo/Redo 和安全单文件 revert。它不修改 DSH API Proxy、SessionEvent 或 conversation scroll 内核。
+`@aezy/project` 使用公开 `ctx.webServer`、`session/event`、`dsh.client`、`conversation.view`、`conversation.chat.turnTail`、`details` 和 `shell.overlay` seam 提供结构化 repository status/diff、Local Environment 信息、持久 turn-scoped change ledger，以及 Codex 式 Turn change card：总/逐文件 `+/-` 行统计、右侧 structured historical Review、fingerprint 门控的整轮 Undo/Redo 和安全单文件 revert。它不修改 DSH API Proxy、SessionEvent 或 conversation scroll 内核。
 
 ```bash
 pnpm run build:m1
@@ -107,14 +107,19 @@ handoff 和保留分支见 [M3 里程碑记录](doc/milestones/m3.md)。
 ## M4.1A：Modern Review Side Panel
 
 Turn card 不再在消息流内展开 raw unified diff。Review 与文件行现在打开 Aezy
-Session-scoped 右侧 panel：桌面可拖拽，窄屏为全宽 overlay，开关不改变 conversation
-scroll。Working 与 Historical Turn 读取同一 structured DTO renderer，但来源与 identity
-严格分离；Historical 继续读取 ledger object，后续 worktree 漂移不会改变快照。
+Session-scoped 右侧 panel：桌面使用 DSH 原生 details column 占据主页面空间并可拖拽，
+窄屏降级为全宽 overlay。文件名纵向排列，点击一个文件名只在其正下方展开该文件的
+lazy-loaded diff。Working 与 Historical Turn 读取同一 structured DTO renderer，但
+来源与 identity 严格分离；Historical 继续读取 ledger object，后续 worktree 漂移不会
+改变快照。
 
 Renderer 提供 old/new line number、addition/deletion gutter、sticky file/hunk header、
 changed-file lazy navigation，以及 added/deleted/renamed/binary/truncated 和 malformed
 raw fallback 状态。完整自动、真实 rc.1 HTTP、Aezy 自身模型 dogfood 与浏览器 QA
 见 [M4.1A 签收记录](doc/milestones/m4.md)。
+
+当前 rc.1/rc.2 没有 generic/additive details router，因此 desktop occupant 会 shadow
+上游 Tool Details；这是 docked 布局的已知兼容性代价，未来出现公开 router 后迁移。
 
 后续顺序固定为 M4.1B File Tree + code/Markdown/image Preview（复用同一 panel），
 再做 M4.2 `@directory` / `@diff` + 当前 Session Contextual Ask。真正 Side Chat 等待

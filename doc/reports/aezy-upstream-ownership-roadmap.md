@@ -2,11 +2,13 @@
 
 ## 决策摘要
 
-截至 2026-08-22，Aezy 运行基线为已验证的 `dsh-v0.1.1-rc.1`，M4.1A 开工复核时最新公开 tag 仍为
+截至 2026-08-23，Aezy 运行基线为已验证的 `dsh-v0.1.1-rc.1`，M4.1A 交互复验时最新公开 tag 仍为
 `dsh-v0.1.1-rc.2`。rc.2 主要交付统一 image/attachment 管线、DeepSeek Files API
 和权限默认值修正，没有新增 Worktree/Handoff；因此 M3 所有权不变，升级不夹带在
-M3 中；rc.2 也没有新增 generic/additive details panel router，M4.1A 因此通过公开
-`shell.overlay` seam 外置交付。后续工作继续分成两条明确轨道：
+M3 中；rc.2 也没有新增 generic/additive details panel router。M4.1A desktop 按
+docked 产品要求使用公开 `details` single slot，narrow 通过 `shell.overlay` seam
+降级；shadow Tool Details 是迁移到未来 panel router 前的明确兼容性代价。后续工作
+继续分成两条明确轨道：
 
 1. **Aezy 立即实现的产品域**：DSH 没有公开近期落地信号、又直接阻塞本地编程闭环的能力，通过参考树外的 plugin、bundle、profile patch、adapter 或应用实现。
 2. **等待 DSH 或只做薄集成的内核域**：DSH 已有 seam、实现、roadmap 文字或详细 proposed note 的能力，不在 Aezy 中复制第二套状态机、协议或生命周期；当前版本只做启停、配置、状态透传和必要的 Web 装配。
@@ -45,7 +47,7 @@ rc.8 已交付 `@file/@session`、Windows 持久 PowerShell、可安装 Product 
 | Network Policy | **立即实现，位于 M2** | 对 Aezy 管理的 shell/provider/external tool 建立独立 deny/ask/allow 与审计 | 不声称仅靠文件 sandbox 已限制网络 | M1 稳定后 |
 | Worktree / Local Handoff | **立即实现，位于 M3** | 基于 Repository/Environment 与 Git 状态建立创建、清理、绑定和可审计 handoff | 不先于 M1/M2；不让并行 Agent 共享 checkout 后再补隔离 | M2 安全策略完成后 |
 | 上游 `@file/@session` reference | **rc.8 已交付，Aezy 薄集成** | 使用上游 Host index、Remote 和 Web source；验证 Aezy profile 中可用 | 不另建文件索引、Session mention 或引用准备协议 | 上游 seam 无法承载真实引用用例 |
-| Modern Review Side Panel | **M4.1A 已实现** | 复用 `@aezy/project` Git/Turn ledger 与 additive `shell.overlay`，提供 transient Session-scoped selection、structured diff、lazy file navigation | 不 shadow 上游 `details`/Tool Details，不做 editor/stage/hunk apply/PR/Side Session | 上游新增通用 panel router 时迁移；M4.1B 复用同一 Aezy surface |
+| Modern Review Side Panel | **M4.1A 已实现** | 复用 `@aezy/project` Git/Turn ledger；desktop 占用公开 `details` 形成 docked column，narrow 使用 additive `shell.overlay`；提供 transient Session-scoped selection、structured diff、纵向 accordion 与单文件 lazy load | 当前已知代价是 shadow Tool Details；不复制 layout 内核，不做 editor/stage/hunk apply/PR/Side Session | 上游新增通用 panel router 时优先迁移并恢复多 occupant；M4.1B 复用同一 Aezy surface |
 | 文件树、预览、`@directory` / `@diff` | **M4.1B/M4.2 顺序实施** | 先让 file tree + code/Markdown/image Preview 复用 M4.1A side panel，再在上游 reference seam 上补 `@directory` / `@diff` 与当前 Session Contextual Ask | 不重复 `@file/@session`，不一次构建完整 IDE 或通用 artifact 平台 | M4.1B 浏览器 dogfood 后进入 M4.2 |
 | 用户 Integrated Terminal UI | **dogfood 驱动；复用 rc.8 backend** | 未来在 Aezy Web 增加用户 PTY tabs、cwd/environment 绑定；当前继续用 shell/job | 不 fork PTY/Windows persistent PowerShell，不重写 job/terminal lifecycle | 真实交互命令阻塞 M1-M3 |
 | Activity / Status / Usage / Notifications | **薄投影后按痛点增强** | 汇总现有 Session、Job、Subagent、approval、trajectory 投影 | 不另建 Task runtime 或第二套状态机 | 状态不可见开始阻塞多任务 dogfood |
@@ -141,9 +143,10 @@ fail-closed cleanup；自动、真实 rc.1 HTTP 和 Aezy 自仓库模型 dogfood
 
 ### M4：按 dogfood 痛点逐项补工作台入口
 
-**M4.1A Modern Review Side Panel：Complete（2026-08-22）。** Turn card 已移除
-inline raw diff；Working/Historical structured DTO、单文件 lazy load、responsive
-overlay、theme、scroll 保持、真实 rc.1 Host、模型 dogfood 与浏览器 QA 均已签收，
+**M4.1A Modern Review Side Panel：Complete（2026-08-22，docked/accordion 复验
+2026-08-23）。** Turn card 已移除 inline raw diff；Working/Historical structured
+DTO、纵向 accordion、单文件 lazy load、desktop docked details、narrow overlay、theme、
+真实 rc.1 Host、模型 dogfood 与浏览器 QA 均已签收，
 详见 [M4.1A 签收记录](../milestones/m4.md)。
 
 后续项不是一个捆绑交付，固定顺序如下：

@@ -142,8 +142,10 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 已完成：
 
 - Turn card 删除消息流内 inline raw diff，只保留摘要、状态、Undo/Redo 与 Review；
-- 基于公开 additive `shell.overlay` 的 transient Session-scoped 右侧 panel；
-- desktop resize、narrow full overlay，开关不改变 conversation scroll；
+- transient Session-scoped 右侧 panel：desktop 使用公开 `details` slot 占据 AppFrame
+  页面空间并复用原生 resize，narrow 使用 additive `shell.overlay`；
+- 文件名纵向 accordion 排列，点击文件名只在其下方展开一个 lazy-loaded diff；
+- conversation view 不卸载、垂直 scroll state 不重置；desktop 横向 reflow 是预期行为；
 - Working/Historical 共用 structured diff DTO 与 renderer；
 - old/new line number、addition/deletion/status gutter、sticky file/hunk header；
 - added/deleted/renamed/binary/truncated/malformed raw fallback；
@@ -157,9 +159,11 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 
 M4.1A 开工时再次确认最新公开 tag 仍为 `dsh-v0.1.1-rc.2`（commit `b150a551…`，tree
 `53915efe…`）。rc.2 没有新增 Worktree/Handoff 或相关环境内核，M3 所有权不变；
-关键 layout/slot/theme 文件也没有新增 generic/additive details panel router。Aezy 本轮
-仍运行已完整验证的 rc.1，rc.2 升级应保持为独立 reviewed revision replacement。
-复核结果已写入 `compatibility/dsh.json` 和 M4.1A 里程碑记录。
+关键 layout/slot/theme 文件也没有新增 generic/additive details panel router。按
+2026-08-23 docked 产品要求，Aezy desktop 有意占用公开 `details` single slot，narrow
+继续用 `shell.overlay`；这会 shadow 当前 Tool Details，是迁移到未来 panel router
+前的已知兼容性代价。Aezy 仍运行已完整验证的 rc.1，rc.2 升级应保持为独立 reviewed
+revision replacement。复核结果已写入 `compatibility/dsh.json` 和 M4.1A 里程碑记录。
 
 ### 0.1.1-rc.1 调查结论
 
@@ -195,7 +199,7 @@ rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,67
 - `pnpm run test:m3:http` → Worktree Session、handoff、拒绝路径、retained branch、Security audit passed
 - `pnpm run dogfood:m3` → Aezy 自仓库真实模型隔离 Turn、test、handoff、cleanup passed
 - M4.1A Aezy 自身真实模型 dogfood → Session `m4-review-qa-home`，13/13 passed
-- M4.1A browser QA → Historical/Working、581→694 resize、680 overlay、Light/Dark、scrollTop 391 preserved
+- M4.1A docked browser QA → center `1160→800→1160`、scrollTop `391→391→391`、native details `359→451` resize、纵向 accordion 单文件展开、680 overlay
 - `git diff --check` → passed
 
 交接时 Aezy Web 正运行于：
