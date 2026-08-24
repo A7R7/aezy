@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type HTMLAttributes } from 'react'
 import { summarizeTurn } from '../summary.js'
 
 type FileRow = {
@@ -238,6 +238,66 @@ const palette = {
   error: 'var(--dsw-alias-state-error-primary, #dc1313)',
 }
 
+const changeSurfaceStyle = {
+  overflow: 'hidden',
+  borderRadius: 12,
+  background: 'var(--dsw-alias-markdown-code-block)',
+  color: 'var(--dsw-alias-label-primary)',
+} as const
+
+const changeBannerStyle = {
+  background: 'var(--dsw-alias-markdown-code-block-banner)',
+  font: 'var(--dsw-font-xs-13)',
+} as const
+
+function ChangeSurface({ className, style, ...props }: HTMLAttributes<HTMLElement>) {
+  const classes = ['aezy-change-surface', className].filter(Boolean).join(' ')
+  return <section {...props} className={classes} style={{ ...changeSurfaceStyle, ...style }} />
+}
+
+type FileVisual = 'code' | 'config' | 'document' | 'image' | 'style' | 'terminal' | 'data' | 'generic'
+
+function fileVisual(path: string): FileVisual {
+  const name = path.split('/').pop()?.toLowerCase() ?? path.toLowerCase()
+  const extension = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : ''
+  if (['ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs', 'py', 'go', 'rs', 'java', 'kt', 'kts', 'c', 'cc', 'cpp', 'h', 'hpp', 'rb', 'php', 'swift', 'vue', 'svelte'].includes(extension)) return 'code'
+  if (['json', 'jsonc', 'json5', 'yaml', 'yml', 'toml', 'ini', 'conf', 'config', 'xml'].includes(extension) || ['dockerfile', 'makefile', '.gitignore', '.gitattributes', '.editorconfig', '.npmrc'].includes(name)) return 'config'
+  if (['md', 'mdx', 'txt', 'rst', 'adoc', 'pdf', 'doc', 'docx'].includes(extension)) return 'document'
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'ico', 'avif', 'bmp'].includes(extension)) return 'image'
+  if (['css', 'scss', 'sass', 'less', 'styl'].includes(extension)) return 'style'
+  if (['sh', 'bash', 'zsh', 'fish', 'ps1', 'bat', 'cmd'].includes(extension)) return 'terminal'
+  if (['csv', 'tsv', 'sql', 'db', 'sqlite', 'parquet'].includes(extension)) return 'data'
+  return 'generic'
+}
+
+function FileTypeIcon({ path }: { path: string }) {
+  const visual = fileVisual(path)
+  const color = visual === 'image' || visual === 'style'
+    ? palette.accent
+    : visual === 'terminal' || visual === 'data'
+      ? palette.success
+      : visual === 'config'
+        ? palette.warning
+        : visual === 'code'
+          ? 'var(--dsw-alias-state-business-primary, #4d6bfe)'
+          : palette.muted
+  const label = `${visual[0].toUpperCase()}${visual.slice(1)} file`
+  return <span data-aezy-file-icon={visual} role="img" title={label} aria-label={label} style={{ width: 16, height: 16, display: 'inline-flex', flex: '0 0 auto', color }}>
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
+      <path d="M3.25 1.75h5.2l4.3 4.3v8.2H3.25z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M8.25 1.9v4.35h4.35" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      {visual === 'code' && <path d="m6.15 8-1.4 1.25 1.4 1.25M9.85 8l1.4 1.25-1.4 1.25M8.7 7.65 7.35 10.9" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />}
+      {visual === 'config' && <path d="M5.3 8.2h1.1M9.6 8.2h1.1M5.3 10.7h1.1M9.6 10.7h1.1M7.45 7.4l1.1 4.1" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />}
+      {visual === 'document' && <path d="M5.2 8h5.6M5.2 10h5.6M5.2 12h3.8" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />}
+      {visual === 'image' && <><circle cx="6" cy="8" r=".8" fill="currentColor" /><path d="m4.8 12 2.1-2.1 1.3 1.2 1.25-1.45L11.2 12" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" /></>}
+      {visual === 'style' && <path d="M5.1 8.1h5.8M5.1 10h4.3M5.1 11.9h2.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />}
+      {visual === 'terminal' && <path d="m5.25 8 1.55 1.4-1.55 1.4M8 11h2.7" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />}
+      {visual === 'data' && <path d="M5 7.8h6v4.4H5zM5 9.25h6M7 7.8v4.4M9 7.8v4.4" stroke="currentColor" strokeWidth=".8" />}
+      {visual === 'generic' && <path d="M5.2 8.2h5.6M5.2 10.2h5.6M5.2 12.2h3.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />}
+    </svg>
+  </span>
+}
+
 type ReviewNavFile = {
   path: string
   oldPath?: string | null
@@ -377,8 +437,8 @@ function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryPr
     })
   }
 
-  return <section className="md-code-block" data-aezy-turn-files={summary.turn} style={{ position: 'relative', marginTop: 16, maxWidth: 720, overflow: 'hidden', borderRadius: 12, background: 'var(--dsw-alias-markdown-code-block)', color: 'var(--dsw-alias-label-primary)' }}>
-    <header data-aezy-turn-banner style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '9px 14px', borderRadius: '12px 12px 0 0', background: 'var(--dsw-alias-markdown-code-block-banner)', font: 'var(--dsw-font-xs-13)' }}>
+  return <ChangeSurface className="aezy-turn-changes" data-aezy-turn-files={summary.turn} style={{ position: 'relative', marginTop: 16, maxWidth: 720 }}>
+    <header data-aezy-turn-banner style={{ ...changeBannerStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '9px 14px', borderRadius: '12px 12px 0 0' }}>
       <strong style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code)', fontSize: 12, lineHeight: '18px', fontWeight: 600 }}>{summary.files.length > 0 ? `Edited ${summary.files.length} ${summary.files.length === 1 ? 'file' : 'files'}` : 'File changes partially observed'}</strong>
       <span style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, gap: 12, color: 'var(--dsw-alias-label-secondary)' }}>
         <button type="button" disabled={!canUndo || mutating} onClick={() => { void toggleUndo() }} title={summary.partial ? 'Undo is disabled because this Turn was only partially observed' : summary.concurrent ? 'Batch Undo is disabled because another Session overlapped this Turn' : canUndo ? (receiptId === null ? 'Restore every file to its state before this Turn' : 'Reapply the files changed by this Turn') : 'At least one file cannot be restored safely'} style={{ border: 0, padding: 0, margin: 0, background: 'transparent', color: canUndo ? 'inherit' : 'var(--dsw-alias-label-tertiary)', cursor: canUndo && !mutating ? 'pointer' : 'not-allowed', font: 'inherit' }}>{mutating ? 'Working…' : receiptId === null ? 'Undo' : 'Redo'}</button>
@@ -386,7 +446,8 @@ function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryPr
       </span>
     </header>
     <div style={{ padding: '12px 14px 8px', background: 'var(--dsw-alias-markdown-code-block)', font: 'var(--dsw-font-markdown-code-block)' }}>
-      {summary.files.map(file => <div key={file.path} style={{ minHeight: 22, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'baseline', gap: 16 }}>
+      {summary.files.map(file => <div key={file.path} style={{ minHeight: 22, display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto', alignItems: 'center', gap: 7 }}>
+        <FileTypeIcon path={file.path} />
         <button type="button" title={file.path} onClick={() => openTurnReview(file.path)} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: 0, border: 0, background: 'transparent', color: file.afterFingerprint === null ? 'var(--dsw-alias-label-tertiary)' : 'var(--dsw-alias-label-primary)', cursor: 'pointer', textAlign: 'left', font: 'inherit', textDecoration: file.afterFingerprint === null ? 'line-through' : undefined }}>
           {file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : ''}{file.path}
           {file.binary && <span style={{ marginLeft: 7, color: 'var(--dsw-alias-label-tertiary)' }}>binary</span>}
@@ -404,7 +465,7 @@ function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryPr
       {summary.concurrent && <span title="Another Session was active in this repository during the Turn" style={{ color: palette.warning }}>· concurrent</span>}
     </footer>
     {error !== null && <div title={error} style={{ padding: '0 14px 12px', background: 'var(--dsw-alias-markdown-code-block)', color: palette.error, font: 'var(--dsw-font-markdown-code-block)' }}>{error}</div>}
-  </section>
+  </ChangeSurface>
 }
 
 async function request<T>(path: string, params: Record<string, string>, signal?: AbortSignal): Promise<T> {
@@ -439,14 +500,10 @@ function statusLabel(file: FileRow): string {
   return `${file.indexStatus}${file.worktreeStatus}`
 }
 
-function statusName(status: ReviewDocument['file']['status']): string {
-  return status[0].toUpperCase() + status.slice(1)
-}
-
 function StructuredPart({ part }: { part: DiffPart }) {
   const [rawOpen, setRawOpen] = useState(false)
-  return <section style={{ borderBottom: `1px solid ${palette.border}` }}>
-    <div style={{ position: 'sticky', top: 0, zIndex: 2, padding: '7px 12px', borderBottom: `1px solid ${palette.border}`, background: palette.elevated, color: palette.muted, fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase' }}>{part.label}</div>
+  return <section data-aezy-diff-part={part.scope}>
+    {part.scope !== 'turn' && <div style={{ padding: '5px 10px', borderBottom: `1px solid ${palette.border}`, background: palette.elevated, color: palette.muted, fontSize: 10, fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase' }}>{part.label}</div>}
     {part.state === 'empty' && <div style={{ padding: '28px 16px', color: palette.muted, textAlign: 'center' }}>{part.message ?? 'No textual line changes.'}</div>}
     {part.state === 'fallback' && <div style={{ padding: 16 }}>
       <div role="status" style={{ padding: 12, border: `1px solid ${palette.warning}`, borderRadius: 8, color: palette.warning, background: palette.elevated }}>
@@ -458,7 +515,7 @@ function StructuredPart({ part }: { part: DiffPart }) {
       </div>}
     </div>}
     {part.state === 'structured' && part.hunks.map((hunk, hunkIndex) => <section key={`${hunk.header}-${hunkIndex}`}>
-      <div style={{ position: 'sticky', top: 27, zIndex: 1, padding: '6px 12px', borderBottom: `1px solid ${palette.border}`, background: 'var(--dsw-alias-bg-layer-2, #f3f5f8)', color: palette.accent, fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11, whiteSpace: 'pre', overflow: 'hidden', textOverflow: 'ellipsis' }}>{hunk.header}</div>
+      {hunkIndex > 0 && <div aria-hidden="true" title={hunk.header} style={{ height: 18, display: 'flex', alignItems: 'center', gap: 7, color: palette.muted }}><span style={{ flex: 1, borderTop: `1px dotted ${palette.border}` }} /><span style={{ fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 10 }}>···</span><span style={{ flex: 1, borderTop: `1px dotted ${palette.border}` }} /></div>}
       <div role="table" aria-label={hunk.header} style={{ minWidth: 'max-content', width: '100%', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11.5, lineHeight: 1.55 }}>
         {hunk.lines.map((line, lineIndex) => {
           const addition = line.kind === 'addition'
@@ -549,43 +606,45 @@ function ReviewPanel({ review, surface, closeReview, syncLayout, useSessions }: 
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ minWidth: 0 }}>
             <strong style={{ display: 'block', fontSize: 14 }}>Review changes</strong>
-            <span style={{ display: 'inline-block', marginTop: 4, padding: '2px 7px', borderRadius: 999, background: palette.interactive, color: target.source === 'turn' ? palette.accent : palette.warning, fontSize: 10.5, fontWeight: 600 }}>{target.source === 'turn' ? `Historical Turn ${target.turn} snapshot` : 'Current Working changes'}</span>
+            <span style={{ display: 'inline-block', marginTop: 4, padding: '2px 7px', borderRadius: 999, background: palette.interactive, color: target.source === 'turn' ? palette.accent : palette.warning, fontSize: 10.5, fontWeight: 600 }}>{target.source === 'turn' ? `Historical · Turn ${target.turn}` : 'Current · Working changes'}</span>
           </div>
           <button type="button" aria-label="Close Review panel" onClick={closeReview} style={{ border: 0, padding: 4, background: 'transparent', color: palette.muted, cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
         </div>
       </header>
-      <nav aria-label="Changed file navigation" style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto' }}>
+      <nav aria-label="Changed file navigation" style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto', padding: 10 }}>
         {target.files.map(file => {
           const expanded = file.path === target.path
-          return <section key={file.path} style={{ borderBottom: `1px solid ${palette.border}` }}>
+          const status = expanded ? document?.file.status ?? file.status : file.status
+          const binary = expanded ? document?.file.binary ?? file.binary : file.binary
+          const truncated = expanded ? document?.file.truncated ?? file.truncated : file.truncated
+          return <ChangeSurface key={file.path} className="aezy-review-file" data-aezy-review-file={file.path} style={{ marginBottom: 8, overflow: 'visible' }}>
             <button
               type="button"
               onClick={() => review.select(file.path)}
               aria-expanded={expanded}
-              title={file.path}
-              style={{ width: '100%', minHeight: 42, display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto', alignItems: 'center', gap: 8, padding: '8px 12px', border: 0, background: expanded ? palette.interactive : palette.panel, color: expanded ? palette.accent : palette.text, cursor: 'pointer', textAlign: 'left' }}
+              title={`${file.path}${status === undefined ? '' : ` · ${status}`}`}
+              style={{ ...changeBannerStyle, position: expanded ? 'sticky' : undefined, top: expanded ? 0 : undefined, zIndex: expanded ? 3 : undefined, width: '100%', minHeight: 32, display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto 12px', alignItems: 'center', gap: 7, padding: '5px 9px', border: 0, borderRadius: expanded ? '12px 12px 0 0' : 12, color: expanded ? palette.accent : palette.text, cursor: 'pointer', textAlign: 'left' }}
             >
-              <span aria-hidden style={{ color: palette.muted, fontSize: 10, transform: expanded ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }}>▶</span>
-              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11.5 }}>{file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : ''}{file.path}</span>
-              <DiffStats additions={expanded ? document?.file.additions ?? file.additions ?? null : file.additions ?? null} deletions={expanded ? document?.file.deletions ?? file.deletions ?? null : file.deletions ?? null} />
+              <FileTypeIcon path={file.path} />
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : ''}{file.path}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 9.5, color: palette.muted }}>
+                {status !== undefined && status !== 'modified' && <span title={status}>{status}</span>}
+                {binary && status !== 'binary' && <span>binary</span>}
+                {truncated && <span style={{ color: palette.warning }}>truncated</span>}
+                <DiffStats additions={expanded ? document?.file.additions ?? file.additions ?? null : file.additions ?? null} deletions={expanded ? document?.file.deletions ?? file.deletions ?? null : file.deletions ?? null} />
+              </span>
+              <span aria-hidden style={{ color: palette.muted, fontSize: 9, transform: expanded ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }}>▶</span>
             </button>
-            {expanded && <div data-aezy-expanded-file={file.path} style={{ overflowX: 'auto', borderTop: `1px solid ${palette.border}`, background: palette.panel }}>
+            {expanded && <div data-aezy-expanded-file={file.path} style={{ overflowX: 'auto', borderRadius: '0 0 12px 12px', background: 'var(--dsw-alias-markdown-code-block)' }}>
               {document === null && error === null && <div style={{ padding: 24, color: palette.muted, textAlign: 'center' }}>Loading this file…</div>}
               {error !== null && <div role="alert" style={{ margin: 12, padding: 12, border: `1px solid ${palette.error}`, borderRadius: 8, color: palette.error }}>Review unavailable: {error}</div>}
               {document !== null && <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderBottom: `1px solid ${palette.border}`, background: palette.panel, color: palette.muted, fontSize: 11 }}>
-                  <span style={{ color: document.file.binary ? palette.warning : palette.text, fontWeight: 600 }}>{statusName(document.file.status)}</span>
-                  {document.file.oldPath !== null && document.file.newPath !== null && document.file.oldPath !== document.file.newPath && <span title={`${document.file.oldPath} → ${document.file.newPath}`}>rename</span>}
-                  {document.file.binary && <span>binary</span>}
-                  {document.file.truncated && <span style={{ color: palette.warning }}>truncated</span>}
-                  <span style={{ marginLeft: 'auto' }}>{document.source.kind === 'turn' ? `snapshot ${document.source.snapshotId?.slice(0, 8) ?? ''}` : `fingerprint ${document.source.fingerprint?.slice(0, 8) ?? ''}`}</span>
-                </div>
                 {document.file.binary && <div style={{ padding: '30px 16px', color: palette.muted, textAlign: 'center' }}>Binary file snapshot. Textual lines are not available.</div>}
                 {document.file.truncated && <div style={{ margin: 12, padding: 10, border: `1px solid ${palette.warning}`, borderRadius: 7, color: palette.warning }}>This diff exceeded Aezy’s bounded review limit. Only a safe fallback may be available.</div>}
                 {!document.file.binary && document.parts.map(part => <StructuredPart key={part.scope} part={part} />)}
               </>}
             </div>}
-          </section>
+          </ChangeSurface>
         })}
       </nav>
     </aside>

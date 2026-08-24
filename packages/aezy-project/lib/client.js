@@ -52,6 +52,214 @@ window.__ModuleLoader__.load({
 			warning: "var(--dsw-alias-state-warn-label, #b45309)",
 			error: "var(--dsw-alias-state-error-primary, #dc1313)"
 		};
+		const changeSurfaceStyle = {
+			overflow: "hidden",
+			borderRadius: 12,
+			background: "var(--dsw-alias-markdown-code-block)",
+			color: "var(--dsw-alias-label-primary)"
+		};
+		const changeBannerStyle = {
+			background: "var(--dsw-alias-markdown-code-block-banner)",
+			font: "var(--dsw-font-xs-13)"
+		};
+		function ChangeSurface({ className, style, ...props }) {
+			const classes = ["aezy-change-surface", className].filter(Boolean).join(" ");
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("section", {
+				...props,
+				className: classes,
+				style: {
+					...changeSurfaceStyle,
+					...style
+				}
+			});
+		}
+		function fileVisual(path) {
+			const name = path.split("/").pop()?.toLowerCase() ?? path.toLowerCase();
+			const extension = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1) : "";
+			if ([
+				"ts",
+				"tsx",
+				"js",
+				"jsx",
+				"mjs",
+				"cjs",
+				"py",
+				"go",
+				"rs",
+				"java",
+				"kt",
+				"kts",
+				"c",
+				"cc",
+				"cpp",
+				"h",
+				"hpp",
+				"rb",
+				"php",
+				"swift",
+				"vue",
+				"svelte"
+			].includes(extension)) return "code";
+			if ([
+				"json",
+				"jsonc",
+				"json5",
+				"yaml",
+				"yml",
+				"toml",
+				"ini",
+				"conf",
+				"config",
+				"xml"
+			].includes(extension) || [
+				"dockerfile",
+				"makefile",
+				".gitignore",
+				".gitattributes",
+				".editorconfig",
+				".npmrc"
+			].includes(name)) return "config";
+			if ([
+				"md",
+				"mdx",
+				"txt",
+				"rst",
+				"adoc",
+				"pdf",
+				"doc",
+				"docx"
+			].includes(extension)) return "document";
+			if ([
+				"png",
+				"jpg",
+				"jpeg",
+				"gif",
+				"webp",
+				"svg",
+				"ico",
+				"avif",
+				"bmp"
+			].includes(extension)) return "image";
+			if ([
+				"css",
+				"scss",
+				"sass",
+				"less",
+				"styl"
+			].includes(extension)) return "style";
+			if ([
+				"sh",
+				"bash",
+				"zsh",
+				"fish",
+				"ps1",
+				"bat",
+				"cmd"
+			].includes(extension)) return "terminal";
+			if ([
+				"csv",
+				"tsv",
+				"sql",
+				"db",
+				"sqlite",
+				"parquet"
+			].includes(extension)) return "data";
+			return "generic";
+		}
+		function FileTypeIcon({ path }) {
+			const visual = fileVisual(path);
+			const color = visual === "image" || visual === "style" ? palette.accent : visual === "terminal" || visual === "data" ? palette.success : visual === "config" ? palette.warning : visual === "code" ? "var(--dsw-alias-state-business-primary, #4d6bfe)" : palette.muted;
+			const label = `${visual[0].toUpperCase()}${visual.slice(1)} file`;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+				"data-aezy-file-icon": visual,
+				role: "img",
+				title: label,
+				"aria-label": label,
+				style: {
+					width: 16,
+					height: 16,
+					display: "inline-flex",
+					flex: "0 0 auto",
+					color
+				},
+				children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
+					viewBox: "0 0 16 16",
+					width: "16",
+					height: "16",
+					fill: "none",
+					"aria-hidden": "true",
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+							d: "M3.25 1.75h5.2l4.3 4.3v8.2H3.25z",
+							stroke: "currentColor",
+							strokeWidth: "1.2",
+							strokeLinejoin: "round"
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+							d: "M8.25 1.9v4.35h4.35",
+							stroke: "currentColor",
+							strokeWidth: "1.2",
+							strokeLinejoin: "round"
+						}),
+						visual === "code" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+							d: "m6.15 8-1.4 1.25 1.4 1.25M9.85 8l1.4 1.25-1.4 1.25M8.7 7.65 7.35 10.9",
+							stroke: "currentColor",
+							strokeWidth: "1",
+							strokeLinecap: "round",
+							strokeLinejoin: "round"
+						}),
+						visual === "config" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+							d: "M5.3 8.2h1.1M9.6 8.2h1.1M5.3 10.7h1.1M9.6 10.7h1.1M7.45 7.4l1.1 4.1",
+							stroke: "currentColor",
+							strokeWidth: "1",
+							strokeLinecap: "round"
+						}),
+						visual === "document" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+							d: "M5.2 8h5.6M5.2 10h5.6M5.2 12h3.8",
+							stroke: "currentColor",
+							strokeWidth: "1",
+							strokeLinecap: "round"
+						}),
+						visual === "image" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("circle", {
+							cx: "6",
+							cy: "8",
+							r: ".8",
+							fill: "currentColor"
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+							d: "m4.8 12 2.1-2.1 1.3 1.2 1.25-1.45L11.2 12",
+							stroke: "currentColor",
+							strokeWidth: "1",
+							strokeLinecap: "round",
+							strokeLinejoin: "round"
+						})] }),
+						visual === "style" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+							d: "M5.1 8.1h5.8M5.1 10h4.3M5.1 11.9h2.8",
+							stroke: "currentColor",
+							strokeWidth: "1.2",
+							strokeLinecap: "round"
+						}),
+						visual === "terminal" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+							d: "m5.25 8 1.55 1.4-1.55 1.4M8 11h2.7",
+							stroke: "currentColor",
+							strokeWidth: "1",
+							strokeLinecap: "round",
+							strokeLinejoin: "round"
+						}),
+						visual === "data" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+							d: "M5 7.8h6v4.4H5zM5 9.25h6M7 7.8v4.4M9 7.8v4.4",
+							stroke: "currentColor",
+							strokeWidth: ".8"
+						}),
+						visual === "generic" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("path", {
+							d: "M5.2 8.2h5.6M5.2 10.2h5.6M5.2 12.2h3.5",
+							stroke: "currentColor",
+							strokeWidth: "1",
+							strokeLinecap: "round"
+						})
+					]
+				})
+			});
+		}
 		var ReviewController = class {
 			#target = null;
 			#listeners = /* @__PURE__ */ new Set();
@@ -200,30 +408,25 @@ window.__ModuleLoader__.load({
 					}))
 				});
 			};
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-				className: "md-code-block",
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(ChangeSurface, {
+				className: "aezy-turn-changes",
 				"data-aezy-turn-files": summary.turn,
 				style: {
 					position: "relative",
 					marginTop: 16,
-					maxWidth: 720,
-					overflow: "hidden",
-					borderRadius: 12,
-					background: "var(--dsw-alias-markdown-code-block)",
-					color: "var(--dsw-alias-label-primary)"
+					maxWidth: 720
 				},
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
 						"data-aezy-turn-banner": true,
 						style: {
+							...changeBannerStyle,
 							display: "flex",
 							alignItems: "center",
 							justifyContent: "space-between",
 							gap: 12,
 							padding: "9px 14px",
-							borderRadius: "12px 12px 0 0",
-							background: "var(--dsw-alias-markdown-code-block-banner)",
-							font: "var(--dsw-font-xs-13)"
+							borderRadius: "12px 12px 0 0"
 						},
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
 							style: {
@@ -289,51 +492,55 @@ window.__ModuleLoader__.load({
 							style: {
 								minHeight: 22,
 								display: "grid",
-								gridTemplateColumns: "minmax(0, 1fr) auto",
-								alignItems: "baseline",
-								gap: 16
+								gridTemplateColumns: "16px minmax(0, 1fr) auto",
+								alignItems: "center",
+								gap: 7
 							},
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-								type: "button",
-								title: file.path,
-								onClick: () => openTurnReview(file.path),
-								style: {
-									minWidth: 0,
-									overflow: "hidden",
-									textOverflow: "ellipsis",
-									whiteSpace: "nowrap",
-									padding: 0,
-									border: 0,
-									background: "transparent",
-									color: file.afterFingerprint === null ? "var(--dsw-alias-label-tertiary)" : "var(--dsw-alias-label-primary)",
-									cursor: "pointer",
-									textAlign: "left",
-									font: "inherit",
-									textDecoration: file.afterFingerprint === null ? "line-through" : void 0
-								},
-								children: [
-									file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : "",
-									file.path,
-									file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										style: {
-											marginLeft: 7,
-											color: "var(--dsw-alias-label-tertiary)"
-										},
-										children: "binary"
-									}),
-									file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										style: {
-											marginLeft: 7,
-											color: palette.warning,
-											fontFamily: "inherit"
-										},
-										children: "truncated"
-									})
-								]
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
-								additions: file.additions,
-								deletions: file.deletions
-							})]
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(FileTypeIcon, { path: file.path }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+									type: "button",
+									title: file.path,
+									onClick: () => openTurnReview(file.path),
+									style: {
+										minWidth: 0,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+										padding: 0,
+										border: 0,
+										background: "transparent",
+										color: file.afterFingerprint === null ? "var(--dsw-alias-label-tertiary)" : "var(--dsw-alias-label-primary)",
+										cursor: "pointer",
+										textAlign: "left",
+										font: "inherit",
+										textDecoration: file.afterFingerprint === null ? "line-through" : void 0
+									},
+									children: [
+										file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : "",
+										file.path,
+										file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											style: {
+												marginLeft: 7,
+												color: "var(--dsw-alias-label-tertiary)"
+											},
+											children: "binary"
+										}),
+										file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											style: {
+												marginLeft: 7,
+												color: palette.warning,
+												fontFamily: "inherit"
+											},
+											children: "truncated"
+										})
+									]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
+									additions: file.additions,
+									deletions: file.deletions
+								})
+							]
 						}, file.path))
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("footer", {
@@ -420,26 +627,20 @@ window.__ModuleLoader__.load({
 			if (file.kind === "untracked") return "??";
 			return `${file.indexStatus}${file.worktreeStatus}`;
 		}
-		function statusName(status) {
-			return status[0].toUpperCase() + status.slice(1);
-		}
 		function StructuredPart({ part }) {
 			const [rawOpen, setRawOpen] = (0, react.useState)(false);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-				style: { borderBottom: `1px solid ${palette.border}` },
+				"data-aezy-diff-part": part.scope,
 				children: [
-					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					part.scope !== "turn" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						style: {
-							position: "sticky",
-							top: 0,
-							zIndex: 2,
-							padding: "7px 12px",
+							padding: "5px 10px",
 							borderBottom: `1px solid ${palette.border}`,
 							background: palette.elevated,
 							color: palette.muted,
-							fontSize: 11,
+							fontSize: 10,
 							fontWeight: 600,
-							letterSpacing: ".06em",
+							letterSpacing: ".04em",
 							textTransform: "uppercase"
 						},
 						children: part.label
@@ -496,22 +697,33 @@ window.__ModuleLoader__.load({
 							})]
 						})]
 					}),
-					part.state === "structured" && part.hunks.map((hunk, hunkIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					part.state === "structured" && part.hunks.map((hunk, hunkIndex) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", { children: [hunkIndex > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						"aria-hidden": "true",
+						title: hunk.header,
 						style: {
-							position: "sticky",
-							top: 27,
-							zIndex: 1,
-							padding: "6px 12px",
-							borderBottom: `1px solid ${palette.border}`,
-							background: "var(--dsw-alias-bg-layer-2, #f3f5f8)",
-							color: palette.accent,
-							fontFamily: "var(--ds-font-family-code, monospace)",
-							fontSize: 11,
-							whiteSpace: "pre",
-							overflow: "hidden",
-							textOverflow: "ellipsis"
+							height: 18,
+							display: "flex",
+							alignItems: "center",
+							gap: 7,
+							color: palette.muted
 						},
-						children: hunk.header
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { style: {
+								flex: 1,
+								borderTop: `1px dotted ${palette.border}`
+							} }),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								style: {
+									fontFamily: "var(--ds-font-family-code, monospace)",
+									fontSize: 10
+								},
+								children: "···"
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { style: {
+								flex: 1,
+								borderTop: `1px dotted ${palette.border}`
+							} })
+						]
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						role: "table",
 						"aria-label": hunk.header,
@@ -704,7 +916,7 @@ window.__ModuleLoader__.load({
 									fontSize: 10.5,
 									fontWeight: 600
 								},
-								children: target.source === "turn" ? `Historical Turn ${target.turn} snapshot` : "Current Working changes"
+								children: target.source === "turn" ? `Historical · Turn ${target.turn}` : "Current · Working changes"
 							})]
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 							type: "button",
@@ -727,42 +939,46 @@ window.__ModuleLoader__.load({
 					style: {
 						flex: "1 1 auto",
 						minHeight: 0,
-						overflow: "auto"
+						overflow: "auto",
+						padding: 10
 					},
 					children: target.files.map((file) => {
 						const expanded = file.path === target.path;
-						return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-							style: { borderBottom: `1px solid ${palette.border}` },
+						const status = expanded ? document?.file.status ?? file.status : file.status;
+						const binary = expanded ? document?.file.binary ?? file.binary : file.binary;
+						const truncated = expanded ? document?.file.truncated ?? file.truncated : file.truncated;
+						return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(ChangeSurface, {
+							className: "aezy-review-file",
+							"data-aezy-review-file": file.path,
+							style: {
+								marginBottom: 8,
+								overflow: "visible"
+							},
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
 								onClick: () => review.select(file.path),
 								"aria-expanded": expanded,
-								title: file.path,
+								title: `${file.path}${status === void 0 ? "" : ` · ${status}`}`,
 								style: {
+									...changeBannerStyle,
+									position: expanded ? "sticky" : void 0,
+									top: expanded ? 0 : void 0,
+									zIndex: expanded ? 3 : void 0,
 									width: "100%",
-									minHeight: 42,
+									minHeight: 32,
 									display: "grid",
-									gridTemplateColumns: "16px minmax(0, 1fr) auto",
+									gridTemplateColumns: "16px minmax(0, 1fr) auto 12px",
 									alignItems: "center",
-									gap: 8,
-									padding: "8px 12px",
+									gap: 7,
+									padding: "5px 9px",
 									border: 0,
-									background: expanded ? palette.interactive : palette.panel,
+									borderRadius: expanded ? "12px 12px 0 0" : 12,
 									color: expanded ? palette.accent : palette.text,
 									cursor: "pointer",
 									textAlign: "left"
 								},
 								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										"aria-hidden": true,
-										style: {
-											color: palette.muted,
-											fontSize: 10,
-											transform: expanded ? "rotate(90deg)" : void 0,
-											transition: "transform 120ms ease"
-										},
-										children: "▶"
-									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(FileTypeIcon, { path: file.path }),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 										style: {
 											minWidth: 0,
@@ -770,21 +986,51 @@ window.__ModuleLoader__.load({
 											textOverflow: "ellipsis",
 											whiteSpace: "nowrap",
 											fontFamily: "var(--ds-font-family-code, monospace)",
-											fontSize: 11.5
+											fontSize: 11
 										},
 										children: [file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : "", file.path]
 									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
-										additions: expanded ? document?.file.additions ?? file.additions ?? null : file.additions ?? null,
-										deletions: expanded ? document?.file.deletions ?? file.deletions ?? null : file.deletions ?? null
+									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										style: {
+											display: "inline-flex",
+											alignItems: "center",
+											gap: 6,
+											fontSize: 9.5,
+											color: palette.muted
+										},
+										children: [
+											status !== void 0 && status !== "modified" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												title: status,
+												children: status
+											}),
+											binary && status !== "binary" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "binary" }),
+											truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+												style: { color: palette.warning },
+												children: "truncated"
+											}),
+											/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
+												additions: expanded ? document?.file.additions ?? file.additions ?? null : file.additions ?? null,
+												deletions: expanded ? document?.file.deletions ?? file.deletions ?? null : file.deletions ?? null
+											})
+										]
+									}),
+									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										"aria-hidden": true,
+										style: {
+											color: palette.muted,
+											fontSize: 9,
+											transform: expanded ? "rotate(90deg)" : void 0,
+											transition: "transform 120ms ease"
+										},
+										children: "▶"
 									})
 								]
 							}), expanded && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								"data-aezy-expanded-file": file.path,
 								style: {
 									overflowX: "auto",
-									borderTop: `1px solid ${palette.border}`,
-									background: palette.panel
+									borderRadius: "0 0 12px 12px",
+									background: "var(--dsw-alias-markdown-code-block)"
 								},
 								children: [
 									document === null && error === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
@@ -807,40 +1053,6 @@ window.__ModuleLoader__.load({
 										children: ["Review unavailable: ", error]
 									}),
 									document !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-											style: {
-												display: "flex",
-												alignItems: "center",
-												gap: 8,
-												padding: "7px 12px",
-												borderBottom: `1px solid ${palette.border}`,
-												background: palette.panel,
-												color: palette.muted,
-												fontSize: 11
-											},
-											children: [
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													style: {
-														color: document.file.binary ? palette.warning : palette.text,
-														fontWeight: 600
-													},
-													children: statusName(document.file.status)
-												}),
-												document.file.oldPath !== null && document.file.newPath !== null && document.file.oldPath !== document.file.newPath && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													title: `${document.file.oldPath} → ${document.file.newPath}`,
-													children: "rename"
-												}),
-												document.file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "binary" }),
-												document.file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													style: { color: palette.warning },
-													children: "truncated"
-												}),
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-													style: { marginLeft: "auto" },
-													children: document.source.kind === "turn" ? `snapshot ${document.source.snapshotId?.slice(0, 8) ?? ""}` : `fingerprint ${document.source.fingerprint?.slice(0, 8) ?? ""}`
-												})
-											]
-										}),
 										document.file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 											style: {
 												padding: "30px 16px",
