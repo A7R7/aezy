@@ -47,7 +47,7 @@ rc.8 已交付 `@file/@session`、Windows 持久 PowerShell、可安装 Product 
 | Network Policy | **立即实现，位于 M2** | 对 Aezy 管理的 shell/provider/external tool 建立独立 deny/ask/allow 与审计 | 不声称仅靠文件 sandbox 已限制网络 | M1 稳定后 |
 | Worktree / Local Handoff | **立即实现，位于 M3** | 基于 Repository/Environment 与 Git 状态建立创建、清理、绑定和可审计 handoff | 不先于 M1/M2；不让并行 Agent 共享 checkout 后再补隔离 | M2 安全策略完成后 |
 | 上游 `@file/@session` reference | **rc.8 已交付，Aezy 薄集成** | 使用上游 Host index、Remote 和 Web source；验证 Aezy profile 中可用 | 不另建文件索引、Session mention 或引用准备协议 | 上游 seam 无法承载真实引用用例 |
-| Modern Review Side Panel | **M4.1A 已实现** | 复用 `@aezy/project` Git/Turn ledger；desktop 占用公开 `details` 形成 docked column，narrow 使用 additive `shell.overlay`；提供 transient Session-scoped selection、structured diff、纵向 accordion 与单文件 lazy load | 当前已知代价是 shadow Tool Details；不复制 layout 内核，不做 editor/stage/hunk apply/PR/Side Session | 上游新增通用 panel router 时优先迁移并恢复多 occupant；M4.1B 复用同一 Aezy surface |
+| Modern Review Side Panel | **M4.1A 已实现** | 复用 `@aezy/project` Git/Turn ledger；desktop 占用公开 `details` 形成 docked column，narrow 使用 additive `shell.overlay`；提供 transient Session-scoped selection、structured diff、纵向多开 accordion 与逐文件独立 lazy load | 当前已知代价是 shadow Tool Details；不复制 layout 内核，不做 editor/stage/hunk apply/PR/Side Session | 上游新增通用 panel router 时优先迁移并恢复多 occupant；M4.1B 复用同一 Aezy surface |
 | 文件树、预览、`@directory` / `@diff` | **M4.1B/M4.2 顺序实施** | 先让 file tree + code/Markdown/image Preview 复用 M4.1A side panel，再在上游 reference seam 上补 `@directory` / `@diff` 与当前 Session Contextual Ask | 不重复 `@file/@session`，不一次构建完整 IDE 或通用 artifact 平台 | M4.1B 浏览器 dogfood 后进入 M4.2 |
 | 用户 Integrated Terminal UI | **dogfood 驱动；复用 rc.8 backend** | 未来在 Aezy Web 增加用户 PTY tabs、cwd/environment 绑定；当前继续用 shell/job | 不 fork PTY/Windows persistent PowerShell，不重写 job/terminal lifecycle | 真实交互命令阻塞 M1-M3 |
 | Activity / Status / Usage / Notifications | **薄投影后按痛点增强** | 汇总现有 Session、Job、Subagent、approval、trajectory 投影 | 不另建 Task runtime 或第二套状态机 | 状态不可见开始阻塞多任务 dogfood |
@@ -150,7 +150,7 @@ Turn 中途 `git init`、shell-only partial、真实 rc.1 HTTP 与 Git/非 Git�
 
 **M4.1A Modern Review Side Panel：Complete（2026-08-22，docked/accordion 复验
 2026-08-23）。** Turn card 已移除 inline raw diff；Working/Historical structured
-DTO、纵向 accordion、单文件 lazy load、desktop docked details、narrow overlay、theme、
+DTO、纵向多开 accordion、逐文件独立 lazy load、desktop docked details、narrow overlay、theme、
 真实 rc.1 Host、模型 dogfood 与浏览器 QA 均已签收，
 详见 [M4.1A 签收记录](../milestones/m4.md)。
 2026-08-24 follow-up 又将 Turn/Review 收敛到 Aezy semantic ChangeSurface、32px file row

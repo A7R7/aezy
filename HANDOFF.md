@@ -3,7 +3,7 @@
 > 交接日期：2026-08-24<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 当前分支：`main`<br>
-> 功能基线：`306e9a00b9 fix(project): refine change row interactions`
+> 功能基线：`67b9fca27a feat(project): allow multiple review files open`
 
 ## 1. 最终目标与不可破坏的边界
 
@@ -144,7 +144,7 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 - Turn card 删除消息流内 inline raw diff，只保留摘要、状态、Undo/Redo 与 Review；
 - transient Session-scoped 右侧 panel：desktop 使用公开 `details` slot 占据 AppFrame
   页面空间并复用原生 resize，narrow 使用 additive `shell.overlay`；
-- 文件名纵向 accordion 排列，点击文件名只在其下方展开一个 lazy-loaded diff；
+- 文件名纵向 accordion 排列，多个文件可同时在各自文件名下方展开 lazy-loaded diff；
 - conversation view 不卸载、垂直 scroll state 不重置；desktop 横向 reflow 是预期行为；
 - Turn changes summary 已对齐 DSH code-block family：12px radius、code-block/banner
   aliases、code font、无分隔线 file body 和 `└ +A -D · N files` footer；DOM 使用
@@ -154,8 +154,9 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
   为 32px；两处共用 code/config/document/image/style/terminal/data/generic 文件图标；
 - Turn summary 文件行独立保持 28px，不随 side panel 的紧凑按钮缩小；整行在 pointer
   hover 或 keyboard focus 时使用 DSH interactive hover alias 提亮；
-- Review accordion 允许当前展开 path 为 null；再次点击已展开文件会 abort 旧请求并
-  折叠内容，但不关闭 panel，下一次点击其他文件仍按需加载；
+- Review accordion 使用去重的 `expandedPaths` 集合；多个文件可同时展开，每个文件
+  维护独立 document/error/loading、AbortController 和 generation guard。再次点击只
+  折叠并取消该文件请求，不关闭 panel，也不卸载或重载其他已展开文件；
 - Historical Review 不再显示 per-file status/snapshot hash、重复 `Turn N` part header 或
   raw `@@` hunk header；特殊状态留在紧凑文件行和专用空状态，多 hunk 使用轻量间隔；
 - Working/Historical 共用 structured diff DTO 与 renderer；
@@ -257,7 +258,7 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3090
 交接时的功能基线提交：
 
 ```text
-306e9a00b9 fix(project): refine change row interactions
+67b9fca27a feat(project): allow multiple review files open
 ```
 
 用户已有三个未跟踪项，必须保留、不得纳入普通实现提交：
