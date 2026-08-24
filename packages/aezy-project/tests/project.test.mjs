@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { access, mkdtemp, mkdir, readFile, symlink, writeFile } from 'node:fs/promises'
+import { access, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -74,8 +74,11 @@ test('workspace tree is lazy, bounded, sorted, and excludes private Git metadata
     ['zeta.ts', 'file'],
   ])
   assert.equal(tree.entries.some(entry => entry.name === '.git'), false)
-  assert.deepEqual(await describeDirectory(root, 'nested'), {
+  const nestedTree = await describeDirectory(root, 'nested')
+  assert.match(nestedTree.fingerprint, /^[a-f0-9]{64}$/u)
+  assert.deepEqual({ ...nestedTree, fingerprint: undefined }, {
     version: 1,
+    fingerprint: undefined,
     workspaceRoot: root,
     directory: 'nested',
     entries: [],
@@ -126,6 +129,25 @@ test('workspace preview projects bounded code, Markdown, image, binary, and syml
 
   await assert.rejects(() => describePreview(root, 'outside-link'), /outside the workspace|symbolic-link/)
   await assert.rejects(() => describePreview(root, '../outside.txt'), /escapes/)
+})
+
+test('directory projection fingerprint changes when files are added or removed', async () => {
+  const writableTemp = process.platform === 'win32' ? tmpdir() : '/tmp'
+  const root = await mkdtemp(join(writableTemp, 'aezy-tree-refresh-'))
+  try {
+    const initial = await describeDirectory(root)
+    await writeFile(join(root, 'appeared.txt'), 'now visible\n')
+    const added = await describeDirectory(root)
+    assert.notEqual(added.fingerprint, initial.fingerprint)
+    assert.deepEqual(added.entries.map(entry => entry.path), ['appeared.txt'])
+
+    await rm(join(root, 'appeared.txt'))
+    const removed = await describeDirectory(root)
+    assert.notEqual(removed.fingerprint, added.fingerprint)
+    assert.deepEqual(removed.entries, [])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })
 
 test('non-Git workspace records exact structured Turn changes without a sticky Git error', async () => {

@@ -110,6 +110,8 @@ test('built structured Review surface uses DSH aliases and removes the Turn inli
   assert.match(bundle, /Open file preview/)
   assert.match(bundle, /\/aezy\/api\/project\/tree/)
   assert.match(bundle, /\/aezy\/api\/project\/preview/)
+  assert.match(bundle, /Directory response identity does not match the requested path/)
+  assert.match(bundle, /1500/)
   assert.match(bundle, /@deepseek-ai\/dsh-client-ui-primitives/)
   assert.match(bundle, /data-aezy-expanded-file/)
   assert.match(bundle, /data-aezy-review-request/)

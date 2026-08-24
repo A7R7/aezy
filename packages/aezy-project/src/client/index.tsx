@@ -353,12 +353,15 @@ type TreeEntry = {
 
 type DirectoryDocument = {
   version: 1
+  fingerprint: string
   workspaceRoot: string
   directory: string
   entries: TreeEntry[]
   truncated: boolean
   totalEntries: number
 }
+
+const DIRECTORY_REFRESH_MS = 1_500
 
 type PreviewDocument = {
   version: 1
@@ -775,20 +778,42 @@ function DirectoryBranch({ panel, target, directory, depth, expanded, toggle }: 
 
   useEffect(() => {
     if (!open) { setDocument(null); setError(null); return }
-    const controller = new AbortController()
+    let active = true
+    let controller: AbortController | null = null
+    let timer: number | undefined
+    let loaded = false
     setDocument(null)
     setError(null)
-    request<DirectoryDocument>('/aezy/api/project/tree', { cwd: target.cwd, path: directory }, controller.signal)
-      .then(value => {
-        const active = panel.getSnapshot()
-        if (controller.signal.aborted || active?.sessionId !== target.sessionId || active.cwd !== target.cwd) return
+
+    const refresh = async () => {
+      controller = new AbortController()
+      try {
+        const value = await request<DirectoryDocument>(
+          '/aezy/api/project/tree',
+          { cwd: target.cwd, path: directory },
+          controller.signal,
+        )
+        const current = panel.getSnapshot()
+        if (!active || controller.signal.aborted || current?.sessionId !== target.sessionId || current.cwd !== target.cwd) return
         if (value.directory !== directory) throw new Error('Directory response identity does not match the requested path.')
-        setDocument(value)
-      })
-      .catch(reason => {
-        if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason))
-      })
-    return () => { controller.abort() }
+        loaded = true
+        setError(null)
+        setDocument(previous => previous?.fingerprint === value.fingerprint ? previous : value)
+      } catch (reason) {
+        if (active && controller.signal.aborted !== true && !loaded) {
+          setError(reason instanceof Error ? reason.message : String(reason))
+        }
+      } finally {
+        if (active) timer = window.setTimeout(() => { void refresh() }, DIRECTORY_REFRESH_MS)
+      }
+    }
+
+    void refresh()
+    return () => {
+      active = false
+      if (timer !== undefined) window.clearTimeout(timer)
+      controller?.abort()
+    }
   }, [directory, open, panel, target.cwd, target.sessionId])
 
   if (!open) return null

@@ -261,6 +261,7 @@ window.__ModuleLoader__.load({
 				})
 			});
 		}
+		const DIRECTORY_REFRESH_MS = 1500;
 		var ProjectPanelController = class {
 			#target = null;
 			#revision = 0;
@@ -1135,22 +1136,38 @@ window.__ModuleLoader__.load({
 					setError(null);
 					return;
 				}
-				const controller = new AbortController();
+				let active = true;
+				let controller = null;
+				let timer;
+				let loaded = false;
 				setDocument(null);
 				setError(null);
-				request("/aezy/api/project/tree", {
-					cwd: target.cwd,
-					path: directory
-				}, controller.signal).then((value) => {
-					const active = panel.getSnapshot();
-					if (controller.signal.aborted || active?.sessionId !== target.sessionId || active.cwd !== target.cwd) return;
-					if (value.directory !== directory) throw new Error("Directory response identity does not match the requested path.");
-					setDocument(value);
-				}).catch((reason) => {
-					if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason));
-				});
+				const refresh = async () => {
+					controller = new AbortController();
+					try {
+						const value = await request("/aezy/api/project/tree", {
+							cwd: target.cwd,
+							path: directory
+						}, controller.signal);
+						const current = panel.getSnapshot();
+						if (!active || controller.signal.aborted || current?.sessionId !== target.sessionId || current.cwd !== target.cwd) return;
+						if (value.directory !== directory) throw new Error("Directory response identity does not match the requested path.");
+						loaded = true;
+						setError(null);
+						setDocument((previous) => previous?.fingerprint === value.fingerprint ? previous : value);
+					} catch (reason) {
+						if (active && controller.signal.aborted !== true && !loaded) setError(reason instanceof Error ? reason.message : String(reason));
+					} finally {
+						if (active) timer = window.setTimeout(() => {
+							refresh();
+						}, DIRECTORY_REFRESH_MS);
+					}
+				};
+				refresh();
 				return () => {
-					controller.abort();
+					active = false;
+					if (timer !== void 0) window.clearTimeout(timer);
+					controller?.abort();
 				};
 			}, [
 				directory,

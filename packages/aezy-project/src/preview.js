@@ -79,6 +79,11 @@ export async function describeDirectory(cwd, path = '') {
     })
   return {
     version: 1,
+    fingerprint: createHash('sha256').update(JSON.stringify({
+      directory: target.path,
+      entries: allEntries,
+      truncated: allEntries.length > MAX_DIRECTORY_ENTRIES,
+    })).digest('hex'),
     workspaceRoot: target.root,
     directory: target.path,
     entries: allEntries.slice(0, MAX_DIRECTORY_ENTRIES),
