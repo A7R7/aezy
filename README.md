@@ -133,9 +133,19 @@ code/Markdown/image preview。代码和 Markdown 分别直接复用 DSH 发布�
 设置硬上限；文件快速切换会取消旧请求，Session/cwd 切换立即关闭旧 panel。
 
 M4.1B 的自动、真实 rc.1 HTTP、真实模型与宽/窄、深/浅浏览器证据也记录在
-[M4.1 签收记录](doc/milestones/m4.md)。下一顺序固定为 M4.2 `@directory` / `@diff` +
-当前 Session Contextual Ask。真正 Side Chat 等待 DSH Interactive Side
-Sessions/fork/merge-back seam，不在 Aezy 中复制持久会话内核。
+[M4 签收记录](doc/milestones/m4.md)。展开目录会以 fingerprint 门控的 bounded polling
+自动反映文件新增/删除，折叠或 Session/cwd 切换立即取消旧请求。
+
+M4.2 已在上游 `@file/@session` 输入管线之上增加 `@directory` 与 Working/Historical
+`@diff`。目录候选复用发布版 `fileReferences.list`，引用通过 canonical URI 与公开
+`agent/pre-step` 生成有界、durable、untrusted context；Historical 继续只读 Turn ledger
+objects。Project Panel 的 workspace、目录与 diff Ask action 只把引用追加到当前 Session
+草稿，不自动发送，也不创建另一套会话。完整自动、真实 rc.1 Host、模型、浏览器和
+历史漂移证据见 [M4 签收记录](doc/milestones/m4.md)。
+
+下一顺序为用户 Integrated Terminal UI，然后是 Activity / Status / Usage /
+Notifications 与 localhost Browser interaction。真正 Side Chat 等待 DSH Interactive
+Side Sessions/fork/merge-back seam，不在 Aezy 中复制持久会话内核。
 
 ## 研究资料
 

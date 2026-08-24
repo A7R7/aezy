@@ -48,7 +48,7 @@ rc.8 已交付 `@file/@session`、Windows 持久 PowerShell、可安装 Product 
 | Worktree / Local Handoff | **立即实现，位于 M3** | 基于 Repository/Environment 与 Git 状态建立创建、清理、绑定和可审计 handoff | 不先于 M1/M2；不让并行 Agent 共享 checkout 后再补隔离 | M2 安全策略完成后 |
 | 上游 `@file/@session` reference | **rc.8 已交付，Aezy 薄集成** | 使用上游 Host index、Remote 和 Web source；验证 Aezy profile 中可用 | 不另建文件索引、Session mention 或引用准备协议 | 上游 seam 无法承载真实引用用例 |
 | Review + Files Project Panel | **M4.1A/B 已实现** | 复用 `@aezy/project` Git/Turn ledger；desktop 占用公开 `details`，narrow 使用 `shell.overlay`；提供 structured Review、多开 accordion、lazy file tree，以及复用 DSH `ReadBlock` / `MarkdownText` 的 code/Markdown/image Preview | 当前已知代价是 shadow Tool Details；不复制 layout/Markdown/highlight/file-index 内核，不做 editor/stage/hunk apply/PR/Side Session | 上游新增通用 panel router 或 file-preview surface 时优先迁移并恢复多 occupant |
-| `@directory` / `@diff` + Contextual Ask | **M4.2 下一步** | 在上游 `@file/@session` reference seam 上补目录/diff reference 与当前 Session ask；复用 M4.1 Project Panel 的 path/source identity | 不重复 `@file/@session`，不一次构建完整 IDE，不建立 Side Session 状态机 | M4.2 浏览器和模型 dogfood 后进入下一工作台痛点 |
+| `@directory` / `@diff` + Contextual Ask | **M4.2 已完成** | 在上游 `@file/@session` input-trigger/reference codec 上补目录/diff reference；目录发现复用 `fileReferences.list`，Project Panel 只向当前 Session draft staging canonical mention | 不重复 `@file/@session`、文件索引、composer/draft/消息持久化，不建立 Side Session 状态机 | 新上游 generic project-context resolver 或第二个独立消费者出现时评估抽包 |
 | 用户 Integrated Terminal UI | **dogfood 驱动；复用 rc.8 backend** | 未来在 Aezy Web 增加用户 PTY tabs、cwd/environment 绑定；当前继续用 shell/job | 不 fork PTY/Windows persistent PowerShell，不重写 job/terminal lifecycle | 真实交互命令阻塞 M1-M3 |
 | Activity / Status / Usage / Notifications | **薄投影后按痛点增强** | 汇总现有 Session、Job、Subagent、approval、trajectory 投影 | 不另建 Task runtime 或第二套状态机 | 状态不可见开始阻塞多任务 dogfood |
 | Browser automation | **后续 Aezy 产品能力** | 前端 dogfood 成为主要场景后实现 localhost、screenshot、click/type/scroll | 不阻塞本地通用 coding loop；不先扩展到 Computer Use | 前端任务无法仅靠 shell/test 验收 |
@@ -164,13 +164,17 @@ Changes/Turn/Handoff changed files 跳转；代码/Markdown renderer 直接复�
 AbortController identity fence、真实 rc.1 HTTP/模型/browser QA 均已签收，详见
 [M4.1B 签收记录](../milestones/m4.md)。
 
+**M4.2 已于 2026-08-25 完成。** canonical directory/diff URI、公开 `agent/pre-step`
+durable context、Working/Historical source identity、Project Panel 当前 Session Ask、目录
+自动刷新，以及自动/真实 Host/模型/浏览器签收均见
+[M4 记录](../milestones/m4.md)。Historical context 在当前文件漂移后仍只读 ledger object；
+`@directory` candidate discovery 直接复用上游 `fileReferences.list`。
+
 后续项不是一个捆绑交付，固定顺序如下：
 
-1. **M4.2** 在上游 `@file/@session` 之上补 `@directory` / `@diff`，以及当前
-   Session 内 Contextual Ask；
-2. 用户 Integrated Terminal UI；
-3. Activity / Status / Usage / Notifications；
-4. localhost Browser + browser interaction。
+1. 用户 Integrated Terminal UI；
+2. Activity / Status / Usage / Notifications；
+3. localhost Browser + browser interaction。
 
 真正 Side Chat 继续等待 DSH Interactive Side Sessions/fork/merge-back 公开 seam；
 Aezy 不建立第二套持久会话状态机。
