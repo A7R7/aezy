@@ -1,19 +1,26 @@
 # @aezy/project
 
-Aezy's first M1 vertical slice. The Node half discovers a Session directory's
-Git repository and exposes bounded structured status/diff reads under
+Aezy's Project/Turn vertical slice. The Node half describes a Session workspace,
+optionally discovers its Git repository, and exposes bounded structured status/diff reads under
 `/aezy/api/project/*`. The browser half contributes a `Changes` tab through
 DSH's public client-module and `conversation.view` slot seams.
 
 The same browser module takes priority `-10` in the public
 `conversation.chat.turnTail` chain. After a completed Turn it reads the
-authoritative Git ledger, waits for the asynchronous end scan to settle, and
+authoritative Turn ledger, waits for its asynchronous observer to settle, and
 renders a Codex-style change card under the final assistant message. The card
 shows total and per-file added/deleted line counts, opens a durable historical
 Turn diff through Review, and provides conflict-safe whole-Turn Undo/Redo.
-Unlike DSH's tool-location-derived Produced files row, this includes
-shell-created, modified, and removed files and suppresses files restored to
-their baseline within the same Turn.
+In Git repositories this includes shell-created, modified, and removed files
+and suppresses files restored to their baseline within the same Turn.
+
+Outside Git, the Host observes successful DSH `write` / `edit` executions through
+the public `tools/execute` seam and persists their exact structured before/after
+values under `DSH_HOME/aezy/turn-journal/<workspace-hash>/`. These historical
+snapshots remain reviewable after a later `git init`; the current Turn never
+receives a fabricated Git baseline or Git-safe Undo. A later Turn automatically
+uses the normal Git enrichment. Potential shell/terminal side effects are
+marked partial/unobserved instead of being presented as complete.
 
 The HTTP boundary requires a non-simple `X-Aezy-Client: web` request header and
 a loopback authority, uses no shell interpolation, caps Git output, and
@@ -21,10 +28,10 @@ validates every requested file against the repository's current structured
 status.
 
 The Host observes DSH's public `session/event` feed at `turn/start` and
-`turn/end`. It persists an observational per-Session ledger under the Git
-metadata directory: these are files whose exact repository state changed
-during the Turn, not a claim that one specific Tool authored every byte.
-Overlapping Sessions on one checkout are marked concurrent.
+`turn/end`. Git-enriched Turns retain their observational per-Session ledger
+under the Git metadata directory: these are files whose exact repository state
+changed during the Turn, not a claim that one specific Tool authored every
+byte. Overlapping Sessions on one checkout are marked concurrent.
 
 File and whole-Turn revert require every exact after-fingerprint to still
 match. Whole-Turn Undo validates and backs up every file before changing any,

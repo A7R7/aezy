@@ -1,9 +1,9 @@
 # Aezy 项目交接
 
-> 交接日期：2026-08-22<br>
+> 交接日期：2026-08-24<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 当前分支：`main`<br>
-> 功能基线：`8278f4a31d feat(project): move reviews into side panel`
+> 功能基线：`439471edfa feat(project): decouple turn journal from git`
 
 ## 1. 最终目标与不可破坏的边界
 
@@ -43,7 +43,7 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 - `packages/aezy-base`：Host/base composition patch，禁用非核心能力并收敛默认 Harness。
 - `packages/aezy-web`：Web composition 与 Aezy preset 装配。
 - `packages/aezy-brand`：最薄品牌 occupant，占据 DSH 通用品牌 slots；当前继续使用字母 `A`，未设计新图标。
-- `packages/aezy-project`：M1 Project/Repository/Changes/Turn ledger、M3 受管 Worktree/Session binding/结构化 Handoff，以及 M4.1A structured Review Side Panel。
+- `packages/aezy-project`：Project/Repository/Changes、Git-independent Turn File Change Journal + optional Git enrichment、M3 受管 Worktree/Session binding/结构化 Handoff，以及 M4.1A structured Review Side Panel。
 - `packages/aezy-security`：M2 持久 Approval Rules、Network Policy、解释与审计。
 
 默认运行状态位于 `~/.aezy/dsh/`，除非显式设置 `DSH_HOME`。pnpm store 位于仓库已忽略的 `.local/pnpm-store/`。
@@ -157,6 +157,27 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 
 完整证据见 `doc/milestones/m4.md`。
 
+### Turn File Change Journal 基础层修复
+
+状态：Complete，真实 rc.1 HTTP、Git/非 Git 模型 dogfood 均通过。
+
+已完成：
+
+- 非 Git cwd 不再因 `git rev-parse` 产生 Session sticky observer error；Project 与 ledger
+  API 返回 200，并显式暴露 `repository.available/gitAvailable`；
+- 通过公开 `tools/execute` seam 观察成功 DSH `write` / `edit` 的结构化
+  `path/before/after/operation`，不解析命令文本、不复制文件工具；
+- 非 Git Turn object/ledger 按 workspace identity 持久化于
+  `DSH_HOME/aezy/turn-journal/`，Historical Review 重启和当前文件漂移后保持稳定；
+- Turn 中途 `git init` 保留本 Turn structured snapshot，不补造 Git baseline 或 safe Undo；
+  下一 Turn 自动启用原 Git enrichment；
+- shell/terminal 等无法证明完整文件影响的成功调用标记 `partial/unobserved`；shell-only
+  Turn 也不再显示 unavailable 或伪装完整；
+- 原 Git fingerprint、concurrent、rename/binary、atomic Undo/Redo、receipt 和 Worktree
+  ledger 语义保持不变。
+
+完整证据见 `doc/milestones/turn-journal.md`。
+
 ## 4. DSH 基线与最新上游复核
 
 M4.1A 开工时再次确认最新公开 tag 仍为 `dsh-v0.1.1-rc.2`（commit `b150a551…`，tree
@@ -192,17 +213,19 @@ rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,67
 - `pnpm exec dsh --version` → `0.1.1-rc.1`
 - `pnpm peers check` → no issues
 - `pnpm run test:brand` → 1/1
-- `pnpm run test:m1` → 13/13
+- `pnpm run test:m1` → 16/16
 - `pnpm run test:m2` → 11/11
 - `pnpm run test:m3` → 6/6
 - `pnpm run test:m0` → composition/Web/Workspace/Session/preset smoke passed
-- `pnpm run test:m1:http` → Turn Review、batch Undo/Redo、request fence passed
+- `pnpm run test:m1:http` → Git/non-Git ledger、Turn Review、batch Undo/Redo、request fence passed
 - `pnpm run test:m2:http` → policy、precedence、request fence、restart persistence passed
 - `pnpm run test:m3:http` → Worktree Session、handoff、拒绝路径、retained branch、Security audit passed
 - `pnpm run dogfood:m3` → Aezy 自仓库真实模型隔离 Turn、test、handoff、cleanup passed
 - M4.1A Aezy 自身真实模型 dogfood → Session `m4-review-qa-home`，13/13 passed
 - M4.1A docked browser QA → center `1160→800→1160`、scrollTop `391→391→391`、native details `359→451` resize、纵向 accordion 单文件展开、680 overlay
 - M4.1A Turn summary browser QA → 与同页 DSH fenced code block 的 background/banner/radius 完全一致，body `13px/22px`，Review action passed
+- `pnpm run dogfood:turn-journal` → 非 Git真实模型 `write + edit`、structured Historical Review passed（Session `turn-journal-dogfood-mt6qureu`）
+- `pnpm run dogfood:turn-summary` → 原 Git-enriched Turn summary 回归 passed（Session `turn-summary-dogfood-mt6qvc9u`）
 - `git diff --check` → passed
 
 交接时 Aezy Web 正运行于：
@@ -220,10 +243,10 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3090
 
 ## 6. Git 与用户文件状态
 
-交接时的功能基线提交（其后仅增加签收文档与 committed-file handoff 增强）：
+交接时的功能基线提交：
 
 ```text
-c16eee7bf8 feat: add managed worktree handoff lifecycle
+439471edfa feat(project): decouple turn journal from git
 ```
 
 用户已有三个未跟踪项，必须保留、不得纳入普通实现提交：
@@ -264,11 +287,11 @@ PTY、Task、Session、MCP、Subagent 或 compaction 内核，应暂停并重新
 | DSH 参考 revision | `reference/dsh.lock.json` |
 | 支持的 DSH/runtime composition | `compatibility/dsh.json` |
 | 外置 base/web composition | `packages/aezy-base/`、`packages/aezy-web/` |
-| M1/M3 Project、Git、ledger、Worktree、Handoff、client | `packages/aezy-project/` |
+| Project、Turn Journal、Git enrichment、Worktree、Handoff、client | `packages/aezy-project/` |
 | M2 policy、store、client | `packages/aezy-security/` |
 | 品牌 slots | `packages/aezy-brand/` |
 | Profile 同步/启动 | `scripts/sync-profile.mjs`、`scripts/run-profile.mjs`、`scripts/lib/profile.mjs` |
-| M0-M4.1A 签收 | `doc/milestones/m0.md`、`m1.md`、`m2.md`、`m3.md`、`m4.md` |
+| M0-M4.1A 与 Turn Journal 签收 | `doc/milestones/m0.md`、`m1.md`、`m2.md`、`m3.md`、`m4.md`、`turn-journal.md` |
 | 当前路线和所有权 | `doc/reports/aezy-upstream-ownership-roadmap.md` |
 | DSH rc.1 影响 | `doc/reports/dsh-0.1.1-rc1-update-impact-report.md` |
 | DSH 插件审计 | `doc/reports/dsh-plugin-function-report.md` |
@@ -284,7 +307,9 @@ PTY、Task、Session、MCP、Subagent 或 compaction 内核，应暂停并重新
 5. authorization 包已发布但默认 composition/UI 未完成，不能把它当作已交付的 Models 登录产品面。
 6. vision model 不是 Browser automation。
 7. M2 Network Policy 不是 OS firewall；描述能力时必须保留这一限制。
-8. Turn ledger 是边界观察，不是逐写入 provenance。同一 checkout 的 concurrent Turn 仍必须 fail closed；受管 linked worktree 通过不同 root/metadata 隔离。
+8. Turn journal 与 Git enrichment 已分层：非 Git 精确覆盖结构化 `write/edit`；shell-only
+   只能标记 partial/unobserved，不得宣传为完整。同一 Git checkout 的 concurrent Turn
+   仍必须 fail closed；受管 linked worktree 通过不同 root/metadata 隔离。
 9. 旧 Codex Desktop computer-use 任务曾保留迁移前 `/mnt/d` sandbox metadata，导致 WSL → Windows URI 校验拒绝自动浏览器操作；这不是 Aezy Web 本身的错误。
 10. 网络命令遵守代理环境变量；缺失时回退 `http://127.0.0.1:7890`。
 
@@ -298,7 +323,8 @@ doc/reports/aezy-upstream-ownership-roadmap.md，检查 git status、当前 DSH 
 以及 3090 Aezy Host 状态。遵守只读 .local/deepseek-harness、只用外置插件扩展、
 保留三个既有未跟踪 dogfood/test 项、每个大步骤单独提交的边界。
 
-M4.1A Modern Review Side Panel 已完成；先阅读 doc/milestones/m4.md 并复验相关测试。
+M4.1A Modern Review Side Panel 与 Turn Journal 基础层修复已完成；先阅读
+doc/milestones/m4.md、doc/milestones/turn-journal.md 并复验相关测试。
 接下来实施 M4.1B File Tree + code/Markdown/image Preview，复用同一 side panel；
 随后才做 M4.2 @directory/@diff + 当前 Session Contextual Ask。
 不要修改 DSH 源码，不要实现第二套 Session/Subagent/Task/PTY/compaction 内核，

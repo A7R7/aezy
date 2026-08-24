@@ -42,7 +42,7 @@ rc.8 已交付 `@file/@session`、Windows 持久 PowerShell、可安装 Product 
 | Aezy 品牌 slot occupant | **rc.8 后立即补足** | 外置 `@aezy/brand` 占据 sidebar/conversation 品牌 slot，并禁用 `ui-brand-official` | 不修改上游品牌包，不复用 “DeepSeek Harness” 商标作为 Aezy 产品名 | rc.8 基线提交后 |
 | Project / Repository / Local Environment | **立即实现** | 建立 Aezy 产品实体，统一 Session、cwd、Git、shell、sandbox 的环境归属 | 不提前抽象 Cloud/SSH provider | M1 完成后根据 Worktree 需求扩展 |
 | Git status/diff 与 branch identity | **立即实现** | Host 侧结构化 Git read model、稳定 DTO、Web Changes/Diff UI | 不把 Agent 的 `git` 文本输出当产品事实源，不先做 PR | M1 端到端验收 |
-| Turn-scoped change ledger、安全 revert 与 Turn 后文件摘要 | **已实现** | 关联 Session/Turn/file，显示真实 Git 变化，检测后续修改，提供冲突安全的 file revert | 不修改 DSH SessionEvent 内核；不先做复杂历史/hunk CRDT | M1/M2 dogfood 后按真实撤销失败扩展 |
+| Turn File Change Journal、安全 revert 与 Turn 后文件摘要 | **基础层已修复** | 通过公开 `tools/execute` 记录 Git-independent structured `write/edit` before/after；Git 可选补充 repository snapshot、fingerprint、rename/binary、concurrent 与 safe Undo/Redo；非 Git shell-only 标记 partial/unobserved | 不修改 DSH SessionEvent/文件工具内核；不解析 shell 猜测副作用；不为 Turn 中途 `git init` 补造 baseline 或 safe Undo | 新结构化文件 mutation seam 或第二个独立消费者出现时评估拆出 `@aezy/turn-journal` |
 | Approval Rules | **立即实现，位于 M2** | 在现有 one-shot approval 外增加 Aezy 规则存储、匹配解释、查看和撤销 | 不改写 DSH approval seam，不做自动 reviewer | M1 稳定后 |
 | Network Policy | **立即实现，位于 M2** | 对 Aezy 管理的 shell/provider/external tool 建立独立 deny/ask/allow 与审计 | 不声称仅靠文件 sandbox 已限制网络 | M1 稳定后 |
 | Worktree / Local Handoff | **立即实现，位于 M3** | 基于 Repository/Environment 与 Git 状态建立创建、清理、绑定和可审计 handoff | 不先于 M1/M2；不让并行 Agent 共享 checkout 后再补隔离 | M2 安全策略完成后 |
@@ -142,6 +142,11 @@ fail-closed cleanup；自动、真实 rc.1 HTTP 和 Aezy 自仓库模型 dogfood
 完成门槛：两个真实并行任务在不同 worktree 修改相邻代码而不共享 checkout，并能将一个任务安全 handoff 回 Local。完成 M3 前不扩大并行 Agent 的默认并发。
 
 ### M4：按 dogfood 痛点逐项补工作台入口
+
+**Turn File Change Journal 基础层修复：Complete（2026-08-24）。** 非 Git workspace
+通过公开 `tools/execute` 记录 structured `write/edit` snapshot，Git 成为可选 enrichment；
+Turn 中途 `git init`、shell-only partial、真实 rc.1 HTTP 与 Git/非 Git模型 dogfood 已
+签收，详见 [Turn Journal 基础层修复](../milestones/turn-journal.md)。
 
 **M4.1A Modern Review Side Panel：Complete（2026-08-22，docked/accordion 复验
 2026-08-23）。** Turn card 已移除 inline raw diff；Working/Historical structured

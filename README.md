@@ -52,7 +52,7 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3080
 
 ## M1：Workspace & Changes
 
-`@aezy/project` 使用公开 `ctx.webServer`、`session/event`、`dsh.client`、`conversation.view`、`conversation.chat.turnTail`、`details` 和 `shell.overlay` seam 提供结构化 repository status/diff、Local Environment 信息、持久 turn-scoped change ledger，以及 Codex 式 Turn change card：总/逐文件 `+/-` 行统计、右侧 structured historical Review、fingerprint 门控的整轮 Undo/Redo 和安全单文件 revert。它不修改 DSH API Proxy、SessionEvent 或 conversation scroll 内核。
+`@aezy/project` 使用公开 `ctx.webServer`、`session/event`、`tools/execute`、`dsh.client`、`conversation.view`、`conversation.chat.turnTail`、`details` 和 `shell.overlay` seam 提供结构化 workspace/repository status/diff、持久 Turn File Change Journal、可选 Git enrichment，以及 Codex 式 Turn change card。非 Git workspace 的 `write` / `edit` 仍会形成稳定 Historical Review；Git 继续补充 fingerprint、rename/binary、concurrent 与 fail-closed Undo/Redo。shell-only 副作用显式标记 partial/unobserved，不伪装完整。完整签收见 [Turn Journal 基础层修复](doc/milestones/turn-journal.md)。
 
 ```bash
 pnpm run build:m1
@@ -60,6 +60,7 @@ pnpm run test:m1
 AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run dogfood:turn-summary
 # 已启动独立 Aezy 测试 Host 时：
 pnpm run test:m1:http
+pnpm run dogfood:turn-journal
 ```
 
 M1 已完成签收：真实模型在 Aezy Workspace 中完成跨文件 Turn，随后通过实际 Web `Changes` 查看 diff、部分撤销、整页刷新恢复和 receipt Undo。签收证据、Session id 和 fail-closed 边界见 [M1 里程碑记录](doc/milestones/m1.md)。
