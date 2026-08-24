@@ -3,7 +3,7 @@
 > 交接日期：2026-08-24<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 当前分支：`main`<br>
-> 功能基线：`67b9fca27a feat(project): allow multiple review files open`
+> 功能基线：`93e45437be feat(project): add file tree and preview panel`
 
 ## 1. 最终目标与不可破坏的边界
 
@@ -43,7 +43,7 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 - `packages/aezy-base`：Host/base composition patch，禁用非核心能力并收敛默认 Harness。
 - `packages/aezy-web`：Web composition 与 Aezy preset 装配。
 - `packages/aezy-brand`：最薄品牌 occupant，占据 DSH 通用品牌 slots；当前继续使用字母 `A`，未设计新图标。
-- `packages/aezy-project`：Project/Repository/Changes、Git-independent Turn File Change Journal + optional Git enrichment、M3 受管 Worktree/Session binding/结构化 Handoff，以及 M4.1A structured Review Side Panel。
+- `packages/aezy-project`：Project/Repository/Changes、Git-independent Turn File Change Journal + optional Git enrichment、M3 受管 Worktree/Session binding/结构化 Handoff，以及 M4.1 Review + Files Project Panel。
 - `packages/aezy-security`：M2 持久 Approval Rules、Network Policy、解释与审计。
 
 默认运行状态位于 `~/.aezy/dsh/`，除非显式设置 `DSH_HOME`。pnpm store 位于仓库已忽略的 `.local/pnpm-store/`。
@@ -168,6 +168,27 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 
 完整证据见 `doc/milestones/m4.md`。
 
+### M4.1B：File Tree + code/Markdown/image Preview
+
+状态：Complete，自动、真实 rc.1 HTTP、真实模型与宽/窄、深/浅浏览器 QA 已签收。
+
+已完成：
+
+- M4.1A controller 已提升为 Session-scoped Project Panel controller，同一个 desktop
+  `details` / narrow `shell.overlay` occupant 内切换 Review 与 Files；
+- 纵向 file tree 按目录懒加载，不建立持久 index/watch state；Session/cwd 切换立即关闭；
+- code preview 复用 DSH `ReadBlock`，Markdown 复用 `MarkdownText`，常见位图用 Host
+  magic-byte 分类后的 bounded data URL；
+- tree 最多 500 entries，文本最多 256 KiB / 4000 行，图片最多 5 MiB；`.git`、越界、
+  symlink、binary 与 oversized fail closed；
+- 预览以 `sessionId + cwd + path + revision` 隔离，AbortController 与 active identity
+  防止快速切换的旧响应覆盖；
+- Changes、Turn 文件行、结构化 Handoff changed-file list 均可跳转；Handoff 当前只读取
+  当前 Session workspace 的同路径文件，不冒充 historical handoff snapshot；
+- M1 fingerprint/concurrent/Undo/Redo、M3 Worktree/Handoff 权威事实均未改变。
+
+完整边界、限制、Session 与浏览器证据见 `doc/milestones/m4.md`。
+
 ### Turn File Change Journal 基础层修复
 
 状态：Complete，真实 rc.1 HTTP、Git/非 Git 模型 dogfood 均通过。
@@ -191,13 +212,13 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 
 ## 4. DSH 基线与最新上游复核
 
-M4.1A 开工时再次确认最新公开 tag 仍为 `dsh-v0.1.1-rc.2`（commit `b150a551…`，tree
+M4.1B 开工时再次确认最新公开 tag 仍为 `dsh-v0.1.1-rc.2`（commit `b150a551…`，tree
 `53915efe…`）。rc.2 没有新增 Worktree/Handoff 或相关环境内核，M3 所有权不变；
 关键 layout/slot/theme 文件也没有新增 generic/additive details panel router。按
 2026-08-23 docked 产品要求，Aezy desktop 有意占用公开 `details` single slot，narrow
 继续用 `shell.overlay`；这会 shadow 当前 Tool Details，是迁移到未来 panel router
 前的已知兼容性代价。Aezy 仍运行已完整验证的 rc.1，rc.2 升级应保持为独立 reviewed
-revision replacement。复核结果已写入 `compatibility/dsh.json` 和 M4.1A 里程碑记录。
+revision replacement。复核结果已写入 `compatibility/dsh.json` 和 M4.1 里程碑记录。
 
 ### 0.1.1-rc.1 调查结论
 
@@ -224,7 +245,7 @@ rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,67
 - `pnpm exec dsh --version` → `0.1.1-rc.1`
 - `pnpm peers check` → no issues
 - `pnpm run test:brand` → 1/1
-- `pnpm run test:m1` → 16/16
+- `pnpm run test:m1` → 18/18
 - `pnpm run test:m2` → 11/11
 - `pnpm run test:m3` → 6/6
 - `pnpm run test:m0` → composition/Web/Workspace/Session/preset smoke passed
@@ -236,17 +257,26 @@ rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,67
 - M4.1A docked browser QA → center `1160→800→1160`、scrollTop `391→391→391`、native details `359→451` resize、纵向 accordion 单文件展开、680 overlay
 - M4.1A Turn summary browser QA → 与同页 DSH fenced code block 的 background/banner/radius 完全一致，body `13px/22px`，Review action passed
 - M4.1A surface follow-up → `build:m1`、M1 16/16、M2 11/11、M3 6/6、brand 1/1、peer check、真实 rc.1 M0 与 3090 M1 HTTP passed；3090 served bundle 与 checkout 字节一致
+- M4.1B → Host/API 与 Project Panel 分别提交；M1 18/18、M2 11/11、M3 6/6、brand
+  1/1、peer check、diff check 和真实 M0 passed
+- M4.1B real Host → `http://127.0.0.1:3091` M1 tree/preview + ledger/Review/Undo HTTP 与
+  M3 HTTP passed；served client SHA-256 与 checkout 一致
+- M4.1B model/browser → Session `m41b-browser-mt6yx03x`，DeepSeek-V4-Flash 完成真实
+  Turn；1440 docked `359px`、680 overlay、code/Markdown/PNG、Review→Files、Session
+  isolation、DSH dark/light palette 均 passed，pageerror 为空
 - `pnpm run dogfood:turn-journal` → 非 Git真实模型 `write + edit`、structured Historical Review passed（Session `turn-journal-dogfood-mt6qureu`）
 - `pnpm run dogfood:turn-summary` → 原 Git-enriched Turn summary 回归 passed（Session `turn-summary-dogfood-mt6qvc9u`）
 - `git diff --check` → passed
 
-交接时 Aezy Web 正运行于：
+交接时用户原有 Aezy Web 仍运行于：
 
 ```text
 http://127.0.0.1:3090
 ```
 
-它是当前 rc.1 profile。如果新会话接手时端口已不再监听，重新启动：
+它是当前 rc.1 profile，但本轮无法跨 Codex process namespace 重启该外层进程；此前探测
+显示它仍是 pre-M4.1B Host（新 `/tree` route 返回 404）。M4.1B 已在独立真实 3091 Host
+签收。要让 3090 加载新 Host routes，应正常停止并重新启动：
 
 ```bash
 cd /home/aaron/repos/aezy-dsh-mvp
@@ -258,7 +288,7 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3090
 交接时的功能基线提交：
 
 ```text
-67b9fca27a feat(project): allow multiple review files open
+93e45437be feat(project): add file tree and preview panel
 ```
 
 用户已有三个未跟踪项，必须保留、不得纳入普通实现提交：
@@ -277,11 +307,11 @@ git status --short
 
 不要使用 `git add -A` 或 `git add .`；应精确列出本步骤文件。
 
-## 7. 下一步：M4.1B File Tree + Preview
+## 7. 下一步：M4.2 Contextual References + Ask
 
-M4.1A 已完成。下一切片固定为 **M4.1B File Tree + code/Markdown/image Preview**：
-复用同一个 Aezy side panel，并让 Changes/Turn/Handoff 能跳转。完成后才进入
-**M4.2 `@directory` / `@diff` + 当前 Session Contextual Ask**。
+M4.1A/B 已完成。下一切片固定为 **M4.2 `@directory` / `@diff` + 当前 Session
+Contextual Ask**，继续复用上游 `@file/@session` reference seam 与同一个 Project
+Panel，不复制 reference preparation、Session 或消息持久化内核。
 
 不要继续把 Worktree 扩大成 PR/Cloud/Remote，也不要实现 DSH 很可能自行维护的
 Task/Session/Subagent/merge-back 内核。真正 Side Chat 等 DSH Interactive Side
@@ -303,7 +333,7 @@ PTY、Task、Session、MCP、Subagent 或 compaction 内核，应暂停并重新
 | M2 policy、store、client | `packages/aezy-security/` |
 | 品牌 slots | `packages/aezy-brand/` |
 | Profile 同步/启动 | `scripts/sync-profile.mjs`、`scripts/run-profile.mjs`、`scripts/lib/profile.mjs` |
-| M0-M4.1A 与 Turn Journal 签收 | `doc/milestones/m0.md`、`m1.md`、`m2.md`、`m3.md`、`m4.md`、`turn-journal.md` |
+| M0-M4.1B 与 Turn Journal 签收 | `doc/milestones/m0.md`、`m1.md`、`m2.md`、`m3.md`、`m4.md`、`turn-journal.md` |
 | 当前路线和所有权 | `doc/reports/aezy-upstream-ownership-roadmap.md` |
 | DSH rc.1 影响 | `doc/reports/dsh-0.1.1-rc1-update-impact-report.md` |
 | DSH 插件审计 | `doc/reports/dsh-plugin-function-report.md` |
@@ -322,7 +352,9 @@ PTY、Task、Session、MCP、Subagent 或 compaction 内核，应暂停并重新
 8. Turn journal 与 Git enrichment 已分层：非 Git 精确覆盖结构化 `write/edit`；shell-only
    只能标记 partial/unobserved，不得宣传为完整。同一 Git checkout 的 concurrent Turn
    仍必须 fail closed；受管 linked worktree 通过不同 root/metadata 隔离。
-9. 旧 Codex Desktop computer-use 任务曾保留迁移前 `/mnt/d` sandbox metadata，导致 WSL → Windows URI 校验拒绝自动浏览器操作；这不是 Aezy Web 本身的错误。
+9. 当前 Codex Desktop task 的 computer-use helper 把 WSL cwd 判为非 Windows local URI，
+   报 `sandboxCwd is not a local file URI: file:///home/aaron/repos/aezy-dsh-mvp`；本轮按 skill
+   fallback 使用 Windows Edge + Playwright 完成真实 Host QA，这不是 Aezy Web 错误。
 10. 网络命令遵守代理环境变量；缺失时回退 `http://127.0.0.1:7890`。
 
 ## 10. 新对话建议的首条指令
@@ -335,10 +367,10 @@ doc/reports/aezy-upstream-ownership-roadmap.md，检查 git status、当前 DSH 
 以及 3090 Aezy Host 状态。遵守只读 .local/deepseek-harness、只用外置插件扩展、
 保留三个既有未跟踪 dogfood/test 项、每个大步骤单独提交的边界。
 
-M4.1A Modern Review Side Panel 与 Turn Journal 基础层修复已完成；先阅读
+M4.1A/B Project Panel 与 Turn Journal 基础层修复已完成；先阅读
 doc/milestones/m4.md、doc/milestones/turn-journal.md 并复验相关测试。
-接下来实施 M4.1B File Tree + code/Markdown/image Preview，复用同一 side panel；
-随后才做 M4.2 @directory/@diff + 当前 Session Contextual Ask。
+接下来实施 M4.2 @directory/@diff + 当前 Session Contextual Ask，复用同一 Project
+Panel 与上游 @file/@session reference seam。
 不要修改 DSH 源码，不要实现第二套 Session/Subagent/Task/PTY/compaction 内核，
 也不要提前扩展 Cloud/Remote/PR。
 ```

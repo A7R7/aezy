@@ -73,3 +73,22 @@ worktree is clean, and the latest clean handoff matches current HEAD. Cleanup
 calls ordinary `git worktree remove` without force and retains the branch and
 commits. Create, bind, handoff, release, and cleanup enter M2's shared Security
 audit as explicit user-confirmed actions.
+
+## M4.1 Project Panel
+
+The browser module owns one transient Session-scoped Project Panel over DSH's
+public `details` slot on desktop and `shell.overlay` on narrow viewports. Review
+mode renders Working or historical Turn structured diffs without expanding raw
+diffs inside the conversation. Files mode lists one directory at a time and
+previews one file at a time; switching Session or cwd closes the panel, and
+AbortController plus revision/path identity keeps late requests from replacing
+the active selection.
+
+The Host tree/preview endpoints canonicalize the workspace root, reject `.git`,
+escapes and symbolic-link paths, and bound directories to 500 entries, UTF-8
+text to 256 KiB / 4000 lines, and recognized images to 5 MiB. The client reuses
+published DSH `ReadBlock` and `MarkdownText` primitives rather than owning a
+syntax highlighter or Markdown engine. Changes, Turn summaries and structured
+Handoff file lists can open the same Files mode. Handoff links intentionally
+read the current Session workspace path; they are not historical handoff
+snapshots and fail closed when that path no longer exists.

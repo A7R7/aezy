@@ -17,12 +17,12 @@
     "@aezy/project"
   ],
   "upstreamReview": {
-    "checkedAt": "2026-08-23",
+    "checkedAt": "2026-08-24",
     "latestObservedTag": "dsh-v0.1.1-rc.2",
     "latestObservedCommit": "b150a551b8d465e31e418e1b2eaf5e79bbb7d28e",
     "latestObservedTree": "53915efe4e2126cc7779b73dfc8a3bcec5318c44",
     "runtimeDecision": "remain-on-reviewed-rc.1-baseline",
-    "ownershipImpact": "rc.2 does not add a generic or additive details panel router; M4.1A remains out of tree, using the public single details slot for its required docked desktop layout and additive shell.overlay on narrow screens; shadowing Tool Details is an explicit compatibility cost until a generic router exists"
+    "ownershipImpact": "rc.2 does not add a generic or additive details panel router or a reusable file-tree/preview surface; M4.1A/B remain out of tree, using the public single details slot for the required docked desktop layout, additive shell.overlay on narrow screens, and published dsh-client-ui-primitives for code/Markdown rendering; shadowing Tool Details is an explicit compatibility cost until a generic router exists"
   },
   "policy": {
     "referenceTree": "read-only",

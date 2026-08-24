@@ -2,7 +2,7 @@
 
 ## 决策摘要
 
-截至 2026-08-23，Aezy 运行基线为已验证的 `dsh-v0.1.1-rc.1`，M4.1A 交互复验时最新公开 tag 仍为
+截至 2026-08-24，Aezy 运行基线为已验证的 `dsh-v0.1.1-rc.1`，M4.1B 开工复核时最新公开 tag 仍为
 `dsh-v0.1.1-rc.2`。rc.2 主要交付统一 image/attachment 管线、DeepSeek Files API
 和权限默认值修正，没有新增 Worktree/Handoff；因此 M3 所有权不变，升级不夹带在
 M3 中；rc.2 也没有新增 generic/additive details panel router。M4.1A desktop 按
@@ -47,8 +47,8 @@ rc.8 已交付 `@file/@session`、Windows 持久 PowerShell、可安装 Product 
 | Network Policy | **立即实现，位于 M2** | 对 Aezy 管理的 shell/provider/external tool 建立独立 deny/ask/allow 与审计 | 不声称仅靠文件 sandbox 已限制网络 | M1 稳定后 |
 | Worktree / Local Handoff | **立即实现，位于 M3** | 基于 Repository/Environment 与 Git 状态建立创建、清理、绑定和可审计 handoff | 不先于 M1/M2；不让并行 Agent 共享 checkout 后再补隔离 | M2 安全策略完成后 |
 | 上游 `@file/@session` reference | **rc.8 已交付，Aezy 薄集成** | 使用上游 Host index、Remote 和 Web source；验证 Aezy profile 中可用 | 不另建文件索引、Session mention 或引用准备协议 | 上游 seam 无法承载真实引用用例 |
-| Modern Review Side Panel | **M4.1A 已实现** | 复用 `@aezy/project` Git/Turn ledger；desktop 占用公开 `details` 形成 docked column，narrow 使用 additive `shell.overlay`；提供 transient Session-scoped selection、structured diff、纵向多开 accordion 与逐文件独立 lazy load | 当前已知代价是 shadow Tool Details；不复制 layout 内核，不做 editor/stage/hunk apply/PR/Side Session | 上游新增通用 panel router 时优先迁移并恢复多 occupant；M4.1B 复用同一 Aezy surface |
-| 文件树、预览、`@directory` / `@diff` | **M4.1B/M4.2 顺序实施** | 先让 file tree + code/Markdown/image Preview 复用 M4.1A side panel，再在上游 reference seam 上补 `@directory` / `@diff` 与当前 Session Contextual Ask | 不重复 `@file/@session`，不一次构建完整 IDE 或通用 artifact 平台 | M4.1B 浏览器 dogfood 后进入 M4.2 |
+| Review + Files Project Panel | **M4.1A/B 已实现** | 复用 `@aezy/project` Git/Turn ledger；desktop 占用公开 `details`，narrow 使用 `shell.overlay`；提供 structured Review、多开 accordion、lazy file tree，以及复用 DSH `ReadBlock` / `MarkdownText` 的 code/Markdown/image Preview | 当前已知代价是 shadow Tool Details；不复制 layout/Markdown/highlight/file-index 内核，不做 editor/stage/hunk apply/PR/Side Session | 上游新增通用 panel router 或 file-preview surface 时优先迁移并恢复多 occupant |
+| `@directory` / `@diff` + Contextual Ask | **M4.2 下一步** | 在上游 `@file/@session` reference seam 上补目录/diff reference 与当前 Session ask；复用 M4.1 Project Panel 的 path/source identity | 不重复 `@file/@session`，不一次构建完整 IDE，不建立 Side Session 状态机 | M4.2 浏览器和模型 dogfood 后进入下一工作台痛点 |
 | 用户 Integrated Terminal UI | **dogfood 驱动；复用 rc.8 backend** | 未来在 Aezy Web 增加用户 PTY tabs、cwd/environment 绑定；当前继续用 shell/job | 不 fork PTY/Windows persistent PowerShell，不重写 job/terminal lifecycle | 真实交互命令阻塞 M1-M3 |
 | Activity / Status / Usage / Notifications | **薄投影后按痛点增强** | 汇总现有 Session、Job、Subagent、approval、trajectory 投影 | 不另建 Task runtime 或第二套状态机 | 状态不可见开始阻塞多任务 dogfood |
 | Browser automation | **后续 Aezy 产品能力** | 前端 dogfood 成为主要场景后实现 localhost、screenshot、click/type/scroll | 不阻塞本地通用 coding loop；不先扩展到 Computer Use | 前端任务无法仅靠 shell/test 验收 |
@@ -155,17 +155,22 @@ DTO、纵向多开 accordion、逐文件独立 lazy load、desktop docked detail
 详见 [M4.1A 签收记录](../milestones/m4.md)。
 2026-08-24 follow-up 又将 Turn/Review 收敛到 Aezy semantic ChangeSurface、32px file row
 与文件类型图标，并移除可见 snapshot id、重复 Turn part 和 raw hunk header；这只是
-M4.1A 视觉语义收敛，不改变 ledger、Undo/Redo 或后续 M4.1B 顺序。
+M4.1A 视觉语义收敛，不改变 ledger 或 Undo/Redo。
+
+**M4.1B File Tree + Preview：Complete（2026-08-24）。** 同一 Session-scoped Project
+Panel 已增加逐目录 lazy tree、bounded code/Markdown/image Preview，并让
+Changes/Turn/Handoff changed files 跳转；代码/Markdown renderer 直接复用发布版 DSH
+`ReadBlock` / `MarkdownText`，Host path containment、`.git`/symlink 拒绝、输出硬上限、
+AbortController identity fence、真实 rc.1 HTTP/模型/browser QA 均已签收，详见
+[M4.1B 签收记录](../milestones/m4.md)。
 
 后续项不是一个捆绑交付，固定顺序如下：
 
-1. **M4.1B** file tree + code/Markdown/image preview，复用同一 side panel，并让
-   Changes/Turn/Handoff 跳转；
-2. **M4.2** 在上游 `@file/@session` 之上补 `@directory` / `@diff`，以及当前
+1. **M4.2** 在上游 `@file/@session` 之上补 `@directory` / `@diff`，以及当前
    Session 内 Contextual Ask；
-3. 用户 Integrated Terminal UI；
-4. Activity / Status / Usage / Notifications；
-5. localhost Browser + browser interaction。
+2. 用户 Integrated Terminal UI；
+3. Activity / Status / Usage / Notifications；
+4. localhost Browser + browser interaction。
 
 真正 Side Chat 继续等待 DSH Interactive Side Sessions/fork/merge-back 公开 seam；
 Aezy 不建立第二套持久会话状态机。

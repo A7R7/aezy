@@ -9,7 +9,7 @@ Aezy 是基于 DeepSeek Harness（DSH）公开扩展机制构建的独立编程 
 - `doc/`：Aezy 的功能基线、DSH 插件审计和 Codex Desktop 差距报告。
 - `packages/aezy-base/`、`packages/aezy-web/`：Aezy 的外置 composition 与默认 Agent preset。
 - `packages/aezy-brand/`：占据 DSH 通用品牌 slots 的最薄文字品牌插件；暂以字母 `A` 作为图形占位。
-- `packages/aezy-project/`：M1 Project/Repository/Changes/turn ledger、M3 Worktree/Session binding/结构化 Handoff，以及 M4.1A structured Review Side Panel 插件。
+- `packages/aezy-project/`：M1 Project/Repository/Changes/turn ledger、M3 Worktree/Session binding/结构化 Handoff，以及 M4.1 Review + Files Project Panel 插件。
 - `packages/aezy-security/`：M2 持久 Approval Rules、独立 Network Policy、决策解释与审计插件。
 - Aezy 源码只放在参考树外的独立插件、bundle 和应用目录中，不写入 `.local/deepseek-harness/`。
 
@@ -105,7 +105,7 @@ AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run dogfood:m3
 M3 已完成真实 rc.1 HTTP 与 Aezy 自仓库模型 dogfood 签收；完整证据、Session、
 handoff 和保留分支见 [M3 里程碑记录](doc/milestones/m3.md)。
 
-## M4.1A：Modern Review Side Panel
+## M4.1：Review + Files Project Panel
 
 Turn card 不再在消息流内展开 raw unified diff。Review 与文件行现在打开 Aezy
 Session-scoped 右侧 panel：桌面使用 DSH 原生 details column 占据主页面空间并可拖拽，
@@ -126,9 +126,16 @@ theme aliases、12px 圆角和 code font；文件明细位于简洁 body，总�
 当前 rc.1/rc.2 没有 generic/additive details router，因此 desktop occupant 会 shadow
 上游 Tool Details；这是 docked 布局的已知兼容性代价，未来出现公开 router 后迁移。
 
-后续顺序固定为 M4.1B File Tree + code/Markdown/image Preview（复用同一 panel），
-再做 M4.2 `@directory` / `@diff` + 当前 Session Contextual Ask。真正 Side Chat 等待
-DSH Interactive Side Sessions/fork/merge-back seam，不在 Aezy 中复制持久会话内核。
+M4.1B 继续复用同一 panel，增加 Session-scoped、逐目录按需加载的文件树，以及
+code/Markdown/image preview。代码和 Markdown 分别直接复用 DSH 发布的 `ReadBlock`
+与 `MarkdownText`；Changes、Turn 文件行和 Handoff changed-file list 都能跳转。Host
+拒绝 workspace 越界、`.git`、symlink 和不安全 binary，并对目录、文本行/字节与图片
+设置硬上限；文件快速切换会取消旧请求，Session/cwd 切换立即关闭旧 panel。
+
+M4.1B 的自动、真实 rc.1 HTTP、真实模型与宽/窄、深/浅浏览器证据也记录在
+[M4.1 签收记录](doc/milestones/m4.md)。下一顺序固定为 M4.2 `@directory` / `@diff` +
+当前 Session Contextual Ask。真正 Side Chat 等待 DSH Interactive Side
+Sessions/fork/merge-back seam，不在 Aezy 中复制持久会话内核。
 
 ## 研究资料
 
