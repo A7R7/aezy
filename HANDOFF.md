@@ -3,7 +3,7 @@
 > 交接日期：2026-08-24<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 当前分支：`main`<br>
-> 功能基线：`c344d6ea45 refactor(project): unify change review surfaces`
+> 功能基线：`306e9a00b9 fix(project): refine change row interactions`
 
 ## 1. 最终目标与不可破坏的边界
 
@@ -152,6 +152,10 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
   `md-code-block`；
 - Review 文件 accordion 与 Turn summary 共用 ChangeSurface 和 banner tokens，文件按钮
   为 32px；两处共用 code/config/document/image/style/terminal/data/generic 文件图标；
+- Turn summary 文件行独立保持 28px，不随 side panel 的紧凑按钮缩小；整行在 pointer
+  hover 或 keyboard focus 时使用 DSH interactive hover alias 提亮；
+- Review accordion 允许当前展开 path 为 null；再次点击已展开文件会 abort 旧请求并
+  折叠内容，但不关闭 panel，下一次点击其他文件仍按需加载；
 - Historical Review 不再显示 per-file status/snapshot hash、重复 `Turn N` part header 或
   raw `@@` hunk header；特殊状态留在紧凑文件行和专用空状态，多 hunk 使用轻量间隔；
 - Working/Historical 共用 structured diff DTO 与 renderer；
@@ -253,7 +257,7 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3090
 交接时的功能基线提交：
 
 ```text
-c344d6ea45 refactor(project): unify change review surfaces
+306e9a00b9 fix(project): refine change row interactions
 ```
 
 用户已有三个未跟踪项，必须保留、不得纳入普通实现提交：
