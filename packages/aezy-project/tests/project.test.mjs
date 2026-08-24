@@ -4,10 +4,13 @@ import { access, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:f
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import {
-  basename, describeDiff, describeDirectory, describePreview, describeProject, parsePorcelainV2,
-  parseUnifiedDiff, previewLimits, summarizeTurn, TurnLedger,
+  basename, describeDiff, describeDirectory, describePreview, describeProject, describeProjectContext,
+  encodeProjectReference, formatProjectReferenceMention, parsePorcelainV2, parseProjectReferenceText,
+  parseUnifiedDiff, previewLimits, projectContextLimits, summarizeTurn, TurnLedger,
 } from '../src/index.js'
+import { ProjectContextResolver } from '../src/context.js'
 
 function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' })
@@ -148,6 +151,111 @@ test('directory projection fingerprint changes when files are added or removed',
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+test('project context references are canonical, readable, and reject malformed payloads', () => {
+  const reference = { version: 1, kind: 'directory', sessionId: 'session-1', cwd: '/workspace', path: 'src/ui' }
+  const uri = encodeProjectReference(reference)
+  assert.match(uri, /^aezy-directory:[A-Za-z0-9_-]+$/u)
+  const mention = formatProjectReferenceMention(reference, 'directory:src/ui')
+  assert.deepEqual(parseProjectReferenceText(`Review ${mention}.`), {
+    text: 'Review @directory:src/ui.',
+    references: [{ ...reference, label: 'directory:src/ui' }],
+  })
+  assert.throws(() => parseProjectReferenceText('@[bad](aezy-directory:not-canonical)'), /malformed|canonical|invalid/u)
+})
+
+test('directory and working diff context snapshots are bounded and workspace-scoped', async () => {
+  const writableTemp = process.platform === 'win32' ? tmpdir() : '/tmp'
+  const root = await mkdtemp(join(writableTemp, 'aezy-context-'))
+  try {
+    git(root, 'init', '--quiet')
+    git(root, 'config', 'user.name', 'Aezy Test')
+    git(root, 'config', 'user.email', 'aezy@example.invalid')
+    await mkdir(join(root, 'src'))
+    await writeFile(join(root, 'src', 'tracked.ts'), 'export const before = true\n')
+    git(root, 'add', 'src/tracked.ts')
+    git(root, 'commit', '--quiet', '-m', 'context fixture')
+    await writeFile(join(root, 'src', 'tracked.ts'), 'export const after = true\n')
+    await writeFile(join(root, 'src', 'new.ts'), 'export const newFile = true\n')
+
+    const ledger = { view: async () => ({ turns: [] }) }
+    const directory = await describeProjectContext(ledger, {
+      version: 1, kind: 'directory', sessionId: 's1', cwd: root, path: 'src',
+    })
+    assert.equal(directory.kind, 'directory')
+    assert.deepEqual(directory.entries.map(entry => entry.path), ['src/new.ts', 'src/tracked.ts'])
+    assert.match(directory.files.find(file => file.path === 'src/new.ts')?.content ?? '', /newFile/u)
+    assert.ok(Buffer.byteLength(JSON.stringify(directory)) <= projectContextLimits.renderedContextBytes)
+
+    const working = await describeProjectContext(ledger, {
+      version: 1, kind: 'diff', source: 'working', sessionId: 's1', cwd: root,
+    })
+    assert.equal(working.source, 'working')
+    assert.deepEqual(working.files.map(file => file.path), ['src/new.ts', 'src/tracked.ts'])
+    assert.equal(working.files.every(file => file.parts.length > 0), true)
+    assert.ok(Buffer.byteLength(JSON.stringify(working)) <= projectContextLimits.renderedContextBytes)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('historical diff context reads immutable Turn review objects and prepares durable context', async () => {
+  const cwd = '/workspace'
+  const historical = {
+    version: 2,
+    identity: 'turn-snapshot',
+    source: { kind: 'turn' },
+    file: {
+      path: 'src/app.ts', oldPath: 'src/app.ts', newPath: 'src/app.ts', status: 'modified',
+      additions: 1, deletions: 0, binary: false, truncated: false,
+    },
+    parts: [{
+      scope: 'turn', state: 'structured', hunks: [{
+        oldStart: 1, oldCount: 1, newStart: 1, newCount: 2,
+        lines: [
+          { kind: 'context', oldLine: 1, newLine: 1, text: 'before' },
+          { kind: 'addition', oldLine: null, newLine: 2, text: 'historical only' },
+        ],
+      }],
+    }],
+  }
+  let reviewCalls = 0
+  const ledger = {
+    async view() {
+      return {
+        workspaceRoot: cwd,
+        turns: [{ turn: 2, source: 'structured', partial: false, unobservedTools: [], files: [{ path: 'src/app.ts' }] }],
+      }
+    },
+    async review(_cwd, _sessionId, turn, path) {
+      reviewCalls += 1
+      assert.equal(turn, 2)
+      assert.equal(path, 'src/app.ts')
+      return structuredClone(historical)
+    },
+  }
+  const reference = { version: 1, kind: 'diff', source: 'turn', sessionId: 's1', cwd, turn: 2 }
+  const first = await describeProjectContext(ledger, reference)
+  const second = await describeProjectContext(ledger, reference)
+  assert.deepEqual(second, first)
+  assert.equal(reviewCalls, 2)
+  assert.match(JSON.stringify(first), /historical only/u)
+
+  const resolver = new ProjectContextResolver(ledger)
+  const mention = formatProjectReferenceMention(reference, 'diff:turn-2')
+  const direct = createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: `Explain ${mention}` }] })
+  const prepared = await resolver.prepareDirectMessages({ id: 's1', session: { header: { cwd } } }, [direct])
+  assert.equal(prepared.length, 2)
+  assert.equal(prepared[0].content[0].text, 'Explain @diff:turn-2')
+  assert.deepEqual(prepared[1].source, {
+    kind: 'plugin', plugin: 'aezy-project', references: [{ kind: 'diff', source: 'turn', turn: 2 }],
+  })
+  assert.match(prepared[1].content[0].text, /<aezy-project-context>/u)
+  await assert.rejects(
+    () => resolver.prepareDirectMessages({ id: 'other', session: { header: { cwd } } }, [direct]),
+    /current Session workspace/u,
+  )
 })
 
 test('non-Git workspace records exact structured Turn changes without a sticky Git error', async () => {

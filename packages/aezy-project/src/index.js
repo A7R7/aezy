@@ -8,6 +8,10 @@ import { basename, summarizeTurn } from './summary.js'
 import { parseWorktreeList, WorktreeManager } from './worktree.js'
 import { countStructuredLines, parseUnifiedDiff } from './diff.js'
 import { describeDirectory, describePreview, previewLimits } from './preview.js'
+import { ProjectContextResolver, describeProjectContext, projectContextLimits } from './context.js'
+import {
+  decodeProjectReference, encodeProjectReference, formatProjectReferenceMention, parseProjectReferenceText,
+} from './context-reference.js'
 
 const ROUTE = '/aezy/api/project'
 const MAX_BODY_BYTES = 32 * 1024
@@ -15,6 +19,8 @@ const MAX_BODY_BYTES = 32 * 1024
 export {
   basename, describeDiff, describeProject, parsePorcelainV2, parseWorktreeList,
   countStructuredLines, describeDirectory, describePreview, parseUnifiedDiff, previewLimits,
+  decodeProjectReference, describeProjectContext, encodeProjectReference, formatProjectReferenceMention,
+  parseProjectReferenceText, projectContextLimits,
   summarizeTurn, TurnLedger, WorktreeManager,
 }
 export const inject = ['webServer', 'sessions', 'tools', 'aezySecurity']
@@ -244,6 +250,7 @@ export function apply(ctx) {
     warn,
   })
   const worktrees = new WorktreeManager({ sessions: ctx.sessions, warn })
+  const contextReferences = new ProjectContextResolver(ledger)
   const handler = createHandler(ledger, worktrees, ctx.aezySecurity, warn)
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',
@@ -260,6 +267,14 @@ export function apply(ctx) {
     await ledger.observeTool(exec, result)
     return result
   })
+  ctx.on('agent/pre-step', async ({ agent, signal }, next) => {
+    const decision = await next()
+    if (decision.kind === 'reject') return decision
+    return {
+      kind: 'enter',
+      messages: await contextReferences.prepareDirectMessages(agent, decision.messages, signal),
+    }
+  }, { prepend: true })
   ctx.on('session/created', session => { void worktrees.observe(session, 'created').catch(warn) })
   ctx.on('session/disposed', session => { void worktrees.observe(session, 'disposed').catch(warn) })
   for (const session of ctx.sessions.list()) void worktrees.observe(session, 'created').catch(warn)
