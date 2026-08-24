@@ -153,6 +153,9 @@ Turn 中途 `git init`、shell-only partial、真实 rc.1 HTTP 与 Git/非 Git�
 DTO、纵向 accordion、单文件 lazy load、desktop docked details、narrow overlay、theme、
 真实 rc.1 Host、模型 dogfood 与浏览器 QA 均已签收，
 详见 [M4.1A 签收记录](../milestones/m4.md)。
+2026-08-24 follow-up 又将 Turn/Review 收敛到 Aezy semantic ChangeSurface、32px file row
+与文件类型图标，并移除可见 snapshot id、重复 Turn part 和 raw hunk header；这只是
+M4.1A 视觉语义收敛，不改变 ledger、Undo/Redo 或后续 M4.1B 顺序。
 
 后续项不是一个捆绑交付，固定顺序如下：
 

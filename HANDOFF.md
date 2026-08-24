@@ -3,7 +3,7 @@
 > 交接日期：2026-08-24<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 当前分支：`main`<br>
-> 功能基线：`439471edfa feat(project): decouple turn journal from git`
+> 功能基线：`c344d6ea45 refactor(project): unify change review surfaces`
 
 ## 1. 最终目标与不可破坏的边界
 
@@ -146,10 +146,16 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
   页面空间并复用原生 resize，narrow 使用 additive `shell.overlay`；
 - 文件名纵向 accordion 排列，点击文件名只在其下方展开一个 lazy-loaded diff；
 - conversation view 不卸载、垂直 scroll state 不重置；desktop 横向 reflow 是预期行为；
-- Turn changes summary 已对齐 DSH `md-code-block` family：12px radius、code-block/banner
-  aliases、code font、无分隔线 file body 和 `└ +A -D · N files` footer；
+- Turn changes summary 已对齐 DSH code-block family：12px radius、code-block/banner
+  aliases、code font、无分隔线 file body 和 `└ +A -D · N files` footer；DOM 使用
+  Aezy 自有 `aezy-change-surface` / `aezy-turn-changes` 语义 class，不冒用
+  `md-code-block`；
+- Review 文件 accordion 与 Turn summary 共用 ChangeSurface 和 banner tokens，文件按钮
+  为 32px；两处共用 code/config/document/image/style/terminal/data/generic 文件图标；
+- Historical Review 不再显示 per-file status/snapshot hash、重复 `Turn N` part header 或
+  raw `@@` hunk header；特殊状态留在紧凑文件行和专用空状态，多 hunk 使用轻量间隔；
 - Working/Historical 共用 structured diff DTO 与 renderer；
-- old/new line number、addition/deletion/status gutter、sticky file/hunk header；
+- old/new line number、addition/deletion/status gutter、sticky expanded-file banner；
 - added/deleted/renamed/binary/truncated/malformed raw fallback；
 - Historical path-required 单文件 object lazy load，后续 worktree 漂移不改变快照；
 - AbortController + generation + active identity 防止快速切换旧响应覆盖；
@@ -224,6 +230,7 @@ rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,67
 - M4.1A Aezy 自身真实模型 dogfood → Session `m4-review-qa-home`，13/13 passed
 - M4.1A docked browser QA → center `1160→800→1160`、scrollTop `391→391→391`、native details `359→451` resize、纵向 accordion 单文件展开、680 overlay
 - M4.1A Turn summary browser QA → 与同页 DSH fenced code block 的 background/banner/radius 完全一致，body `13px/22px`，Review action passed
+- M4.1A surface follow-up → `build:m1`、M1 16/16、M2 11/11、M3 6/6、brand 1/1、peer check、真实 rc.1 M0 与 3090 M1 HTTP passed；3090 served bundle 与 checkout 字节一致
 - `pnpm run dogfood:turn-journal` → 非 Git真实模型 `write + edit`、structured Historical Review passed（Session `turn-journal-dogfood-mt6qureu`）
 - `pnpm run dogfood:turn-summary` → 原 Git-enriched Turn summary 回归 passed（Session `turn-summary-dogfood-mt6qvc9u`）
 - `git diff --check` → passed
@@ -246,7 +253,7 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3090
 交接时的功能基线提交：
 
 ```text
-439471edfa feat(project): decouple turn journal from git
+c344d6ea45 refactor(project): unify change review surfaces
 ```
 
 用户已有三个未跟踪项，必须保留、不得纳入普通实现提交：
