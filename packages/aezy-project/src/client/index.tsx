@@ -313,7 +313,7 @@ type ReviewTarget = {
   sessionId: string
   cwd: string
   turn?: number
-  path: string
+  path: string | null
   files: ReviewNavFile[]
 }
 
@@ -332,7 +332,7 @@ class ReviewController {
   }
   select(path: string): void {
     if (this.#target === null || !this.#target.files.some(file => file.path === path)) return
-    this.open({ ...this.#target, path })
+    this.open({ ...this.#target, path: this.#target.path === path ? null : path })
   }
   close(): void {
     if (this.#target === null) return
@@ -366,6 +366,26 @@ function DiffStats({ additions, deletions }: { additions: number | null; deletio
     <span style={{ color: palette.success }}>+{additions}</span>
     <span style={{ color: palette.error }}>-{deletions}</span>
   </span>
+}
+
+function TurnSummaryFileRow({ file, open }: { file: TurnSummary['files'][number]; open(): void }) {
+  const [highlighted, setHighlighted] = useState(false)
+  return <div
+    data-aezy-turn-file={file.path}
+    onPointerEnter={() => setHighlighted(true)}
+    onPointerLeave={() => setHighlighted(false)}
+    onFocusCapture={() => setHighlighted(true)}
+    onBlurCapture={() => setHighlighted(false)}
+    style={{ minHeight: 28, display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto', alignItems: 'center', gap: 7, margin: '0 -6px', padding: '0 6px', borderRadius: 6, background: highlighted ? palette.interactive : 'transparent', transition: 'background 120ms ease' }}
+  >
+    <FileTypeIcon path={file.path} />
+    <button type="button" title={file.path} onClick={open} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: 0, border: 0, background: 'transparent', color: file.afterFingerprint === null ? 'var(--dsw-alias-label-tertiary)' : 'var(--dsw-alias-label-primary)', cursor: 'pointer', textAlign: 'left', font: 'inherit', textDecoration: file.afterFingerprint === null ? 'line-through' : undefined }}>
+      {file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : ''}{file.path}
+      {file.binary && <span style={{ marginLeft: 7, color: 'var(--dsw-alias-label-tertiary)' }}>binary</span>}
+      {file.truncated && <span style={{ marginLeft: 7, color: palette.warning, fontFamily: 'inherit' }}>truncated</span>}
+    </button>
+    <DiffStats additions={file.additions} deletions={file.deletions} />
+  </div>
 }
 
 function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryProps) {
@@ -446,15 +466,7 @@ function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryPr
       </span>
     </header>
     <div style={{ padding: '12px 14px 8px', background: 'var(--dsw-alias-markdown-code-block)', font: 'var(--dsw-font-markdown-code-block)' }}>
-      {summary.files.map(file => <div key={file.path} style={{ minHeight: 22, display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto', alignItems: 'center', gap: 7 }}>
-        <FileTypeIcon path={file.path} />
-        <button type="button" title={file.path} onClick={() => openTurnReview(file.path)} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: 0, border: 0, background: 'transparent', color: file.afterFingerprint === null ? 'var(--dsw-alias-label-tertiary)' : 'var(--dsw-alias-label-primary)', cursor: 'pointer', textAlign: 'left', font: 'inherit', textDecoration: file.afterFingerprint === null ? 'line-through' : undefined }}>
-          {file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : ''}{file.path}
-          {file.binary && <span style={{ marginLeft: 7, color: 'var(--dsw-alias-label-tertiary)' }}>binary</span>}
-          {file.truncated && <span style={{ marginLeft: 7, color: palette.warning, fontFamily: 'inherit' }}>truncated</span>}
-        </button>
-        <DiffStats additions={file.additions} deletions={file.deletions} />
-      </div>)}
+      {summary.files.map(file => <TurnSummaryFileRow key={file.path} file={file} open={() => openTurnReview(file.path)} />)}
     </div>
     <footer style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 7, padding: '0 14px 12px', background: 'var(--dsw-alias-markdown-code-block)', color: 'var(--dsw-alias-label-tertiary)', font: 'var(--dsw-font-markdown-code-block)' }}>
       <span aria-hidden>└</span>
@@ -572,18 +584,19 @@ function ReviewPanel({ review, surface, closeReview, syncLayout, useSessions }: 
   }, [matchesSession, narrow, syncLayout, target])
 
   useEffect(() => {
-    if (!visible || target === null) { setDocument(null); setError(null); return }
+    if (!visible || target === null || target.path === null) { setDocument(null); setError(null); return }
     const controller = new AbortController()
     const requestGeneration = ++generation.current
+    const selectedPath = target.path
     setDocument(null)
     setError(null)
     const path = target.source === 'turn' ? '/aezy/api/project/turn-review' : '/aezy/api/project/diff'
     const params = target.source === 'turn'
-      ? { cwd: target.cwd, sessionId: target.sessionId, turn: String(target.turn), path: target.path }
-      : { cwd: target.cwd, path: target.path }
+      ? { cwd: target.cwd, sessionId: target.sessionId, turn: String(target.turn), path: selectedPath }
+      : { cwd: target.cwd, path: selectedPath }
     request<ReviewDocument>(path, params, controller.signal).then(value => {
       if (requestGeneration !== generation.current || review.getSnapshot() !== target) return
-      if (value.file.path !== target.path || value.source.kind !== target.source) throw new Error('Review response identity does not match the active selection.')
+      if (value.file.path !== selectedPath || value.source.kind !== target.source) throw new Error('Review response identity does not match the active selection.')
       setDocument(value)
     }).catch(reason => {
       if (controller.signal.aborted || requestGeneration !== generation.current) return

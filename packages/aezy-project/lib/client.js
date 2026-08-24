@@ -278,7 +278,7 @@ window.__ModuleLoader__.load({
 				if (this.#target === null || !this.#target.files.some((file) => file.path === path)) return;
 				this.open({
 					...this.#target,
-					path
+					path: this.#target.path === path ? null : path
 				});
 			}
 			close() {
@@ -325,6 +325,73 @@ window.__ModuleLoader__.load({
 					style: { color: palette.error },
 					children: ["-", deletions]
 				})]
+			});
+		}
+		function TurnSummaryFileRow({ file, open }) {
+			const [highlighted, setHighlighted] = (0, react.useState)(false);
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				"data-aezy-turn-file": file.path,
+				onPointerEnter: () => setHighlighted(true),
+				onPointerLeave: () => setHighlighted(false),
+				onFocusCapture: () => setHighlighted(true),
+				onBlurCapture: () => setHighlighted(false),
+				style: {
+					minHeight: 28,
+					display: "grid",
+					gridTemplateColumns: "16px minmax(0, 1fr) auto",
+					alignItems: "center",
+					gap: 7,
+					margin: "0 -6px",
+					padding: "0 6px",
+					borderRadius: 6,
+					background: highlighted ? palette.interactive : "transparent",
+					transition: "background 120ms ease"
+				},
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(FileTypeIcon, { path: file.path }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+						type: "button",
+						title: file.path,
+						onClick: open,
+						style: {
+							minWidth: 0,
+							overflow: "hidden",
+							textOverflow: "ellipsis",
+							whiteSpace: "nowrap",
+							padding: 0,
+							border: 0,
+							background: "transparent",
+							color: file.afterFingerprint === null ? "var(--dsw-alias-label-tertiary)" : "var(--dsw-alias-label-primary)",
+							cursor: "pointer",
+							textAlign: "left",
+							font: "inherit",
+							textDecoration: file.afterFingerprint === null ? "line-through" : void 0
+						},
+						children: [
+							file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : "",
+							file.path,
+							file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								style: {
+									marginLeft: 7,
+									color: "var(--dsw-alias-label-tertiary)"
+								},
+								children: "binary"
+							}),
+							file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								style: {
+									marginLeft: 7,
+									color: palette.warning,
+									fontFamily: "inherit"
+								},
+								children: "truncated"
+							})
+						]
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
+						additions: file.additions,
+						deletions: file.deletions
+					})
+				]
 			});
 		}
 		function TurnChangedFiles({ matched, cwd, sessionId, openReview }) {
@@ -488,59 +555,9 @@ window.__ModuleLoader__.load({
 							background: "var(--dsw-alias-markdown-code-block)",
 							font: "var(--dsw-font-markdown-code-block)"
 						},
-						children: summary.files.map((file) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							style: {
-								minHeight: 22,
-								display: "grid",
-								gridTemplateColumns: "16px minmax(0, 1fr) auto",
-								alignItems: "center",
-								gap: 7
-							},
-							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(FileTypeIcon, { path: file.path }),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-									type: "button",
-									title: file.path,
-									onClick: () => openTurnReview(file.path),
-									style: {
-										minWidth: 0,
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										whiteSpace: "nowrap",
-										padding: 0,
-										border: 0,
-										background: "transparent",
-										color: file.afterFingerprint === null ? "var(--dsw-alias-label-tertiary)" : "var(--dsw-alias-label-primary)",
-										cursor: "pointer",
-										textAlign: "left",
-										font: "inherit",
-										textDecoration: file.afterFingerprint === null ? "line-through" : void 0
-									},
-									children: [
-										file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : "",
-										file.path,
-										file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											style: {
-												marginLeft: 7,
-												color: "var(--dsw-alias-label-tertiary)"
-											},
-											children: "binary"
-										}),
-										file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											style: {
-												marginLeft: 7,
-												color: palette.warning,
-												fontFamily: "inherit"
-											},
-											children: "truncated"
-										})
-									]
-								}),
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
-									additions: file.additions,
-									deletions: file.deletions
-								})
-							]
+						children: summary.files.map((file) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(TurnSummaryFileRow, {
+							file,
+							open: () => openTurnReview(file.path)
 						}, file.path))
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("footer", {
@@ -830,26 +847,27 @@ window.__ModuleLoader__.load({
 				target
 			]);
 			(0, react.useEffect)(() => {
-				if (!visible || target === null) {
+				if (!visible || target === null || target.path === null) {
 					setDocument(null);
 					setError(null);
 					return;
 				}
 				const controller = new AbortController();
 				const requestGeneration = ++generation.current;
+				const selectedPath = target.path;
 				setDocument(null);
 				setError(null);
 				request(target.source === "turn" ? "/aezy/api/project/turn-review" : "/aezy/api/project/diff", target.source === "turn" ? {
 					cwd: target.cwd,
 					sessionId: target.sessionId,
 					turn: String(target.turn),
-					path: target.path
+					path: selectedPath
 				} : {
 					cwd: target.cwd,
-					path: target.path
+					path: selectedPath
 				}, controller.signal).then((value) => {
 					if (requestGeneration !== generation.current || review.getSnapshot() !== target) return;
-					if (value.file.path !== target.path || value.source.kind !== target.source) throw new Error("Review response identity does not match the active selection.");
+					if (value.file.path !== selectedPath || value.source.kind !== target.source) throw new Error("Review response identity does not match the active selection.");
 					setDocument(value);
 				}).catch((reason) => {
 					if (controller.signal.aborted || requestGeneration !== generation.current) return;
