@@ -6,6 +6,7 @@ import { TurnLedger } from '../packages/aezy-project/src/index.js'
 
 const baseUrl = process.env.AEZY_TEST_URL ?? 'http://127.0.0.1:3091'
 const root = await mkdtemp('/tmp/aezy-project-http-')
+const nonGitRoot = await mkdtemp('/tmp/aezy-project-http-non-git-')
 
 function git(...args) {
   return execFileSync('git', args, { cwd: root, encoding: 'utf8' })
@@ -85,7 +86,21 @@ try {
 
   const forbidden = await fetch(`${baseUrl}/aezy/api/project?${new URLSearchParams({ cwd: root })}`)
   assert.equal(forbidden.status, 403)
-  process.stdout.write('M1 real DSH HTTP Codex-style Turn review, batch Undo/Redo, and request fence passed.\n')
+
+  const nonGitProject = await request(`/aezy/api/project?${new URLSearchParams({ cwd: nonGitRoot })}`)
+  assert.equal(nonGitProject.repository.available, false)
+  assert.equal(nonGitProject.project.root, nonGitRoot)
+  const nonGitLedger = await request(`/aezy/api/project/ledger?${new URLSearchParams({
+    cwd: nonGitRoot, sessionId: 'http-non-git-session',
+  })}`)
+  assert.equal(nonGitLedger.gitAvailable, false)
+  assert.equal(nonGitLedger.repositoryRoot, null)
+  assert.deepEqual(nonGitLedger.turns, [])
+
+  process.stdout.write('M1 real DSH HTTP Git/non-Git ledger, historical Review, batch Undo/Redo, and request fence passed.\n')
 } finally {
-  await rm(root, { recursive: true, force: true })
+  await Promise.all([
+    rm(root, { recursive: true, force: true }),
+    rm(nonGitRoot, { recursive: true, force: true }),
+  ])
 }

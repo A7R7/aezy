@@ -92,6 +92,8 @@ test('built structured Review surface uses DSH aliases and removes the Turn inli
   assert.match(bundle, /data-surface/)
   assert.match(bundle, /Historical Turn/)
   assert.match(bundle, /Current Working changes/)
+  assert.match(bundle, /partially observed/)
+  assert.match(bundle, /Git working changes are unavailable/)
   assert.match(bundle, /AbortController/)
   assert.match(bundle, /oldLine/)
   assert.doesNotMatch(bundle, /Close review/)

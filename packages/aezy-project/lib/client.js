@@ -11,13 +11,16 @@ window.__ModuleLoader__.load({
 		function summarizeTurn(ledger, turnNumber) {
 			if (!Number.isSafeInteger(turnNumber) || turnNumber < 1) return null;
 			const turn = ledger?.turns?.find((candidate) => candidate.turn === turnNumber);
-			if (turn === void 0 || !Array.isArray(turn.files) || turn.files.length === 0) return null;
+			if (turn === void 0 || !Array.isArray(turn.files) || turn.files.length === 0 && turn.partial !== true) return null;
 			return {
 				turn: turn.turn,
 				concurrent: turn.concurrent === true,
 				additions: turn.additions ?? 0,
 				deletions: turn.deletions ?? 0,
 				statsComplete: turn.statsComplete === true,
+				source: turn.source ?? "git",
+				partial: turn.partial === true,
+				unobservedTools: Array.isArray(turn.unobservedTools) ? turn.unobservedTools : [],
 				files: turn.files.map((file) => ({
 					path: file.path,
 					openPath: file.openPath,
@@ -151,7 +154,7 @@ window.__ModuleLoader__.load({
 				children: "Changed files unavailable"
 			});
 			if (summary === void 0 || summary === null) return null;
-			const canUndo = !summary.concurrent && summary.files.every((file) => file.revertable);
+			const canUndo = summary.files.length > 0 && !summary.partial && !summary.concurrent && summary.files.every((file) => file.revertable);
 			const toggleUndo = async () => {
 				if (!canUndo || mutating) return;
 				setMutating(true);
@@ -222,7 +225,7 @@ window.__ModuleLoader__.load({
 							background: "var(--dsw-alias-markdown-code-block-banner)",
 							font: "var(--dsw-font-xs-13)"
 						},
-						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", {
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
 							style: {
 								minWidth: 0,
 								overflow: "hidden",
@@ -233,12 +236,7 @@ window.__ModuleLoader__.load({
 								lineHeight: "18px",
 								fontWeight: 600
 							},
-							children: [
-								"Edited ",
-								summary.files.length,
-								" ",
-								summary.files.length === 1 ? "file" : "files"
-							]
+							children: summary.files.length > 0 ? `Edited ${summary.files.length} ${summary.files.length === 1 ? "file" : "files"}` : "File changes partially observed"
 						}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 							style: {
 								display: "inline-flex",
@@ -253,7 +251,7 @@ window.__ModuleLoader__.load({
 								onClick: () => {
 									toggleUndo();
 								},
-								title: summary.concurrent ? "Batch Undo is disabled because another Session overlapped this Turn" : canUndo ? receiptId === null ? "Restore every file to its state before this Turn" : "Reapply the files changed by this Turn" : "At least one file cannot be restored safely",
+								title: summary.partial ? "Undo is disabled because this Turn was only partially observed" : summary.concurrent ? "Batch Undo is disabled because another Session overlapped this Turn" : canUndo ? receiptId === null ? "Restore every file to its state before this Turn" : "Reapply the files changed by this Turn" : "At least one file cannot be restored safely",
 								style: {
 									border: 0,
 									padding: 0,
@@ -266,14 +264,15 @@ window.__ModuleLoader__.load({
 								children: mutating ? "Working…" : receiptId === null ? "Undo" : "Redo"
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
+								disabled: summary.files.length === 0,
 								onClick: () => openTurnReview(),
 								style: {
 									border: 0,
 									padding: 0,
 									margin: 0,
 									background: "transparent",
-									color: "inherit",
-									cursor: "pointer",
+									color: summary.files.length > 0 ? "inherit" : "var(--dsw-alias-label-tertiary)",
+									cursor: summary.files.length > 0 ? "pointer" : "not-allowed",
 									font: "inherit"
 								},
 								children: "Review changes"
@@ -366,6 +365,11 @@ window.__ModuleLoader__.load({
 							!summary.statsComplete && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								title: "One or more files have unavailable line statistics",
 								children: "· partial"
+							}),
+							summary.partial && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								title: summary.unobservedTools.length > 0 ? `Potentially unobserved tools: ${summary.unobservedTools.join(", ")}` : "The structured file journal could not prove complete coverage",
+								style: { color: palette.warning },
+								children: "· partially observed"
 							}),
 							summary.concurrent && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								title: "Another Session was active in this repository during the Turn",
@@ -935,6 +939,7 @@ window.__ModuleLoader__.load({
 			}, [cwd, selected]);
 			const branch = (0, react.useMemo)(() => {
 				if (project === null) return "";
+				if (project.repository.available === false) return "No Git repository";
 				const name = project.repository.branch ?? `detached@${project.repository.head ?? "unborn"}`;
 				const movement = [project.repository.ahead > 0 ? `↑${project.repository.ahead}` : "", project.repository.behind > 0 ? `↓${project.repository.behind}` : ""].filter(Boolean).join(" ");
 				return movement === "" ? name : `${name} ${movement}`;
@@ -1145,7 +1150,15 @@ window.__ModuleLoader__.load({
 							children: "Undo"
 						})]
 					}),
-					project?.repository.clean === true && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					project?.repository.available === false && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						style: {
+							padding: "44px 0",
+							textAlign: "center",
+							color: palette.muted
+						},
+						children: "Git working changes are unavailable. Structured Turn file changes are still recorded."
+					}),
+					project?.repository.available !== false && project?.repository.clean === true && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						style: {
 							padding: "44px 0",
 							textAlign: "center",

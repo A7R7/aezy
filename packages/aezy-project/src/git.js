@@ -59,9 +59,22 @@ function validCwd(value) {
 }
 
 export async function repositoryFor(cwd) {
+  const repository = await optionalRepositoryFor(cwd)
+  if (repository.root === null) throw new Error('cwd is not inside a Git repository')
+  return repository
+}
+
+/** Resolve a workspace and discover its optional containing Git repository. */
+export async function optionalRepositoryFor(cwd) {
   if (!validCwd(cwd)) throw new Error('cwd must be a non-empty absolute path')
   const canonicalCwd = await realpath(cwd)
-  const top = await git(canonicalCwd, ['rev-parse', '--show-toplevel'])
+  const top = await git(canonicalCwd, ['rev-parse', '--show-toplevel'], [0, 128])
+  if (top.code === 128 && /not a git repository/u.test(top.stderr)) {
+    return { cwd: canonicalCwd, root: null }
+  }
+  if (top.code !== 0) {
+    throw new Error(`git rev-parse failed: ${top.stderr.trim() || `exit ${top.code}`}`)
+  }
   const root = await realpath(top.stdout.trim())
   const rel = relative(root, canonicalCwd)
   if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
@@ -182,7 +195,44 @@ function packageManagerAt(root) {
 }
 
 export async function describeProject(cwd) {
-  const repository = await repositoryFor(cwd)
+  const repository = await optionalRepositoryFor(cwd)
+  if (repository.root === null) {
+    const [gitVersion, packageManager] = await Promise.all([
+      optionalGit(repository.cwd, ['--version']),
+      packageManagerAt(repository.cwd),
+    ])
+    return {
+      version: 1,
+      project: {
+        name: basename(repository.cwd),
+        cwd: repository.cwd,
+        root: repository.cwd,
+        environment: 'local',
+      },
+      repository: {
+        available: false,
+        branch: null,
+        detached: false,
+        head: null,
+        upstream: null,
+        ahead: 0,
+        behind: 0,
+        clean: true,
+      },
+      environment: {
+        kind: 'local',
+        platform: process.platform,
+        arch: process.arch,
+        node: process.version,
+        git: gitVersion ?? null,
+        shell: process.env.SHELL ? basename(process.env.SHELL) : null,
+        packageManager: packageManager ?? null,
+        gitDir: null,
+        commonDir: null,
+      },
+      files: [],
+    }
+  }
   const status = await git(repository.root, ['status', '--porcelain=v2', '--branch', '-z', '--untracked-files=all'])
   const files = parsePorcelainV2(status.stdout)
   const [branch, head, upstream, gitVersion, packageManager, gitDir, commonDir] = await Promise.all([
@@ -212,6 +262,7 @@ export async function describeProject(cwd) {
       environment: environmentKind,
     },
     repository: {
+      available: true,
       branch: branch ?? null,
       detached: branch === undefined,
       head: head ?? null,
@@ -298,6 +349,7 @@ export async function fingerprintPath(root, path, row) {
 
 export async function snapshotChangedFiles(cwd) {
   const project = await describeProject(cwd)
+  if (project.repository.available === false) return { project, states: new Map() }
   const states = new Map(await Promise.all(project.files.map(async row => [
     row.path,
     { row, fingerprint: await fingerprintPath(project.project.root, row.path, row) },

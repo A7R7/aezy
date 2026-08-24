@@ -25,6 +25,7 @@
     "test:m3:http": "node scripts/verify-m3-http.mjs",
     "dogfood:m2": "node scripts/dogfood-m2.mjs",
     "dogfood:m3": "node scripts/dogfood-m3.mjs",
+    "dogfood:turn-journal": "node scripts/dogfood-turn-journal.mjs",
     "dogfood:turn-summary": "node scripts/dogfood-turn-summary.mjs"
   },
   "devDependencies": {
@@ -45,6 +46,7 @@
     "@deepseek-ai/dsh-spill": "0.1.1-rc.1",
     "@deepseek-ai/dsh-subagent-in-process-driver": "0.1.1-rc.1",
     "@deepseek-ai/dsh-timeout": "0.1.1-rc.1",
+    "@deepseek-ai/dsh-tools": "0.1.1-rc.1",
     "@deepseek-ai/dsh-workflow": "0.1.1-rc.1",
     "react": "18.3.1",
     "react-dom": "18.3.1",

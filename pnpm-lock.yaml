@@ -59,6 +59,9 @@ importers:
       '@deepseek-ai/dsh-timeout':
         specifier: 0.1.1-rc.1
         version: 0.1.1-rc.1(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.1-rc.1(@deepseek-ai/cordis@4.0.1))
+      '@deepseek-ai/dsh-tools':
+        specifier: 0.1.1-rc.1
+        version: 0.1.1-rc.1(5493e0ab460eb504a0593977b284c2a8)
       '@deepseek-ai/dsh-workflow':
         specifier: 0.1.1-rc.1
         version: 0.1.1-rc.1(1a389258de15fd948cf33bf3df8cd71c)
@@ -112,6 +115,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: 0.1.1-rc.1
         version: 0.1.1-rc.1(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.1-rc.1(@deepseek-ai/cordis@4.0.1))
+      '@deepseek-ai/dsh-tools':
+        specifier: 0.1.1-rc.1
+        version: 0.1.1-rc.1(5493e0ab460eb504a0593977b284c2a8)
       react:
         specifier: ^18.2.0
         version: 18.3.1

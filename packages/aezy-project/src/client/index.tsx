@@ -13,6 +13,7 @@ type FileRow = {
 type ProjectView = {
   project: { name: string; cwd: string; root: string; environment: 'local' | 'worktree' }
   repository: {
+    available: boolean
     branch: string | null
     detached: boolean
     head: string | null
@@ -29,8 +30,8 @@ type ProjectView = {
     git: string | null
     shell: string | null
     packageManager: string | null
-    gitDir: string
-    commonDir: string
+    gitDir: string | null
+    commonDir: string | null
   }
   files: FileRow[]
 }
@@ -64,7 +65,8 @@ type ReviewDocument = {
   source: {
     kind: 'working' | 'turn'
     label: string
-    repositoryRoot: string
+    repositoryRoot: string | null
+    workspaceRoot?: string
     fingerprint?: string
     sessionId?: string
     turn?: number
@@ -108,6 +110,9 @@ type LedgerTurn = {
   additions: number
   deletions: number
   statsComplete: boolean
+  source: 'git' | 'structured'
+  partial: boolean
+  unobservedTools: string[]
   files: LedgerFile[]
 }
 
@@ -331,7 +336,10 @@ function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryPr
   }
   if (summary === undefined || summary === null) return null
 
-  const canUndo = !summary.concurrent && summary.files.every(file => file.revertable)
+  const canUndo = summary.files.length > 0
+    && !summary.partial
+    && !summary.concurrent
+    && summary.files.every(file => file.revertable)
   const toggleUndo = async () => {
     if (!canUndo || mutating) return
     setMutating(true)
@@ -371,10 +379,10 @@ function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryPr
 
   return <section className="md-code-block" data-aezy-turn-files={summary.turn} style={{ position: 'relative', marginTop: 16, maxWidth: 720, overflow: 'hidden', borderRadius: 12, background: 'var(--dsw-alias-markdown-code-block)', color: 'var(--dsw-alias-label-primary)' }}>
     <header data-aezy-turn-banner style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '9px 14px', borderRadius: '12px 12px 0 0', background: 'var(--dsw-alias-markdown-code-block-banner)', font: 'var(--dsw-font-xs-13)' }}>
-      <strong style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code)', fontSize: 12, lineHeight: '18px', fontWeight: 600 }}>Edited {summary.files.length} {summary.files.length === 1 ? 'file' : 'files'}</strong>
+      <strong style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code)', fontSize: 12, lineHeight: '18px', fontWeight: 600 }}>{summary.files.length > 0 ? `Edited ${summary.files.length} ${summary.files.length === 1 ? 'file' : 'files'}` : 'File changes partially observed'}</strong>
       <span style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, gap: 12, color: 'var(--dsw-alias-label-secondary)' }}>
-        <button type="button" disabled={!canUndo || mutating} onClick={() => { void toggleUndo() }} title={summary.concurrent ? 'Batch Undo is disabled because another Session overlapped this Turn' : canUndo ? (receiptId === null ? 'Restore every file to its state before this Turn' : 'Reapply the files changed by this Turn') : 'At least one file cannot be restored safely'} style={{ border: 0, padding: 0, margin: 0, background: 'transparent', color: canUndo ? 'inherit' : 'var(--dsw-alias-label-tertiary)', cursor: canUndo && !mutating ? 'pointer' : 'not-allowed', font: 'inherit' }}>{mutating ? 'Working…' : receiptId === null ? 'Undo' : 'Redo'}</button>
-        <button type="button" onClick={() => openTurnReview()} style={{ border: 0, padding: 0, margin: 0, background: 'transparent', color: 'inherit', cursor: 'pointer', font: 'inherit' }}>Review changes</button>
+        <button type="button" disabled={!canUndo || mutating} onClick={() => { void toggleUndo() }} title={summary.partial ? 'Undo is disabled because this Turn was only partially observed' : summary.concurrent ? 'Batch Undo is disabled because another Session overlapped this Turn' : canUndo ? (receiptId === null ? 'Restore every file to its state before this Turn' : 'Reapply the files changed by this Turn') : 'At least one file cannot be restored safely'} style={{ border: 0, padding: 0, margin: 0, background: 'transparent', color: canUndo ? 'inherit' : 'var(--dsw-alias-label-tertiary)', cursor: canUndo && !mutating ? 'pointer' : 'not-allowed', font: 'inherit' }}>{mutating ? 'Working…' : receiptId === null ? 'Undo' : 'Redo'}</button>
+        <button type="button" disabled={summary.files.length === 0} onClick={() => openTurnReview()} style={{ border: 0, padding: 0, margin: 0, background: 'transparent', color: summary.files.length > 0 ? 'inherit' : 'var(--dsw-alias-label-tertiary)', cursor: summary.files.length > 0 ? 'pointer' : 'not-allowed', font: 'inherit' }}>Review changes</button>
       </span>
     </header>
     <div style={{ padding: '12px 14px 8px', background: 'var(--dsw-alias-markdown-code-block)', font: 'var(--dsw-font-markdown-code-block)' }}>
@@ -392,6 +400,7 @@ function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryPr
       <DiffStats additions={summary.additions} deletions={summary.deletions} />
       <span>· {summary.files.length} {summary.files.length === 1 ? 'file' : 'files'}</span>
       {!summary.statsComplete && <span title="One or more files have unavailable line statistics">· partial</span>}
+      {summary.partial && <span title={summary.unobservedTools.length > 0 ? `Potentially unobserved tools: ${summary.unobservedTools.join(', ')}` : 'The structured file journal could not prove complete coverage'} style={{ color: palette.warning }}>· partially observed</span>}
       {summary.concurrent && <span title="Another Session was active in this repository during the Turn" style={{ color: palette.warning }}>· concurrent</span>}
     </footer>
     {error !== null && <div title={error} style={{ padding: '0 14px 12px', background: 'var(--dsw-alias-markdown-code-block)', color: palette.error, font: 'var(--dsw-font-markdown-code-block)' }}>{error}</div>}
@@ -634,6 +643,7 @@ function ChangesView({ cwd, sessionId, openReview }: ChangesProps) {
 
   const branch = useMemo(() => {
     if (project === null) return ''
+    if (project.repository.available === false) return 'No Git repository'
     const name = project.repository.branch ?? `detached@${project.repository.head ?? 'unborn'}`
     const movement = [
       project.repository.ahead > 0 ? `↑${project.repository.ahead}` : '',
@@ -718,7 +728,8 @@ function ChangesView({ cwd, sessionId, openReview }: ChangesProps) {
       <button type="button" onClick={() => void undoLastRevert()} disabled={mutating} style={{ padding: '5px 9px', borderRadius: 6, border: `1px solid ${palette.border}`, background: palette.button, color: palette.text, cursor: mutating ? 'wait' : 'pointer' }}>Undo</button>
     </div>}
 
-    {project?.repository.clean === true && <div style={{ padding: '44px 0', textAlign: 'center', color: palette.muted }}>Working tree clean</div>}
+    {project?.repository.available === false && <div style={{ padding: '44px 0', textAlign: 'center', color: palette.muted }}>Git working changes are unavailable. Structured Turn file changes are still recorded.</div>}
+    {project?.repository.available !== false && project?.repository.clean === true && <div style={{ padding: '44px 0', textAlign: 'center', color: palette.muted }}>Working tree clean</div>}
 
     {project !== null && project.files.length > 0 && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(210px, 30%) minmax(0, 1fr)', gap: 18, marginTop: 16, alignItems: 'start' }}>
       <nav aria-label="Changed files" style={{ border: `1px solid ${palette.border}`, borderRadius: 8, overflow: 'hidden' }}>

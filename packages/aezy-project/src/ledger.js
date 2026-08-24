@@ -1,15 +1,16 @@
 import { createHash, randomUUID } from 'node:crypto'
 import {
-  chmod, lstat, mkdir, mkdtemp, readFile, rename, rm, writeFile,
+  chmod, lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile,
 } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { dirname, join, resolve } from 'node:path'
+import { homedir, tmpdir } from 'node:os'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import {
   describeProject,
   fingerprintPath,
   git,
   gitMetadataRoot,
   indexEntry,
+  optionalRepositoryFor,
   readGitBlob,
   repositoryFor,
   safeRelativePath,
@@ -21,6 +22,8 @@ import { parseUnifiedDiff } from './diff.js'
 const MAX_CAPTURE_BYTES = 8 * 1024 * 1024
 const MAX_REVIEW_DIFF_BYTES = 512 * 1024
 const MAX_TURNS_PER_SESSION = 100
+const STRUCTURED_MUTATION_TOOLS = new Set(['write', 'edit'])
+const POTENTIALLY_UNOBSERVED_TOOLS = /^(?:bash|pwsh|run_code|terminal_)/u
 
 function emptyLedger() {
   return { version: 1, sessions: {}, receipts: {} }
@@ -28,6 +31,76 @@ function emptyLedger() {
 
 function validSessionId(value) {
   return typeof value === 'string' && value.length > 0 && value.length <= 256 && !value.includes('\0')
+}
+
+function journalBase(options = {}) {
+  const home = options.home ?? process.env.DSH_HOME ?? join(homedir(), '.aezy', 'dsh')
+  return resolve(home, 'aezy', 'turn-journal')
+}
+
+function workspaceMetaRoot(base, root) {
+  const identity = createHash('sha256').update(root).digest('hex')
+  return resolve(base, identity)
+}
+
+function safeWorkspacePath(root, path) {
+  if (typeof path !== 'string' || path === '' || path.includes('\0')) return undefined
+  const absolute = isAbsolute(path) ? resolve(path) : resolve(root, path)
+  const normalized = relative(root, absolute)
+  if (normalized === '' || normalized === '..' || normalized.startsWith(`..${sep}`) || isAbsolute(normalized)
+    || normalized === '.git' || normalized.startsWith(`.git${sep}`)) return undefined
+  return normalized
+}
+
+async function safeObservedPath(root, path) {
+  const normalized = safeWorkspacePath(root, path)
+  if (normalized === undefined) return undefined
+  const canonical = await realpath(resolve(root, normalized))
+  const contained = relative(root, canonical)
+  if (contained === '..' || contained.startsWith(`..${sep}`) || isAbsolute(contained)) return undefined
+  return normalized
+}
+
+function standaloneFingerprint(path, state) {
+  if (state?.worktree?.kind === 'missing') return null
+  return createHash('sha256').update(JSON.stringify({ path, worktree: state?.worktree ?? null })).digest('hex')
+}
+
+function stateFromText(text, metaRoot) {
+  if (text === null) return Promise.resolve({ worktree: { kind: 'missing' }, index: { kind: 'unavailable' } })
+  if (typeof text !== 'string') {
+    return Promise.resolve({
+      worktree: { kind: 'unsupported', reason: 'structured mutation did not expose bounded text' },
+      index: { kind: 'unavailable' },
+    })
+  }
+  const bytes = Buffer.from(text)
+  if (bytes.length > MAX_CAPTURE_BYTES) {
+    return Promise.resolve({
+      worktree: { kind: 'unsupported', reason: `file exceeds ${MAX_CAPTURE_BYTES} bytes` },
+      index: { kind: 'unavailable' },
+    })
+  }
+  return storeObject(metaRoot, bytes).then(object => ({
+    worktree: { kind: 'object', object, mode: 0o644 },
+    index: { kind: 'unavailable' },
+  }))
+}
+
+function mutationValue(exec, result) {
+  if (result?.isError !== false || !STRUCTURED_MUTATION_TOOLS.has(exec?.name)) return undefined
+  const value = result.value
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return undefined
+  if (typeof value.path !== 'string' || typeof value.after !== 'string') return undefined
+  if (exec.name === 'edit' && typeof value.before !== 'string') return undefined
+  if (exec.name === 'write' && value.before !== null && typeof value.before !== 'string') return undefined
+  const beforeKnown = exec.name === 'edit' || value.before !== null || value.operation === 'create'
+  return {
+    path: value.path,
+    before: beforeKnown ? value.before : undefined,
+    after: value.after,
+    partial: !beforeKnown,
+  }
 }
 
 async function readLedger(metaRoot) {
@@ -44,7 +117,7 @@ async function readLedger(metaRoot) {
 }
 
 async function writeLedger(metaRoot, value) {
-  await mkdir(metaRoot, { recursive: true })
+  await mkdir(metaRoot, { recursive: true, mode: 0o700 })
   const target = resolve(metaRoot, 'ledger.json')
   const temporary = resolve(metaRoot, `.ledger-${process.pid}-${randomUUID()}.tmp`)
   await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 })
@@ -55,7 +128,7 @@ async function storeObject(metaRoot, bytes) {
   const id = createHash('sha256').update(bytes).digest('hex')
   const directory = resolve(metaRoot, 'objects', id.slice(0, 2))
   const target = resolve(directory, id.slice(2))
-  await mkdir(directory, { recursive: true })
+  await mkdir(directory, { recursive: true, mode: 0o700 })
   try {
     await writeFile(target, bytes, { flag: 'wx', mode: 0o600 })
   } catch (error) {
@@ -209,7 +282,8 @@ async function cleanBaselineState(root, head, path) {
 }
 
 function restoreSupported(state) {
-  return state?.worktree?.kind !== 'unsupported' && state?.index?.kind !== 'unsupported'
+  return state?.worktree?.kind !== 'unsupported'
+    && (state?.index?.kind === 'tracked' || state?.index?.kind === 'missing')
 }
 
 async function replaceWithObject(root, path, metaRoot, descriptor) {
@@ -286,6 +360,9 @@ function publicTurn(turn, root) {
     endedAt: turn.endedAt,
     reason: turn.reason,
     concurrent: turn.concurrent,
+    source: turn.source ?? 'git',
+    partial: turn.partial === true,
+    unobservedTools: Array.isArray(turn.unobservedTools) ? turn.unobservedTools : [],
     additions: files.reduce((sum, file) => sum + (file.additions ?? 0), 0),
     deletions: files.reduce((sum, file) => sum + (file.deletions ?? 0), 0),
     statsComplete: files.every(file => file.additions !== null && file.deletions !== null),
@@ -306,9 +383,11 @@ export class TurnLedger {
   #sessionQueues = new Map()
   #sessionErrors = new Map()
   #repoQueues = new Map()
+  #journalBase
   #warn
 
   constructor(options = {}) {
+    this.#journalBase = journalBase(options)
     this.#warn = options.warn ?? (() => {})
   }
 
@@ -336,15 +415,66 @@ export class TurnLedger {
     await (this.#sessionQueues.get(sessionId) ?? Promise.resolve())
   }
 
+  /** Record one completed public tool execution without changing its outcome. */
+  async observeTool(exec, result) {
+    const session = exec?.agent?.session
+    const sessionId = String(session?.id ?? session?.header?.id ?? '')
+    const cwd = session?.header?.cwd
+    if (!validSessionId(sessionId) || typeof cwd !== 'string' || result?.isError !== false) return
+    const previous = this.#sessionQueues.get(sessionId) ?? Promise.resolve()
+    const next = previous.then(async () => {
+      const baseline = this.#active.get(sessionId)
+      if (baseline === undefined) return
+      const mutation = mutationValue(exec, result)
+      if (mutation !== undefined) {
+        const path = await safeObservedPath(baseline.root, mutation.path)
+        if (path === undefined) {
+          baseline.partial = true
+          baseline.unobservedTools.add(exec.name)
+          return
+        }
+        const [before, after] = await Promise.all([
+          stateFromText(mutation.before, baseline.metaRoot),
+          stateFromText(mutation.after, baseline.metaRoot),
+        ])
+        const current = baseline.observed.get(path)
+        baseline.observed.set(path, {
+          before: current?.before ?? before,
+          after,
+          partial: current?.partial === true || mutation.partial,
+        })
+        if (mutation.partial) baseline.partial = true
+        return
+      }
+      if (POTENTIALLY_UNOBSERVED_TOOLS.test(String(exec?.name ?? ''))) {
+        baseline.partial = true
+        baseline.unobservedTools.add(String(exec.name))
+      }
+    }).catch(error => {
+      const baseline = this.#active.get(sessionId)
+      if (baseline !== undefined) {
+        baseline.partial = true
+        baseline.unobservedTools.add(String(exec?.name ?? 'unknown'))
+      }
+      this.#warn(error)
+    })
+    this.#sessionQueues.set(sessionId, next)
+    await next
+  }
+
   async #start(sessionId, cwd, event) {
     const snapshot = await snapshotChangedFiles(cwd)
     const root = snapshot.project.project.root
-    const gitRoot = await gitMetadataRoot(root)
-    const metaRoot = resolve(gitRoot, 'aezy')
-    const restore = new Map(await Promise.all([...snapshot.states].map(async ([path]) => [
-      path,
-      await captureRestoreState(root, path, metaRoot),
-    ])))
+    const gitAvailable = snapshot.project.repository.available !== false
+    const metaRoot = gitAvailable
+      ? resolve(await gitMetadataRoot(root), 'aezy')
+      : workspaceMetaRoot(this.#journalBase, root)
+    const restore = gitAvailable
+      ? new Map(await Promise.all([...snapshot.states].map(async ([path]) => [
+          path,
+          await captureRestoreState(root, path, metaRoot),
+        ])))
+      : new Map()
     const active = this.#activeRoots.get(root) ?? new Set()
     const concurrent = active.size > 0
     active.add(sessionId)
@@ -356,9 +486,13 @@ export class TurnLedger {
       root,
       cwd,
       metaRoot,
+      mode: gitAvailable ? 'git' : 'structured',
       head: snapshot.project.repository.head,
       states: snapshot.states,
       restore,
+      observed: new Map(),
+      partial: false,
+      unobservedTools: new Set(),
       concurrent,
     })
   }
@@ -371,10 +505,28 @@ export class TurnLedger {
     active?.delete(sessionId)
     if (active?.size === 0) this.#activeRoots.delete(baseline.root)
 
-    const after = await snapshotChangedFiles(cwd)
-    if (after.project.project.root !== baseline.root) {
-      throw new Error('Aezy turn ledger repository changed during the turn')
+    if (baseline.mode === 'structured') {
+      const files = await this.#structuredFiles(baseline)
+      if (files.length === 0 && !baseline.partial) return
+      await this.#persistTurn(sessionId, baseline, event, files, 'structured', baseline.partial)
+      return
     }
+
+    let after
+    try {
+      after = await snapshotChangedFiles(cwd)
+      if (after.project.repository.available === false || after.project.project.root !== baseline.root) {
+        throw new Error('Git repository identity changed during the turn')
+      }
+    } catch (error) {
+      this.#warn(error)
+      baseline.partial = true
+      baseline.unobservedTools.add('git-enrichment')
+      const files = await this.#structuredFiles(baseline)
+      await this.#persistTurn(sessionId, baseline, event, files, 'structured', true)
+      return
+    }
+
     const paths = new Set([...baseline.states.keys(), ...after.states.keys()])
     const files = []
     for (const path of [...paths].sort((left, right) => left.localeCompare(right))) {
@@ -420,12 +572,55 @@ export class TurnLedger {
       })
     }
     if (files.length === 0) return
+    await this.#persistTurn(sessionId, baseline, event, files, 'git', false)
+  }
+
+  async #structuredFiles(baseline) {
+    const files = []
+    for (const [path, observed] of [...baseline.observed].sort(([left], [right]) => left.localeCompare(right))) {
+      const beforeFingerprint = standaloneFingerprint(path, observed.before)
+      const afterFingerprint = standaloneFingerprint(path, observed.after)
+      if (beforeFingerprint === afterFingerprint) continue
+      const reviewStatus = observed.before.worktree.kind === 'missing' && observed.after.worktree.kind !== 'missing' ? 'added'
+        : observed.before.worktree.kind !== 'missing' && observed.after.worktree.kind === 'missing' ? 'deleted'
+          : 'modified'
+      let review
+      try {
+        review = await reviewForStates(
+          baseline.root, path, baseline.metaRoot, observed.before, observed.after, path,
+        )
+      } catch (error) {
+        this.#warn(error)
+        review = { additions: null, deletions: null, binary: true, truncated: false, object: null }
+      }
+      review.status = review.binary ? 'binary' : reviewStatus
+      review.oldPath = reviewStatus === 'added' ? null : path
+      review.newPath = reviewStatus === 'deleted' ? null : path
+      files.push({
+        path,
+        change: changeKind(beforeFingerprint, afterFingerprint),
+        beforeFingerprint,
+        afterFingerprint,
+        before: observed.before,
+        after: observed.after,
+        review,
+        revertable: false,
+      })
+      if (observed.partial) baseline.partial = true
+    }
+    return files
+  }
+
+  async #persistTurn(sessionId, baseline, event, files, source, partial) {
     const turn = {
       turn: baseline.turn,
       startedAt: baseline.startedAt,
       endedAt: event.time,
       reason: event.data.reason,
       concurrent: baseline.concurrent,
+      source,
+      partial,
+      unobservedTools: [...baseline.unobservedTools].sort(),
       files,
     }
     await this.#serial(baseline.root, async () => {
@@ -440,6 +635,20 @@ export class TurnLedger {
     })
   }
 
+  async #storesFor(cwd) {
+    const workspace = await realpath(cwd)
+    const stores = [{ kind: 'workspace', root: workspace, metaRoot: workspaceMetaRoot(this.#journalBase, workspace) }]
+    const repository = await optionalRepositoryFor(workspace)
+    if (repository.root !== null) {
+      stores.push({
+        kind: 'git',
+        root: repository.root,
+        metaRoot: resolve(await gitMetadataRoot(repository.root), 'aezy'),
+      })
+    }
+    return { workspace, repository, stores }
+  }
+
   async view(cwd, sessionId) {
     if (!validSessionId(sessionId)) throw new Error('sessionId is invalid')
     // A turn/end reaches Web clients before this observer's Git scan and
@@ -450,61 +659,75 @@ export class TurnLedger {
     if (failure !== undefined) {
       throw new Error(`Aezy could not summarize the latest turn: ${failure instanceof Error ? failure.message : String(failure)}`)
     }
-    const { root } = await repositoryFor(cwd)
-    const metaRoot = resolve(await gitMetadataRoot(root), 'aezy')
-    return this.#serial(root, async () => {
-      const ledger = await readLedger(metaRoot)
-      const turns = ledger.sessions[sessionId]?.turns ?? []
-      const receipts = Object.values(ledger.receipts)
-        .filter(receipt => receipt.sessionId === sessionId)
-        .map(receipt => ({
-          id: receipt.id,
-          kind: receipt.kind ?? 'file',
-          turn: receipt.turn,
-          path: receipt.path ?? null,
-          files: receipt.files?.map(file => file.path) ?? [receipt.path],
-          status: receipt.status,
-          createdAt: receipt.createdAt,
-        }))
-      return {
-        version: 1,
-        sessionId,
-        repositoryRoot: root,
-        turns: turns.map(turn => publicTurn(turn, root)),
-        receipts,
+    const { workspace, repository, stores } = await this.#storesFor(cwd)
+    const records = await Promise.all(stores.map(async store => ({
+      store,
+      ledger: await this.#serial(store.metaRoot, () => readLedger(store.metaRoot)),
+    })))
+    const turns = new Map()
+    for (const { store, ledger } of records) {
+      for (const turn of ledger.sessions[sessionId]?.turns ?? []) {
+        const current = turns.get(turn.turn)
+        if (current === undefined || store.kind === 'git') turns.set(turn.turn, { store, turn })
       }
-    })
+    }
+    const receipts = records
+      .filter(({ store }) => store.kind === 'git')
+      .flatMap(({ ledger }) => Object.values(ledger.receipts))
+      .filter(receipt => receipt.sessionId === sessionId)
+      .map(receipt => ({
+        id: receipt.id,
+        kind: receipt.kind ?? 'file',
+        turn: receipt.turn,
+        path: receipt.path ?? null,
+        files: receipt.files?.map(file => file.path) ?? [receipt.path],
+        status: receipt.status,
+        createdAt: receipt.createdAt,
+      }))
+    return {
+      version: 2,
+      sessionId,
+      workspaceRoot: workspace,
+      repositoryRoot: repository.root,
+      gitAvailable: repository.root !== null,
+      turns: [...turns.values()]
+        .sort((left, right) => left.turn.turn - right.turn.turn)
+        .map(({ store, turn }) => publicTurn(turn, store.root)),
+      receipts,
+    }
   }
 
   async review(cwd, sessionId, turn, path) {
     if (!validSessionId(sessionId)) throw new Error('sessionId is invalid')
     if (!Number.isSafeInteger(turn) || turn < 1) throw new Error('turn must be a positive integer')
-    const { root } = await repositoryFor(cwd)
-    const normalized = safeRelativePath(root, path)
-    const metaRoot = resolve(await gitMetadataRoot(root), 'aezy')
-    return this.#serial(root, async () => {
-      const ledger = await readLedger(metaRoot)
+    const { stores } = await this.#storesFor(cwd)
+    let validPath = false
+    for (const store of [...stores].reverse()) {
+      const normalized = safeWorkspacePath(store.root, path)
+      if (normalized === undefined) continue
+      validPath = true
+      const ledger = await this.#serial(store.metaRoot, () => readLedger(store.metaRoot))
       const record = ledger.sessions[sessionId]?.turns?.find(item => item.turn === turn)
-      if (record === undefined) throw new Error('turn ledger entry does not exist')
-      const file = record.files.find(item => item.path === normalized)
-      if (file === undefined) throw new Error('turn ledger entry does not match the requested file')
+      const file = record?.files.find(item => item.path === normalized)
+      if (file === undefined) continue
       const snapshotId = file.review?.object ?? createHash('sha256')
         .update(JSON.stringify({ before: file.before, after: file.after, review: file.review }))
         .digest('hex')
       const raw = typeof file.review?.object === 'string'
-        ? (await readObject(metaRoot, file.review.object)).toString('utf8')
+        ? (await readObject(store.metaRoot, file.review.object)).toString('utf8')
         : ''
       const part = parseUnifiedDiff(raw, { truncated: file.review?.truncated === true })
       const status = file.review?.status ?? (file.review?.binary ? 'binary' : 'modified')
       return {
         version: 2,
-        identity: `turn\0${sessionId}\0${root}\0${turn}\0${normalized}\0${snapshotId}`,
+        identity: `turn\0${sessionId}\0${store.root}\0${turn}\0${normalized}\0${snapshotId}`,
         source: {
           kind: 'turn',
           label: 'Historical Turn snapshot',
           sessionId,
           turn,
-          repositoryRoot: root,
+          repositoryRoot: store.kind === 'git' ? store.root : null,
+          workspaceRoot: store.root,
           snapshotId,
         },
         file: {
@@ -519,7 +742,9 @@ export class TurnLedger {
         },
         parts: [{ scope: 'turn', label: `Turn ${turn}`, ...part }],
       }
-    })
+    }
+    if (!validPath) throw new Error('path escapes the Session workspace or repository')
+    throw new Error('turn ledger entry does not match the requested file')
   }
 
   async revert(request) {

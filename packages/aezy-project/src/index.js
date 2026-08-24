@@ -15,7 +15,7 @@ export {
   basename, describeDiff, describeProject, parsePorcelainV2, parseWorktreeList,
   countStructuredLines, parseUnifiedDiff, summarizeTurn, TurnLedger, WorktreeManager,
 }
-export const inject = ['webServer', 'sessions', 'aezySecurity']
+export const inject = ['webServer', 'sessions', 'tools', 'aezySecurity']
 
 function json(res, status, value) {
   const body = JSON.stringify(value)
@@ -244,6 +244,11 @@ export function apply(ctx) {
     ledger.observe(session, event)
     if (event.type === 'turn/start') void worktrees.observe(session, 'turn-start').catch(warn)
     if (event.type === 'turn/end') void worktrees.observe(session, 'turn-end').catch(warn)
+  })
+  ctx.on('tools/execute', async (exec, next) => {
+    const result = await next()
+    await ledger.observeTool(exec, result)
+    return result
   })
   ctx.on('session/created', session => { void worktrees.observe(session, 'created').catch(warn) })
   ctx.on('session/disposed', session => { void worktrees.observe(session, 'disposed').catch(warn) })

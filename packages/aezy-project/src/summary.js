@@ -2,13 +2,17 @@
 export function summarizeTurn(ledger, turnNumber) {
   if (!Number.isSafeInteger(turnNumber) || turnNumber < 1) return null
   const turn = ledger?.turns?.find(candidate => candidate.turn === turnNumber)
-  if (turn === undefined || !Array.isArray(turn.files) || turn.files.length === 0) return null
+  if (turn === undefined || !Array.isArray(turn.files)
+    || (turn.files.length === 0 && turn.partial !== true)) return null
   return {
     turn: turn.turn,
     concurrent: turn.concurrent === true,
     additions: turn.additions ?? 0,
     deletions: turn.deletions ?? 0,
     statsComplete: turn.statsComplete === true,
+    source: turn.source ?? 'git',
+    partial: turn.partial === true,
+    unobservedTools: Array.isArray(turn.unobservedTools) ? turn.unobservedTools : [],
     files: turn.files.map(file => ({
       path: file.path,
       openPath: file.openPath,

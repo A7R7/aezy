@@ -56,6 +56,128 @@ test('project discovery returns structured local environment and Git status', as
   assert.equal(view.files.find(file => file.path === 'tracked.txt')?.worktreeStatus, 'M')
 })
 
+test('non-Git workspace records exact structured Turn changes without a sticky Git error', async () => {
+  const writableTemp = process.platform === 'win32' ? tmpdir() : '/tmp'
+  const root = await mkdtemp(join(writableTemp, 'aezy-non-git-'))
+  const home = await mkdtemp(join(writableTemp, 'aezy-journal-home-'))
+  const project = await describeProject(root)
+  assert.equal(project.repository.available, false)
+  assert.equal(project.project.root, root)
+
+  const ledger = new TurnLedger({ home })
+  const session = { id: 'non-git-session', header: { id: 'non-git-session', cwd: root } }
+  await writeFile(join(root, 'existing.txt'), 'before\n')
+  ledger.observe(session, { type: 'turn/start', time: 100, data: { turn: 1 } })
+  await ledger.settle('non-git-session')
+  await writeFile(join(root, 'created.txt'), 'created without git\n')
+  await ledger.observeTool({
+    name: 'write',
+    arguments: { file_path: 'created.txt', content: 'created without git\n' },
+    agent: { session },
+  }, {
+    isError: false,
+    value: {
+      path: join(root, 'created.txt'),
+      operation: 'create',
+      before: null,
+      after: 'created without git\n',
+    },
+  })
+  await writeFile(join(root, 'existing.txt'), 'after\n')
+  await ledger.observeTool({ name: 'edit', agent: { session } }, {
+    isError: false,
+    value: { path: join(root, 'existing.txt'), before: 'before\n', after: 'after\n' },
+  })
+  ledger.observe(session, { type: 'turn/end', time: 200, data: { turn: 1, reason: { kind: 'completed' } } })
+
+  const view = await ledger.view(root, 'non-git-session')
+  assert.equal(view.version, 2)
+  assert.equal(view.gitAvailable, false)
+  assert.equal(view.repositoryRoot, null)
+  assert.equal(view.turns.length, 1)
+  assert.equal(view.turns[0].source, 'structured')
+  assert.equal(view.turns[0].partial, false)
+  assert.deepEqual(view.turns[0].files.map(file => [file.path, file.status, file.revertable]), [
+    ['created.txt', 'added', false],
+    ['existing.txt', 'modified', false],
+  ])
+  assert.deepEqual([view.turns[0].additions, view.turns[0].deletions], [2, 1])
+
+  const freshReader = new TurnLedger({ home })
+  const review = await freshReader.review(root, 'non-git-session', 1, 'created.txt')
+  assert.equal(review.source.repositoryRoot, null)
+  assert.equal(review.source.workspaceRoot, root)
+  assert.equal(review.file.status, 'added')
+  assert.equal(review.parts[0].hunks[0].lines[0].text, 'created without git')
+  const existingReview = await freshReader.review(root, 'non-git-session', 1, 'existing.txt')
+  assert.ok(existingReview.parts[0].hunks[0].lines.some(line => line.kind === 'deletion' && line.text === 'before'))
+  assert.ok(existingReview.parts[0].hunks[0].lines.some(line => line.kind === 'addition' && line.text === 'after'))
+  await writeFile(join(root, 'existing.txt'), 'later drift\n')
+  assert.deepEqual(await freshReader.review(root, 'non-git-session', 1, 'existing.txt'), existingReview)
+})
+
+test('git init during a Turn preserves its structured snapshot and enables Git enrichment next Turn', async () => {
+  const writableTemp = process.platform === 'win32' ? tmpdir() : '/tmp'
+  const root = await mkdtemp(join(writableTemp, 'aezy-git-init-turn-'))
+  const home = await mkdtemp(join(writableTemp, 'aezy-git-init-home-'))
+  const ledger = new TurnLedger({ home })
+  const session = { id: 'git-init-session', header: { id: 'git-init-session', cwd: root } }
+
+  ledger.observe(session, { type: 'turn/start', time: 100, data: { turn: 1 } })
+  await ledger.settle('git-init-session')
+  await writeFile(join(root, 'seed.txt'), 'seed\n')
+  await ledger.observeTool({ name: 'write', agent: { session } }, {
+    isError: false,
+    value: { path: join(root, 'seed.txt'), operation: 'create', before: null, after: 'seed\n' },
+  })
+  git(root, 'init', '--quiet')
+  git(root, 'config', 'user.name', 'Aezy Test')
+  git(root, 'config', 'user.email', 'aezy@example.invalid')
+  git(root, 'add', 'seed.txt')
+  git(root, 'commit', '--quiet', '-m', 'initialized during turn')
+  await ledger.observeTool({ name: 'bash', agent: { session } }, { isError: false, value: 'ok' })
+  ledger.observe(session, { type: 'turn/end', time: 200, data: { turn: 1, reason: { kind: 'completed' } } })
+  const first = await ledger.view(root, 'git-init-session')
+  assert.equal(first.gitAvailable, true)
+  assert.equal(first.turns[0].source, 'structured')
+  assert.equal(first.turns[0].partial, true)
+  assert.deepEqual(first.turns[0].unobservedTools, ['bash'])
+  assert.equal((await ledger.review(root, 'git-init-session', 1, 'seed.txt')).file.status, 'added')
+
+  ledger.observe(session, { type: 'turn/start', time: 300, data: { turn: 2 } })
+  await ledger.settle('git-init-session')
+  await writeFile(join(root, 'seed.txt'), 'enriched\n')
+  await ledger.observeTool({ name: 'edit', agent: { session } }, {
+    isError: false,
+    value: { path: join(root, 'seed.txt'), before: 'seed\n', after: 'enriched\n' },
+  })
+  ledger.observe(session, { type: 'turn/end', time: 400, data: { turn: 2, reason: { kind: 'completed' } } })
+  const second = await ledger.view(root, 'git-init-session')
+  assert.deepEqual(second.turns.map(turn => [turn.turn, turn.source, turn.partial]), [
+    [1, 'structured', true],
+    [2, 'git', false],
+  ])
+  assert.equal(second.turns[1].files[0].revertable, true)
+})
+
+test('non-Git shell-only Turn is partial instead of unavailable or falsely complete', async () => {
+  const writableTemp = process.platform === 'win32' ? tmpdir() : '/tmp'
+  const root = await mkdtemp(join(writableTemp, 'aezy-shell-only-'))
+  const home = await mkdtemp(join(writableTemp, 'aezy-shell-home-'))
+  const ledger = new TurnLedger({ home })
+  const session = { id: 'shell-only-session', header: { id: 'shell-only-session', cwd: root } }
+  ledger.observe(session, { type: 'turn/start', time: 100, data: { turn: 1 } })
+  await ledger.settle('shell-only-session')
+  await ledger.observeTool({ name: 'bash', agent: { session } }, { isError: false, value: 'ok' })
+  ledger.observe(session, { type: 'turn/end', time: 200, data: { turn: 1, reason: { kind: 'completed' } } })
+  const view = await ledger.view(root, 'shell-only-session')
+  assert.equal(view.turns.length, 1)
+  assert.equal(view.turns[0].partial, true)
+  assert.deepEqual(view.turns[0].unobservedTools, ['bash'])
+  assert.deepEqual(view.turns[0].files, [])
+  assert.equal(summarizeTurn(view, 1)?.partial, true)
+})
+
 test('diff reads only current status paths and fingerprints exact content', async () => {
   const root = await fixture()
   const tracked = await describeDiff(root, 'tracked.txt')
@@ -134,6 +256,9 @@ test('Turn summary is bounded to one ledger turn and preserves removed-file fact
     additions: 4,
     deletions: 2,
     statsComplete: true,
+    source: 'git',
+    partial: false,
+    unobservedTools: [],
     files: ledger.turns[0].files.map(file => ({
       ...file,
       truncated: false,
