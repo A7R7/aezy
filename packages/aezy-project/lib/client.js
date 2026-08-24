@@ -38,6 +38,62 @@ window.__ModuleLoader__.load({
 			};
 		}
 		//#endregion
+		//#region src/context-reference.js
+		const DIRECTORY_SCHEME = "aezy-directory:";
+		const DIFF_SCHEME = "aezy-diff:";
+		const MAX_ID_CHARS = 256;
+		const MAX_PATH_CHARS = 8192;
+		function encodeUtf8(value) {
+			const bytes = new TextEncoder().encode(value);
+			let binary = "";
+			for (const byte of bytes) binary += String.fromCharCode(byte);
+			return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/u, "");
+		}
+		function validIdentity(value) {
+			return typeof value === "string" && value.length > 0 && value.length <= MAX_ID_CHARS && !value.includes("\0");
+		}
+		function validPath(value, allowEmpty = false) {
+			return typeof value === "string" && value.length <= MAX_PATH_CHARS && !value.includes("\0") && (allowEmpty || value.length > 0);
+		}
+		function normalizeReference(value) {
+			if (typeof value !== "object" || value === null || Array.isArray(value) || value.version !== 1 || !validIdentity(value.sessionId) || !validPath(value.cwd)) throw new Error("Aezy project reference has an invalid identity");
+			if (value.kind === "directory" && validPath(value.path, true)) return {
+				version: 1,
+				kind: "directory",
+				sessionId: value.sessionId,
+				cwd: value.cwd,
+				path: value.path
+			};
+			if (value.kind === "diff" && value.source === "working") return {
+				version: 1,
+				kind: "diff",
+				source: "working",
+				sessionId: value.sessionId,
+				cwd: value.cwd
+			};
+			if (value.kind === "diff" && value.source === "turn" && Number.isSafeInteger(value.turn) && value.turn > 0) return {
+				version: 1,
+				kind: "diff",
+				source: "turn",
+				sessionId: value.sessionId,
+				cwd: value.cwd,
+				turn: value.turn
+			};
+			throw new Error("Aezy project reference has an invalid target");
+		}
+		function encodeProjectReference(reference) {
+			const normalized = normalizeReference(reference);
+			return `${normalized.kind === "directory" ? DIRECTORY_SCHEME : DIFF_SCHEME}${encodeUtf8(JSON.stringify(normalized))}`;
+		}
+		function formatProjectReferenceMention(reference, label) {
+			if (typeof label !== "string" || label.length === 0 || label.includes("\0")) throw new Error("Aezy project reference label must be non-empty text");
+			return `@[${label.replace(/[\\\]]/gu, (match) => `\\${match}`)}](${encodeProjectReference(reference)})`;
+		}
+		Object.freeze({
+			directory: DIRECTORY_SCHEME,
+			diff: DIFF_SCHEME
+		});
+		//#endregion
 		//#region src/client/index.tsx
 		const palette = {
 			panel: "var(--dsw-alias-bg-base, #ffffff)",
@@ -266,6 +322,7 @@ window.__ModuleLoader__.load({
 			#target = null;
 			#revision = 0;
 			#listeners = /* @__PURE__ */ new Set();
+			#composers = /* @__PURE__ */ new Map();
 			getSnapshot = () => this.#target;
 			subscribe = (listener) => {
 				this.#listeners.add(listener);
@@ -349,6 +406,18 @@ window.__ModuleLoader__.load({
 				};
 				this.#emit();
 			}
+			registerComposer(sessionId, insert) {
+				this.#composers.set(sessionId, insert);
+				return () => {
+					if (this.#composers.get(sessionId) === insert) this.#composers.delete(sessionId);
+				};
+			}
+			stageReference(sessionId, mention) {
+				const insert = this.#composers.get(sessionId);
+				if (insert === void 0) return false;
+				insert(mention);
+				return true;
+			}
 			#emit() {
 				for (const listener of this.#listeners) listener();
 			}
@@ -375,6 +444,138 @@ window.__ModuleLoader__.load({
 				promise
 			});
 			return promise;
+		}
+		function projectMention(reference, label) {
+			return formatProjectReferenceMention(reference, label);
+		}
+		function candidateValue(value) {
+			return JSON.stringify(value);
+		}
+		function parseProjectCandidate(candidate) {
+			if (candidate.value === void 0) return null;
+			try {
+				return JSON.parse(candidate.value);
+			} catch {
+				return null;
+			}
+		}
+		function createProjectReferenceSource(ctx) {
+			return {
+				trigger: "@",
+				name: "aezy-project-context",
+				order: 5,
+				showGroupTitle: false,
+				async candidates(session, requestState) {
+					const cwd = ctx.sessions.list.getSnapshot().byId[session.sessionId]?.cwd;
+					if (cwd === void 0 || requestState.quoted === true) return [];
+					const queryText = requestState.query;
+					const query = queryText.toLocaleLowerCase();
+					if (query.startsWith("directory:")) {
+						const pathQuery = queryText.slice(10);
+						const response = await ctx.remote.fileReferences.list(session.sessionId, pathQuery, requestState.signal);
+						if (requestState.signal.aborted || !response.ok) return [];
+						const directories = (response.value ?? []).filter((item) => item.kind === "directory");
+						return [...pathQuery === "" ? [{
+							path: "",
+							kind: "directory"
+						}] : [], ...directories].map((item) => {
+							const path = item.path;
+							const label = `directory:${path || "."}`;
+							return {
+								name: `Directory context · ${path || "."}`,
+								description: path === "" ? "Current Session workspace root" : path,
+								section: "Project context",
+								value: candidateValue({
+									kind: "reference",
+									reference: {
+										version: 1,
+										kind: "directory",
+										sessionId: session.sessionId,
+										cwd,
+										path
+									},
+									label,
+									appearance: "folder"
+								})
+							};
+						});
+					}
+					const directoryMode = query === "" || "directory".startsWith(query) || query === "directory";
+					const diffMode = query === "" || query.startsWith("diff");
+					if (!directoryMode && !diffMode) return [];
+					const candidates = [];
+					if (directoryMode) candidates.push({
+						name: "Directory context · choose folder…",
+						description: "Attach a bounded snapshot from this Session workspace",
+						section: "Project context",
+						value: candidateValue({ kind: "directory-seed" })
+					});
+					if (diffMode) {
+						candidates.push({
+							name: "Diff context · Working changes",
+							description: "Current staged, unstaged, and untracked Git changes",
+							section: "Project context",
+							value: candidateValue({
+								kind: "reference",
+								reference: {
+									version: 1,
+									kind: "diff",
+									source: "working",
+									sessionId: session.sessionId,
+									cwd
+								},
+								label: "diff:working",
+								appearance: "file"
+							})
+						});
+						try {
+							const ledger = await loadLedger(cwd, session.sessionId);
+							if (requestState.signal.aborted) return [];
+							const turnNeedle = /^diff(?::(?:turn-)?)?(\d*)$/u.exec(query)?.[1] ?? "";
+							const turns = [...ledger.turns].reverse().filter((turn) => turnNeedle === "" || String(turn.turn).includes(turnNeedle)).slice(0, 8);
+							for (const turn of turns) candidates.push({
+								name: `Diff context · Historical Turn ${turn.turn}`,
+								description: `${turn.files.length} changed file${turn.files.length === 1 ? "" : "s"} · immutable ledger snapshot`,
+								section: "Project context",
+								value: candidateValue({
+									kind: "reference",
+									reference: {
+										version: 1,
+										kind: "diff",
+										source: "turn",
+										sessionId: session.sessionId,
+										cwd,
+										turn: turn.turn
+									},
+									label: `diff:turn-${turn.turn}`,
+									appearance: "file"
+								})
+							});
+						} catch {}
+					}
+					return candidates;
+				},
+				onPick({ candidate }) {
+					const value = parseProjectCandidate(candidate);
+					if (value === null) return void 0;
+					if (value.kind === "directory-seed") return {
+						text: "@directory:",
+						continue: true
+					};
+					const mention = projectMention(value.reference, value.label);
+					return { insert: {
+						source: "aezy-project-context",
+						ref: mention,
+						label: value.label,
+						appearance: value.appearance,
+						clipboardText: mention
+					} };
+				},
+				codec: {
+					clipboardText: (ref) => ref,
+					serialize: (ref) => Promise.resolve(ref)
+				}
+			};
 		}
 		function DiffStats({ additions, deletions }) {
 			if (additions === null || deletions === null) return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
@@ -910,6 +1111,20 @@ window.__ModuleLoader__.load({
 				]
 			});
 		}
+		function ComposerBridge({ panel, sessionId, useInput, inputActions }) {
+			const draft = useInput((state) => state.draft);
+			const draftRef = (0, react.useRef)(draft);
+			draftRef.current = draft;
+			(0, react.useEffect)(() => panel.registerComposer(sessionId, (mention) => {
+				const current = draftRef.current.trimEnd();
+				inputActions.setDraft(current === "" ? `${mention} ` : `${current}\n\n${mention} `);
+			}), [
+				inputActions,
+				panel,
+				sessionId
+			]);
+			return null;
+		}
 		function ReviewFileCard({ panel, target, file, expanded }) {
 			const [document, setDocument] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
@@ -1126,7 +1341,7 @@ window.__ModuleLoader__.load({
 			for (let index = 1; index < parts.length; index += 1) parents.push(parts.slice(0, index).join("/"));
 			return parents;
 		}
-		function DirectoryBranch({ panel, target, directory, depth, expanded, toggle }) {
+		function DirectoryBranch({ panel, target, directory, depth, expanded, toggle, stageDirectory }) {
 			const [document, setDocument] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
 			const open = directory === "" || expanded.has(directory);
@@ -1200,64 +1415,89 @@ window.__ModuleLoader__.load({
 					const entryOpen = directoryEntry && expanded.has(entry.path);
 					const supported = directoryEntry || entry.kind === "file";
 					const selected = target.files.selectedPath === entry.path;
-					return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-						type: "button",
-						role: "treeitem",
-						"aria-level": depth + 1,
-						"aria-expanded": directoryEntry ? entryOpen : void 0,
-						disabled: !supported,
-						title: entry.kind === "symlink" ? `${entry.path} · symbolic links are not previewed` : entry.path,
-						onClick: () => {
-							if (directoryEntry) toggle(entry.path);
-							else if (entry.kind === "file") panel.selectFile(entry.path);
-						},
+					return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 						style: {
-							boxSizing: "border-box",
-							width: "100%",
-							minHeight: 26,
 							display: "grid",
-							gridTemplateColumns: "12px 16px minmax(0, 1fr)",
-							alignItems: "center",
-							gap: 5,
-							padding: `3px 8px 3px ${8 + depth * 16}px`,
-							border: 0,
-							borderRadius: 5,
-							background: selected ? palette.interactive : "transparent",
-							color: supported ? palette.text : palette.muted,
-							cursor: supported ? "pointer" : "not-allowed",
-							textAlign: "left"
+							gridTemplateColumns: "minmax(0, 1fr) auto",
+							alignItems: "center"
 						},
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								"aria-hidden": true,
-								style: {
-									color: palette.muted,
-									fontSize: 8,
-									transform: entryOpen ? "rotate(90deg)" : void 0,
-									visibility: directoryEntry ? "visible" : "hidden"
-								},
-								children: "▶"
-							}),
-							directoryEntry ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FolderIcon, { open: entryOpen }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FileTypeIcon, { path: entry.path }),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								style: {
-									minWidth: 0,
-									overflow: "hidden",
-									textOverflow: "ellipsis",
-									whiteSpace: "nowrap",
-									fontFamily: "var(--ds-font-family-code, monospace)",
-									fontSize: 11
-								},
-								children: entry.name
-							})
-						]
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+							type: "button",
+							role: "treeitem",
+							"aria-level": depth + 1,
+							"aria-expanded": directoryEntry ? entryOpen : void 0,
+							disabled: !supported,
+							title: entry.kind === "symlink" ? `${entry.path} · symbolic links are not previewed` : entry.path,
+							onClick: () => {
+								if (directoryEntry) toggle(entry.path);
+								else if (entry.kind === "file") panel.selectFile(entry.path);
+							},
+							style: {
+								boxSizing: "border-box",
+								width: "100%",
+								minHeight: 26,
+								display: "grid",
+								gridTemplateColumns: "12px 16px minmax(0, 1fr)",
+								alignItems: "center",
+								gap: 5,
+								padding: `3px 8px 3px ${8 + depth * 16}px`,
+								border: 0,
+								borderRadius: 5,
+								background: selected ? palette.interactive : "transparent",
+								color: supported ? palette.text : palette.muted,
+								cursor: supported ? "pointer" : "not-allowed",
+								textAlign: "left"
+							},
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									"aria-hidden": true,
+									style: {
+										color: palette.muted,
+										fontSize: 8,
+										transform: entryOpen ? "rotate(90deg)" : void 0,
+										visibility: directoryEntry ? "visible" : "hidden"
+									},
+									children: "▶"
+								}),
+								directoryEntry ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FolderIcon, { open: entryOpen }) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FileTypeIcon, { path: entry.path }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									style: {
+										minWidth: 0,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
+										fontFamily: "var(--ds-font-family-code, monospace)",
+										fontSize: 11
+									},
+									children: entry.name
+								})
+							]
+						}), directoryEntry && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							"aria-label": `Ask about ${entry.path} directory`,
+							title: "Add directory context to the current Session draft",
+							onClick: () => stageDirectory(entry.path),
+							style: {
+								width: 28,
+								height: 24,
+								padding: 0,
+								border: 0,
+								borderRadius: 5,
+								background: "transparent",
+								color: palette.accent,
+								cursor: "pointer",
+								fontSize: 10
+							},
+							children: "Ask"
+						})]
 					}), directoryEntry && entryOpen && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DirectoryBranch, {
 						panel,
 						target,
 						directory: entry.path,
 						depth: depth + 1,
 						expanded,
-						toggle
+						toggle,
+						stageDirectory
 					})] }, entry.path);
 				}),
 				document.entries.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
@@ -1454,7 +1694,7 @@ window.__ModuleLoader__.load({
 				]
 			});
 		}
-		function FilesPanel({ panel, target }) {
+		function FilesPanel({ panel, target, stageDirectory }) {
 			const [expanded, setExpanded] = (0, react.useState)(() => new Set(parentDirectories(target.files.selectedPath)));
 			(0, react.useEffect)(() => {
 				setExpanded((current) => /* @__PURE__ */ new Set([...current, ...parentDirectories(target.files.selectedPath)]));
@@ -1478,7 +1718,7 @@ window.__ModuleLoader__.load({
 					display: "flex",
 					flexDirection: "column"
 				},
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("section", {
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 					"aria-label": "Workspace file tree",
 					style: {
 						flex: "0 1 38%",
@@ -1488,7 +1728,28 @@ window.__ModuleLoader__.load({
 						padding: "7px 6px 9px",
 						borderBottom: `1px solid ${palette.border}`
 					},
-					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+						style: {
+							display: "flex",
+							justifyContent: "flex-end",
+							padding: "0 2px 5px"
+						},
+						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+							type: "button",
+							onClick: () => stageDirectory(""),
+							title: "Add workspace directory context to the current Session draft",
+							style: {
+								padding: "3px 7px",
+								border: `1px solid ${palette.border}`,
+								borderRadius: 6,
+								background: palette.button,
+								color: palette.accent,
+								cursor: "pointer",
+								fontSize: 10
+							},
+							children: "Ask about workspace"
+						})
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						role: "tree",
 						"aria-label": "Files",
 						children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(DirectoryBranch, {
@@ -1497,9 +1758,10 @@ window.__ModuleLoader__.load({
 							directory: "",
 							depth: 0,
 							expanded,
-							toggle
+							toggle,
+							stageDirectory
 						})
-					})
+					})]
 				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("section", {
 					"aria-label": "File preview",
 					style: {
@@ -1554,6 +1816,33 @@ window.__ModuleLoader__.load({
 			}, [closePanel, visible]);
 			if (!visible || target === null) return null;
 			const review = target.review;
+			const stage = (reference, label) => {
+				if (controller.stageReference(target.sessionId, projectMention(reference, label))) closePanel();
+			};
+			const stageDirectory = (path) => stage({
+				version: 1,
+				kind: "directory",
+				sessionId: target.sessionId,
+				cwd: target.cwd,
+				path
+			}, `directory:${path || "."}`);
+			const stageDiff = () => {
+				if (review === null) return;
+				stage(review.source === "turn" ? {
+					version: 1,
+					kind: "diff",
+					source: "turn",
+					sessionId: target.sessionId,
+					cwd: target.cwd,
+					turn: review.turn
+				} : {
+					version: 1,
+					kind: "diff",
+					source: "working",
+					sessionId: target.sessionId,
+					cwd: target.cwd
+				}, review.source === "turn" ? `diff:turn-${review.turn}` : "diff:working");
+			};
 			const content = target.mode === "review" && review !== null ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("nav", {
 				"aria-label": "Changed file navigation",
 				style: {
@@ -1570,7 +1859,8 @@ window.__ModuleLoader__.load({
 				}, file.path))
 			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(FilesPanel, {
 				panel: controller,
-				target
+				target,
+				stageDirectory
 			});
 			const panel = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
 				"aria-label": "Project panel",
@@ -1689,6 +1979,22 @@ window.__ModuleLoader__.load({
 									fontWeight: 600
 								},
 								children: review.source === "turn" ? `Historical · Turn ${review.turn}` : "Current · Working changes"
+							}),
+							target.mode === "review" && review !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+								type: "button",
+								onClick: stageDiff,
+								title: "Add this diff snapshot to the current Session draft",
+								style: {
+									marginLeft: "auto",
+									padding: "3px 7px",
+									border: `1px solid ${palette.border}`,
+									borderRadius: 6,
+									background: palette.button,
+									color: palette.accent,
+									cursor: "pointer",
+									fontSize: 10
+								},
+								children: "Ask about diff"
 							})
 						]
 					})]
@@ -2945,10 +3251,15 @@ window.__ModuleLoader__.load({
 			"slots",
 			"sessions",
 			"workspaces",
-			"layout"
+			"layout",
+			"inputTriggers",
+			"remote",
+			"remote.fileReferences"
 		];
 		function apply(ctx) {
 			const panel = new ProjectPanelController();
+			const inputTriggers = ctx.get("inputTriggers");
+			ctx.effect(() => inputTriggers.registerSource(createProjectReferenceSource(ctx)), "aezy-project: @directory and @diff reference source");
 			const closePanel = () => {
 				panel.close();
 				ctx.layout.closeDetails();
@@ -2965,6 +3276,12 @@ window.__ModuleLoader__.load({
 				panel.openFiles(target);
 				syncLayout(window.innerWidth < 760);
 			};
+			ctx.slots.inject("conversation.session.header.actions", () => ctx.slots.register({
+				name: "conversation.session.header.actions",
+				id: "aezy-project-composer-bridge",
+				order: -100,
+				inject: (sessionId) => ({ panel })
+			}, ComposerBridge));
 			ctx.slots.inject("details", () => ctx.slots.register({
 				name: "details",
 				priority: -10,

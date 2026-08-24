@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type HTMLAttributes } from 'react'
 import { MarkdownText, ReadBlock } from '@deepseek-ai/dsh-client-ui-primitives'
+import type {
+  InputTriggerCandidate, InputTriggerServiceContract, InputTriggerSource,
+} from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import { summarizeTurn } from '../summary.js'
+import { formatProjectReferenceMention } from '../context-reference.js'
 
 type FileRow = {
   path: string
@@ -134,6 +138,7 @@ type LedgerView = {
 type Snapshot<T> = { getSnapshot(): T; subscribe(listener: () => void): () => void }
 type SessionsState = { current?: string; byId: Record<string, { cwd?: string }> }
 type ClientContext = {
+  get(name: string): unknown
   effect(effect: () => (() => void) | void, label: string): void
   slots: {
     inject(name: string, register: () => (() => void)): void
@@ -152,7 +157,18 @@ type ClientContext = {
     connectWorkspace(workspaceId: string): Promise<string>
     archiveSession(sessionId: string): Promise<void>
   }
+  remote: {
+    fileReferences: {
+      list(sessionId: string, query: string, signal: AbortSignal): Promise<{
+        ok: boolean
+        value?: Array<{ path: string; kind: 'file' | 'directory' }>
+      }>
+    }
+  }
 }
+
+type InputActions = { setDraft(text: string): void; submit(): void }
+type InputState = { draft: string }
 
 type ChangesProps = {
   cwd: string
@@ -386,6 +402,7 @@ class ProjectPanelController {
   #target: ProjectPanelTarget | null = null
   #revision = 0
   #listeners = new Set<() => void>()
+  #composers = new Map<string, (mention: string) => void>()
 
   getSnapshot = (): ProjectPanelTarget | null => this.#target
   subscribe = (listener: () => void): (() => void) => {
@@ -449,6 +466,18 @@ class ProjectPanelController {
     this.#target = { ...target, review: { ...review, expandedPaths } }
     this.#emit()
   }
+  registerComposer(sessionId: string, insert: (mention: string) => void): () => void {
+    this.#composers.set(sessionId, insert)
+    return () => {
+      if (this.#composers.get(sessionId) === insert) this.#composers.delete(sessionId)
+    }
+  }
+  stageReference(sessionId: string, mention: string): boolean {
+    const insert = this.#composers.get(sessionId)
+    if (insert === undefined) return false
+    insert(mention)
+    return true
+  }
   #emit(): void {
     for (const listener of this.#listeners) listener()
   }
@@ -474,6 +503,133 @@ function loadLedger(cwd: string, sessionId: string): Promise<LedgerView> {
     })
   ledgerRequests.set(key, { at: Date.now(), promise })
   return promise
+}
+
+type ProjectReference =
+  | { version: 1; kind: 'directory'; sessionId: string; cwd: string; path: string }
+  | { version: 1; kind: 'diff'; source: 'working'; sessionId: string; cwd: string }
+  | { version: 1; kind: 'diff'; source: 'turn'; sessionId: string; cwd: string; turn: number }
+
+type ProjectReferenceCandidateValue =
+  | { kind: 'directory-seed' }
+  | { kind: 'reference'; reference: ProjectReference; label: string; appearance: 'folder' | 'file' }
+
+function projectMention(reference: ProjectReference, label: string): string {
+  return formatProjectReferenceMention(reference, label)
+}
+
+function candidateValue(value: ProjectReferenceCandidateValue): string {
+  return JSON.stringify(value)
+}
+
+function parseProjectCandidate(candidate: InputTriggerCandidate): ProjectReferenceCandidateValue | null {
+  if (candidate.value === undefined) return null
+  try { return JSON.parse(candidate.value) as ProjectReferenceCandidateValue } catch { return null }
+}
+
+function createProjectReferenceSource(ctx: ClientContext): InputTriggerSource {
+  return {
+    trigger: '@',
+    name: 'aezy-project-context',
+    order: 5,
+    showGroupTitle: false,
+    async candidates(session, requestState) {
+      const cwd = ctx.sessions.list.getSnapshot().byId[session.sessionId]?.cwd
+      if (cwd === undefined || requestState.quoted === true) return []
+      const queryText = requestState.query
+      const query = queryText.toLocaleLowerCase()
+      if (query.startsWith('directory:')) {
+        const pathQuery = queryText.slice('directory:'.length)
+        const response = await ctx.remote.fileReferences.list(session.sessionId, pathQuery, requestState.signal)
+        if (requestState.signal.aborted || !response.ok) return []
+        const directories = (response.value ?? []).filter(item => item.kind === 'directory')
+        const root: Array<{ path: string; kind: 'directory' }> = pathQuery === '' ? [{ path: '', kind: 'directory' }] : []
+        return [...root, ...directories].map(item => {
+          const path = item.path
+          const label = `directory:${path || '.'}`
+          return {
+            name: `Directory context · ${path || '.'}`,
+            description: path === '' ? 'Current Session workspace root' : path,
+            section: 'Project context',
+            value: candidateValue({
+              kind: 'reference',
+              reference: { version: 1, kind: 'directory', sessionId: session.sessionId, cwd, path },
+              label,
+              appearance: 'folder',
+            }),
+          }
+        })
+      }
+      const directoryMode = query === '' || 'directory'.startsWith(query) || query === 'directory'
+      const diffMode = query === '' || query.startsWith('diff')
+      if (!directoryMode && !diffMode) return []
+      const candidates: InputTriggerCandidate[] = []
+      if (directoryMode) {
+        candidates.push({
+          name: 'Directory context · choose folder…',
+          description: 'Attach a bounded snapshot from this Session workspace',
+          section: 'Project context',
+          value: candidateValue({ kind: 'directory-seed' }),
+        })
+      }
+      if (diffMode) {
+        candidates.push({
+          name: 'Diff context · Working changes',
+          description: 'Current staged, unstaged, and untracked Git changes',
+          section: 'Project context',
+          value: candidateValue({
+            kind: 'reference',
+            reference: { version: 1, kind: 'diff', source: 'working', sessionId: session.sessionId, cwd },
+            label: 'diff:working',
+            appearance: 'file',
+          }),
+        })
+        try {
+          const ledger = await loadLedger(cwd, session.sessionId)
+          if (requestState.signal.aborted) return []
+          const turnNeedle = /^diff(?::(?:turn-)?)?(\d*)$/u.exec(query)?.[1] ?? ''
+          const turns = [...ledger.turns].reverse()
+            .filter(turn => turnNeedle === '' || String(turn.turn).includes(turnNeedle))
+            .slice(0, 8)
+          for (const turn of turns) {
+            candidates.push({
+              name: `Diff context · Historical Turn ${turn.turn}`,
+              description: `${turn.files.length} changed file${turn.files.length === 1 ? '' : 's'} · immutable ledger snapshot`,
+              section: 'Project context',
+              value: candidateValue({
+                kind: 'reference',
+                reference: { version: 1, kind: 'diff', source: 'turn', sessionId: session.sessionId, cwd, turn: turn.turn },
+                label: `diff:turn-${turn.turn}`,
+                appearance: 'file',
+              }),
+            })
+          }
+        } catch {
+          // Working diff remains usable when the optional Turn ledger is unavailable.
+        }
+      }
+      return candidates
+    },
+    onPick({ candidate }) {
+      const value = parseProjectCandidate(candidate)
+      if (value === null) return undefined
+      if (value.kind === 'directory-seed') return { text: '@directory:', continue: true }
+      const mention = projectMention(value.reference, value.label)
+      return {
+        insert: {
+          source: 'aezy-project-context',
+          ref: mention,
+          label: value.label,
+          appearance: value.appearance,
+          clipboardText: mention,
+        },
+      }
+    },
+    codec: {
+      clipboardText: ref => ref,
+      serialize: ref => Promise.resolve(ref),
+    },
+  }
 }
 
 function DiffStats({ additions, deletions }: { additions: number | null; deletions: number | null }) {
@@ -675,6 +831,24 @@ type ProjectPanelProps = {
   useSessions<T>(selector: (state: SessionsState) => T): T
 }
 
+type ComposerBridgeProps = {
+  panel: ProjectPanelController
+  sessionId: string
+  useInput<T>(selector: (state: InputState) => T): T
+  inputActions: InputActions
+}
+
+function ComposerBridge({ panel, sessionId, useInput, inputActions }: ComposerBridgeProps) {
+  const draft = useInput(state => state.draft)
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+  useEffect(() => panel.registerComposer(sessionId, mention => {
+    const current = draftRef.current.trimEnd()
+    inputActions.setDraft(current === '' ? `${mention} ` : `${current}\n\n${mention} `)
+  }), [inputActions, panel, sessionId])
+  return null
+}
+
 type ReviewFileCardProps = {
   panel: ProjectPanelController
   target: ReviewTarget
@@ -769,9 +943,10 @@ type DirectoryBranchProps = {
   depth: number
   expanded: ReadonlySet<string>
   toggle(path: string): void
+  stageDirectory(path: string): void
 }
 
-function DirectoryBranch({ panel, target, directory, depth, expanded, toggle }: DirectoryBranchProps) {
+function DirectoryBranch({ panel, target, directory, depth, expanded, toggle, stageDirectory }: DirectoryBranchProps) {
   const [document, setDocument] = useState<DirectoryDocument | null>(null)
   const [error, setError] = useState<string | null>(null)
   const open = directory === '' || expanded.has(directory)
@@ -827,7 +1002,8 @@ function DirectoryBranch({ panel, target, directory, depth, expanded, toggle }: 
       const supported = directoryEntry || entry.kind === 'file'
       const selected = target.files.selectedPath === entry.path
       return <div key={entry.path}>
-        <button
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center' }}>
+          <button
           type="button"
           role="treeitem"
           aria-level={depth + 1}
@@ -836,12 +1012,14 @@ function DirectoryBranch({ panel, target, directory, depth, expanded, toggle }: 
           title={entry.kind === 'symlink' ? `${entry.path} · symbolic links are not previewed` : entry.path}
           onClick={() => { if (directoryEntry) toggle(entry.path); else if (entry.kind === 'file') panel.selectFile(entry.path) }}
           style={{ boxSizing: 'border-box', width: '100%', minHeight: 26, display: 'grid', gridTemplateColumns: '12px 16px minmax(0, 1fr)', alignItems: 'center', gap: 5, padding: `3px 8px 3px ${8 + depth * 16}px`, border: 0, borderRadius: 5, background: selected ? palette.interactive : 'transparent', color: supported ? palette.text : palette.muted, cursor: supported ? 'pointer' : 'not-allowed', textAlign: 'left' }}
-        >
-          <span aria-hidden style={{ color: palette.muted, fontSize: 8, transform: entryOpen ? 'rotate(90deg)' : undefined, visibility: directoryEntry ? 'visible' : 'hidden' }}>▶</span>
-          {directoryEntry ? <FolderIcon open={entryOpen} /> : <FileTypeIcon path={entry.path} />}
-          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{entry.name}</span>
-        </button>
-        {directoryEntry && entryOpen && <DirectoryBranch panel={panel} target={target} directory={entry.path} depth={depth + 1} expanded={expanded} toggle={toggle} />}
+          >
+            <span aria-hidden style={{ color: palette.muted, fontSize: 8, transform: entryOpen ? 'rotate(90deg)' : undefined, visibility: directoryEntry ? 'visible' : 'hidden' }}>▶</span>
+            {directoryEntry ? <FolderIcon open={entryOpen} /> : <FileTypeIcon path={entry.path} />}
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{entry.name}</span>
+          </button>
+          {directoryEntry && <button type="button" aria-label={`Ask about ${entry.path} directory`} title="Add directory context to the current Session draft" onClick={() => stageDirectory(entry.path)} style={{ width: 28, height: 24, padding: 0, border: 0, borderRadius: 5, background: 'transparent', color: palette.accent, cursor: 'pointer', fontSize: 10 }}>Ask</button>}
+        </div>
+        {directoryEntry && entryOpen && <DirectoryBranch panel={panel} target={target} directory={entry.path} depth={depth + 1} expanded={expanded} toggle={toggle} stageDirectory={stageDirectory} />}
       </div>
     })}
     {document.entries.length === 0 && <div style={{ padding: `5px 8px 5px ${10 + depth * 16}px`, color: palette.muted, fontSize: 11 }}>Empty directory</div>}
@@ -894,7 +1072,7 @@ function FilePreview({ panel, target }: { panel: ProjectPanelController; target:
   </div>
 }
 
-function FilesPanel({ panel, target }: { panel: ProjectPanelController; target: ProjectPanelTarget }) {
+function FilesPanel({ panel, target, stageDirectory }: { panel: ProjectPanelController; target: ProjectPanelTarget; stageDirectory(path: string): void }) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(parentDirectories(target.files.selectedPath)))
   useEffect(() => {
     setExpanded(current => new Set([...current, ...parentDirectories(target.files.selectedPath)]))
@@ -911,7 +1089,8 @@ function FilesPanel({ panel, target }: { panel: ProjectPanelController; target: 
 
   return <div data-aezy-files-panel style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
     <section aria-label="Workspace file tree" style={{ flex: '0 1 38%', minHeight: 112, maxHeight: 320, overflow: 'auto', padding: '7px 6px 9px', borderBottom: `1px solid ${palette.border}` }}>
-      <div role="tree" aria-label="Files"><DirectoryBranch panel={panel} target={target} directory="" depth={0} expanded={expanded} toggle={toggle} /></div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 2px 5px' }}><button type="button" onClick={() => stageDirectory('')} title="Add workspace directory context to the current Session draft" style={{ padding: '3px 7px', border: `1px solid ${palette.border}`, borderRadius: 6, background: palette.button, color: palette.accent, cursor: 'pointer', fontSize: 10 }}>Ask about workspace</button></div>
+      <div role="tree" aria-label="Files"><DirectoryBranch panel={panel} target={target} directory="" depth={0} expanded={expanded} toggle={toggle} stageDirectory={stageDirectory} /></div>
     </section>
     <section aria-label="File preview" style={{ flex: '1 1 62%', minHeight: 0, overflow: 'auto', background: palette.panel }}>
       <FilePreview panel={panel} target={target} />
@@ -953,11 +1132,25 @@ function ProjectPanel({ panel: controller, surface, closePanel, syncLayout, useS
   if (!visible || target === null) return null
 
   const review = target.review
+  const stage = (reference: ProjectReference, label: string) => {
+    if (controller.stageReference(target.sessionId, projectMention(reference, label))) closePanel()
+  }
+  const stageDirectory = (path: string) => stage(
+    { version: 1, kind: 'directory', sessionId: target.sessionId, cwd: target.cwd, path },
+    `directory:${path || '.'}`,
+  )
+  const stageDiff = () => {
+    if (review === null) return
+    stage(review.source === 'turn'
+      ? { version: 1, kind: 'diff', source: 'turn', sessionId: target.sessionId, cwd: target.cwd, turn: review.turn }
+      : { version: 1, kind: 'diff', source: 'working', sessionId: target.sessionId, cwd: target.cwd },
+    review.source === 'turn' ? `diff:turn-${review.turn}` : 'diff:working')
+  }
   const content = target.mode === 'review' && review !== null
     ? <nav aria-label="Changed file navigation" style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto', padding: 10 }}>
         {review.files.map(file => <ReviewFileCard key={file.path} panel={controller} target={review} file={file} expanded={review.expandedPaths.includes(file.path)} />)}
       </nav>
-    : <FilesPanel panel={controller} target={target} />
+    : <FilesPanel panel={controller} target={target} stageDirectory={stageDirectory} />
 
   const panel = <aside aria-label="Project panel" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: palette.panel, color: palette.text }}>
       <header style={{ flex: '0 0 auto', padding: '12px 14px 10px', borderBottom: `1px solid ${palette.border}`, background: palette.panel }}>
@@ -972,6 +1165,7 @@ function ProjectPanel({ panel: controller, surface, closePanel, syncLayout, useS
           <button type="button" role="tab" aria-selected={target.mode === 'review'} disabled={review === null} onClick={() => controller.show('review')} style={{ padding: '3px 8px', border: 0, borderRadius: 6, background: target.mode === 'review' ? palette.interactive : 'transparent', color: review === null ? palette.muted : target.mode === 'review' ? palette.accent : palette.text, cursor: review === null ? 'not-allowed' : 'pointer', fontSize: 11 }}>Review</button>
           <button type="button" role="tab" aria-selected={target.mode === 'files'} onClick={() => controller.show('files')} style={{ padding: '3px 8px', border: 0, borderRadius: 6, background: target.mode === 'files' ? palette.interactive : 'transparent', color: target.mode === 'files' ? palette.accent : palette.text, cursor: 'pointer', fontSize: 11 }}>Files</button>
           {target.mode === 'review' && review !== null && <span style={{ marginLeft: 3, padding: '2px 7px', borderRadius: 999, background: palette.interactive, color: review.source === 'turn' ? palette.accent : palette.warning, fontSize: 10, fontWeight: 600 }}>{review.source === 'turn' ? `Historical · Turn ${review.turn}` : 'Current · Working changes'}</span>}
+          {target.mode === 'review' && review !== null && <button type="button" onClick={stageDiff} title="Add this diff snapshot to the current Session draft" style={{ marginLeft: 'auto', padding: '3px 7px', border: `1px solid ${palette.border}`, borderRadius: 6, background: palette.button, color: palette.accent, cursor: 'pointer', fontSize: 10 }}>Ask about diff</button>}
         </div>
       </header>
       {content}
@@ -1404,10 +1598,17 @@ function WorktreesView({ cwd, sessionId, openFiles, openWorktree, returnToLocal 
   </div>
 }
 
-export const inject = ['slots', 'sessions', 'workspaces', 'layout']
+export const inject = [
+  'slots', 'sessions', 'workspaces', 'layout', 'inputTriggers', 'remote', 'remote.fileReferences',
+]
 
 export function apply(ctx: ClientContext): void {
   const panel = new ProjectPanelController()
+  const inputTriggers = ctx.get('inputTriggers') as InputTriggerServiceContract
+  ctx.effect(
+    () => inputTriggers.registerSource(createProjectReferenceSource(ctx)),
+    'aezy-project: @directory and @diff reference source',
+  )
   const closePanel = () => {
     panel.close()
     ctx.layout.closeDetails()
@@ -1424,6 +1625,13 @@ export function apply(ctx: ClientContext): void {
     panel.openFiles(target)
     syncLayout(window.innerWidth < 760)
   }
+
+  ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register({
+    name: 'conversation.session.header.actions',
+    id: 'aezy-project-composer-bridge',
+    order: -100,
+    inject: (sessionId: string): Pick<ComposerBridgeProps, 'panel'> => ({ panel }),
+  }, ComposerBridge))
 
   ctx.slots.inject('details', () => ctx.slots.register({
     name: 'details',

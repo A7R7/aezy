@@ -24,8 +24,15 @@ test('built client bundle registers one docked Project panel, narrow overlay, Ch
     : require(specifier))
   const injectedSlots = []
   const registrations = []
+  let referenceSource
   const dispose = () => {}
   plugin.apply({
+    get(name) {
+      assert.equal(name, 'inputTriggers')
+      return { registerSource(source) { referenceSource = source; return dispose } }
+    },
+    effect(effect) { effect() },
+    remote: { fileReferences: { list: async () => ({ ok: true, value: [] }) } },
     sessions: {
       list: {
         getSnapshot: () => ({ byId: { session: { cwd: '/repo' } } }),
@@ -43,7 +50,25 @@ test('built client bundle registers one docked Project panel, narrow overlay, Ch
     },
   })
 
-  assert.deepEqual(injectedSlots, ['details', 'shell.overlay', 'conversation.chat.turnTail', 'conversation.view', 'conversation.view'])
+  assert.deepEqual(injectedSlots, ['conversation.session.header.actions', 'details', 'shell.overlay', 'conversation.chat.turnTail', 'conversation.view', 'conversation.view'])
+  assert.equal(referenceSource.name, 'aezy-project-context')
+  assert.equal(referenceSource.trigger, '@')
+  const directoryCandidates = await referenceSource.candidates(
+    { sessionId: 'session' },
+    { query: 'directory:', quoted: false, position: 'inline', signal: new AbortController().signal },
+  )
+  assert.equal(directoryCandidates[0].name, 'Directory context · .')
+  const directoryPick = referenceSource.onPick({ candidate: directoryCandidates[0] })
+  assert.equal(directoryPick.insert.source, 'aezy-project-context')
+  assert.equal(directoryPick.insert.appearance, 'folder')
+  assert.match(directoryPick.insert.ref, /aezy-directory:/)
+  const diffCandidates = await referenceSource.candidates(
+    { sessionId: 'session' },
+    { query: 'diff', quoted: false, position: 'inline', signal: new AbortController().signal },
+  )
+  assert.equal(diffCandidates[0].name, 'Diff context · Working changes')
+  const bridge = registrations.find(entry => entry.options.id === 'aezy-project-composer-bridge')
+  assert.equal(typeof bridge.component, 'function')
   const details = registrations.find(entry => entry.options.name === 'details')
   assert.equal(details.options.priority, -10)
   assert.equal(details.options.inject().surface, 'details')
@@ -112,6 +137,12 @@ test('built structured Review surface uses DSH aliases and removes the Turn inli
   assert.match(bundle, /\/aezy\/api\/project\/preview/)
   assert.match(bundle, /Directory response identity does not match the requested path/)
   assert.match(bundle, /1500/)
+  assert.match(bundle, /aezy-project-context/)
+  assert.match(bundle, /@directory:/)
+  assert.match(bundle, /Diff context · Working changes/)
+  assert.match(bundle, /Ask about workspace/)
+  assert.match(bundle, /Ask about diff/)
+  assert.match(bundle, /conversation\.session\.header\.actions/)
   assert.match(bundle, /@deepseek-ai\/dsh-client-ui-primitives/)
   assert.match(bundle, /data-aezy-expanded-file/)
   assert.match(bundle, /data-aezy-review-request/)
