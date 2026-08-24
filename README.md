@@ -118,6 +118,10 @@ changed-file lazy navigation，以及 added/deleted/renamed/binary/truncated 和
 raw fallback 状态。完整自动、真实 rc.1 HTTP、Aezy 自身模型 dogfood 与浏览器 QA
 见 [M4.1A 签收记录](doc/milestones/m4.md)。
 
+消息流中的 Turn changes summary 使用与 DSH `md-code-block` 相同的 code-block/banner
+theme aliases、12px 圆角和 code font；文件明细位于简洁 body，总计位于
+`└ +A -D · N files` footer，Undo/Redo 与 Review 保留在 banner action 区。
+
 当前 rc.1/rc.2 没有 generic/additive details router，因此 desktop occupant 会 shadow
 上游 Tool Details；这是 docked 布局的已知兼容性代价，未来出现公开 router 后迁移。
 

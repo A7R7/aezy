@@ -146,6 +146,8 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
   页面空间并复用原生 resize，narrow 使用 additive `shell.overlay`；
 - 文件名纵向 accordion 排列，点击文件名只在其下方展开一个 lazy-loaded diff；
 - conversation view 不卸载、垂直 scroll state 不重置；desktop 横向 reflow 是预期行为；
+- Turn changes summary 已对齐 DSH `md-code-block` family：12px radius、code-block/banner
+  aliases、code font、无分隔线 file body 和 `└ +A -D · N files` footer；
 - Working/Historical 共用 structured diff DTO 与 renderer；
 - old/new line number、addition/deletion/status gutter、sticky file/hunk header；
 - added/deleted/renamed/binary/truncated/malformed raw fallback；
@@ -200,6 +202,7 @@ rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,67
 - `pnpm run dogfood:m3` → Aezy 自仓库真实模型隔离 Turn、test、handoff、cleanup passed
 - M4.1A Aezy 自身真实模型 dogfood → Session `m4-review-qa-home`，13/13 passed
 - M4.1A docked browser QA → center `1160→800→1160`、scrollTop `391→391→391`、native details `359→451` resize、纵向 accordion 单文件展开、680 overlay
+- M4.1A Turn summary browser QA → 与同页 DSH fenced code block 的 background/banner/radius 完全一致，body `13px/22px`，Review action passed
 - `git diff --check` → passed
 
 交接时 Aezy Web 正运行于：
