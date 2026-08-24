@@ -262,6 +262,7 @@ window.__ModuleLoader__.load({
 		}
 		var ReviewController = class {
 			#target = null;
+			#revision = 0;
 			#listeners = /* @__PURE__ */ new Set();
 			getSnapshot = () => this.#target;
 			subscribe = (listener) => {
@@ -271,15 +272,22 @@ window.__ModuleLoader__.load({
 				};
 			};
 			open(target) {
-				this.#target = target;
+				const available = new Set(target.files.map((file) => file.path));
+				this.#target = {
+					...target,
+					expandedPaths: [...new Set(target.expandedPaths.filter((path) => available.has(path)))],
+					revision: ++this.#revision
+				};
 				for (const listener of this.#listeners) listener();
 			}
-			select(path) {
+			toggle(path) {
 				if (this.#target === null || !this.#target.files.some((file) => file.path === path)) return;
-				this.open({
+				const expandedPaths = this.#target.expandedPaths.includes(path) ? this.#target.expandedPaths.filter((candidate) => candidate !== path) : [...this.#target.expandedPaths, path];
+				this.#target = {
 					...this.#target,
-					path: this.#target.path === path ? null : path
-				});
+					expandedPaths
+				};
+				for (const listener of this.#listeners) listener();
 			}
 			close() {
 				if (this.#target === null) return;
@@ -463,7 +471,7 @@ window.__ModuleLoader__.load({
 					cwd,
 					sessionId,
 					turn: summary.turn,
-					path,
+					expandedPaths: [path],
 					files: summary.files.map((file) => ({
 						path: file.path,
 						oldPath: file.oldPath,
@@ -814,14 +822,191 @@ window.__ModuleLoader__.load({
 				]
 			});
 		}
+		function ReviewFileCard({ review, target, file, expanded }) {
+			const [document, setDocument] = (0, react.useState)(null);
+			const [error, setError] = (0, react.useState)(null);
+			const generation = (0, react.useRef)(0);
+			const revision = target.revision;
+			(0, react.useEffect)(() => {
+				if (!expanded) {
+					setDocument(null);
+					setError(null);
+					return;
+				}
+				const controller = new AbortController();
+				const requestGeneration = ++generation.current;
+				setDocument(null);
+				setError(null);
+				request(target.source === "turn" ? "/aezy/api/project/turn-review" : "/aezy/api/project/diff", target.source === "turn" ? {
+					cwd: target.cwd,
+					sessionId: target.sessionId,
+					turn: String(target.turn),
+					path: file.path
+				} : {
+					cwd: target.cwd,
+					path: file.path
+				}, controller.signal).then((value) => {
+					const active = review.getSnapshot();
+					if (requestGeneration !== generation.current || active?.revision !== revision || !active.expandedPaths.includes(file.path)) return;
+					if (value.file.path !== file.path || value.source.kind !== target.source) throw new Error("Review response identity does not match the expanded file.");
+					setDocument(value);
+				}).catch((reason) => {
+					const active = review.getSnapshot();
+					if (controller.signal.aborted || requestGeneration !== generation.current || active?.revision !== revision || !active.expandedPaths.includes(file.path)) return;
+					setError(reason instanceof Error ? reason.message : String(reason));
+				});
+				return () => {
+					controller.abort();
+				};
+			}, [
+				expanded,
+				file.path,
+				review,
+				revision,
+				target.cwd,
+				target.sessionId,
+				target.source,
+				target.turn
+			]);
+			const status = document?.file.status ?? file.status;
+			const binary = document?.file.binary ?? file.binary;
+			const truncated = document?.file.truncated ?? file.truncated;
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(ChangeSurface, {
+				className: "aezy-review-file",
+				"data-aezy-review-file": file.path,
+				style: {
+					marginBottom: 8,
+					overflow: "visible"
+				},
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+					type: "button",
+					onClick: () => review.toggle(file.path),
+					"aria-expanded": expanded,
+					title: `${file.path}${status === void 0 ? "" : ` · ${status}`}`,
+					style: {
+						...changeBannerStyle,
+						position: expanded ? "sticky" : void 0,
+						top: expanded ? 0 : void 0,
+						zIndex: expanded ? 3 : void 0,
+						width: "100%",
+						minHeight: 32,
+						display: "grid",
+						gridTemplateColumns: "16px minmax(0, 1fr) auto 12px",
+						alignItems: "center",
+						gap: 7,
+						padding: "5px 9px",
+						border: 0,
+						borderRadius: expanded ? "12px 12px 0 0" : 12,
+						color: expanded ? palette.accent : palette.text,
+						cursor: "pointer",
+						textAlign: "left"
+					},
+					children: [
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)(FileTypeIcon, { path: file.path }),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+							style: {
+								minWidth: 0,
+								overflow: "hidden",
+								textOverflow: "ellipsis",
+								whiteSpace: "nowrap",
+								fontFamily: "var(--ds-font-family-code, monospace)",
+								fontSize: 11
+							},
+							children: [file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : "", file.path]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+							style: {
+								display: "inline-flex",
+								alignItems: "center",
+								gap: 6,
+								fontSize: 9.5,
+								color: palette.muted
+							},
+							children: [
+								status !== void 0 && status !== "modified" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									title: status,
+									children: status
+								}),
+								binary && status !== "binary" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "binary" }),
+								truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+									style: { color: palette.warning },
+									children: "truncated"
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
+									additions: document?.file.additions ?? file.additions ?? null,
+									deletions: document?.file.deletions ?? file.deletions ?? null
+								})
+							]
+						}),
+						/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							"aria-hidden": true,
+							style: {
+								color: palette.muted,
+								fontSize: 9,
+								transform: expanded ? "rotate(90deg)" : void 0,
+								transition: "transform 120ms ease"
+							},
+							children: "▶"
+						})
+					]
+				}), expanded && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+					"data-aezy-expanded-file": file.path,
+					"data-aezy-review-request": file.path,
+					style: {
+						overflowX: "auto",
+						borderRadius: "0 0 12px 12px",
+						background: "var(--dsw-alias-markdown-code-block)"
+					},
+					children: [
+						document === null && error === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+							style: {
+								padding: 24,
+								color: palette.muted,
+								textAlign: "center"
+							},
+							children: "Loading this file…"
+						}),
+						error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							role: "alert",
+							style: {
+								margin: 12,
+								padding: 12,
+								border: `1px solid ${palette.error}`,
+								borderRadius: 8,
+								color: palette.error
+							},
+							children: ["Review unavailable: ", error]
+						}),
+						document !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+							document.file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								style: {
+									padding: "30px 16px",
+									color: palette.muted,
+									textAlign: "center"
+								},
+								children: "Binary file snapshot. Textual lines are not available."
+							}),
+							document.file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+								style: {
+									margin: 12,
+									padding: 10,
+									border: `1px solid ${palette.warning}`,
+									borderRadius: 7,
+									color: palette.warning
+								},
+								children: "This diff exceeded Aezy’s bounded review limit. Only a safe fallback may be available."
+							}),
+							!document.file.binary && document.parts.map((part) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StructuredPart, { part }, part.scope))
+						] })
+					]
+				})]
+			});
+		}
 		function ReviewPanel({ review, surface, closeReview, syncLayout, useSessions }) {
 			const target = (0, react.useSyncExternalStore)(review.subscribe, review.getSnapshot);
 			const currentSession = useSessions((state) => state.current);
 			const currentCwd = useSessions((state) => state.current === void 0 ? void 0 : state.byId[state.current]?.cwd);
-			const [document, setDocument] = (0, react.useState)(null);
-			const [error, setError] = (0, react.useState)(null);
 			const [viewport, setViewport] = (0, react.useState)(() => window.innerWidth);
-			const generation = (0, react.useRef)(0);
 			const narrow = viewport < 760;
 			const currentSurface = narrow ? "overlay" : "details";
 			const matchesSession = target !== null && target.sessionId === currentSession && target.cwd === currentCwd;
@@ -845,41 +1030,6 @@ window.__ModuleLoader__.load({
 				narrow,
 				syncLayout,
 				target
-			]);
-			(0, react.useEffect)(() => {
-				if (!visible || target === null || target.path === null) {
-					setDocument(null);
-					setError(null);
-					return;
-				}
-				const controller = new AbortController();
-				const requestGeneration = ++generation.current;
-				const selectedPath = target.path;
-				setDocument(null);
-				setError(null);
-				request(target.source === "turn" ? "/aezy/api/project/turn-review" : "/aezy/api/project/diff", target.source === "turn" ? {
-					cwd: target.cwd,
-					sessionId: target.sessionId,
-					turn: String(target.turn),
-					path: selectedPath
-				} : {
-					cwd: target.cwd,
-					path: selectedPath
-				}, controller.signal).then((value) => {
-					if (requestGeneration !== generation.current || review.getSnapshot() !== target) return;
-					if (value.file.path !== selectedPath || value.source.kind !== target.source) throw new Error("Review response identity does not match the active selection.");
-					setDocument(value);
-				}).catch((reason) => {
-					if (controller.signal.aborted || requestGeneration !== generation.current) return;
-					setError(reason instanceof Error ? reason.message : String(reason));
-				});
-				return () => {
-					controller.abort();
-				};
-			}, [
-				review,
-				target,
-				visible
 			]);
 			(0, react.useEffect)(() => {
 				if (!visible) return;
@@ -960,141 +1110,12 @@ window.__ModuleLoader__.load({
 						overflow: "auto",
 						padding: 10
 					},
-					children: target.files.map((file) => {
-						const expanded = file.path === target.path;
-						const status = expanded ? document?.file.status ?? file.status : file.status;
-						const binary = expanded ? document?.file.binary ?? file.binary : file.binary;
-						const truncated = expanded ? document?.file.truncated ?? file.truncated : file.truncated;
-						return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(ChangeSurface, {
-							className: "aezy-review-file",
-							"data-aezy-review-file": file.path,
-							style: {
-								marginBottom: 8,
-								overflow: "visible"
-							},
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-								type: "button",
-								onClick: () => review.select(file.path),
-								"aria-expanded": expanded,
-								title: `${file.path}${status === void 0 ? "" : ` · ${status}`}`,
-								style: {
-									...changeBannerStyle,
-									position: expanded ? "sticky" : void 0,
-									top: expanded ? 0 : void 0,
-									zIndex: expanded ? 3 : void 0,
-									width: "100%",
-									minHeight: 32,
-									display: "grid",
-									gridTemplateColumns: "16px minmax(0, 1fr) auto 12px",
-									alignItems: "center",
-									gap: 7,
-									padding: "5px 9px",
-									border: 0,
-									borderRadius: expanded ? "12px 12px 0 0" : 12,
-									color: expanded ? palette.accent : palette.text,
-									cursor: "pointer",
-									textAlign: "left"
-								},
-								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)(FileTypeIcon, { path: file.path }),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-										style: {
-											minWidth: 0,
-											overflow: "hidden",
-											textOverflow: "ellipsis",
-											whiteSpace: "nowrap",
-											fontFamily: "var(--ds-font-family-code, monospace)",
-											fontSize: 11
-										},
-										children: [file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : "", file.path]
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-										style: {
-											display: "inline-flex",
-											alignItems: "center",
-											gap: 6,
-											fontSize: 9.5,
-											color: palette.muted
-										},
-										children: [
-											status !== void 0 && status !== "modified" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-												title: status,
-												children: status
-											}),
-											binary && status !== "binary" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "binary" }),
-											truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-												style: { color: palette.warning },
-												children: "truncated"
-											}),
-											/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
-												additions: expanded ? document?.file.additions ?? file.additions ?? null : file.additions ?? null,
-												deletions: expanded ? document?.file.deletions ?? file.deletions ?? null : file.deletions ?? null
-											})
-										]
-									}),
-									/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										"aria-hidden": true,
-										style: {
-											color: palette.muted,
-											fontSize: 9,
-											transform: expanded ? "rotate(90deg)" : void 0,
-											transition: "transform 120ms ease"
-										},
-										children: "▶"
-									})
-								]
-							}), expanded && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								"data-aezy-expanded-file": file.path,
-								style: {
-									overflowX: "auto",
-									borderRadius: "0 0 12px 12px",
-									background: "var(--dsw-alias-markdown-code-block)"
-								},
-								children: [
-									document === null && error === null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-										style: {
-											padding: 24,
-											color: palette.muted,
-											textAlign: "center"
-										},
-										children: "Loading this file…"
-									}),
-									error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										role: "alert",
-										style: {
-											margin: 12,
-											padding: 12,
-											border: `1px solid ${palette.error}`,
-											borderRadius: 8,
-											color: palette.error
-										},
-										children: ["Review unavailable: ", error]
-									}),
-									document !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
-										document.file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-											style: {
-												padding: "30px 16px",
-												color: palette.muted,
-												textAlign: "center"
-											},
-											children: "Binary file snapshot. Textual lines are not available."
-										}),
-										document.file.truncated && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-											style: {
-												margin: 12,
-												padding: 10,
-												border: `1px solid ${palette.warning}`,
-												borderRadius: 7,
-												color: palette.warning
-											},
-											children: "This diff exceeded Aezy’s bounded review limit. Only a safe fallback may be available."
-										}),
-										!document.file.binary && document.parts.map((part) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(StructuredPart, { part }, part.scope))
-									] })
-								]
-							})]
-						}, file.path);
-					})
+					children: target.files.map((file) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ReviewFileCard, {
+						review,
+						target,
+						file,
+						expanded: target.expandedPaths.includes(file.path)
+					}, file.path))
 				})]
 			});
 			return surface === "overlay" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
@@ -1419,7 +1440,7 @@ window.__ModuleLoader__.load({
 										source: "working",
 										cwd,
 										sessionId,
-										path: file.path,
+										expandedPaths: [file.path],
 										files: project.files.map((item) => ({
 											path: item.path,
 											oldPath: item.originalPath ?? null

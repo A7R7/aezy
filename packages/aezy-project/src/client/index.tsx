@@ -156,7 +156,7 @@ type ClientContext = {
 type ChangesProps = {
   cwd: string
   sessionId: string
-  openReview(target: ReviewTarget): void
+  openReview(target: ReviewOpenTarget): void
 }
 
 type TurnTailOwner = {
@@ -167,7 +167,7 @@ type TurnSummaryProps = {
   matched: { turn: number }
   cwd: string
   sessionId: string
-  openReview(target: ReviewTarget): void
+  openReview(target: ReviewOpenTarget): void
 }
 
 type TurnSummary = NonNullable<ReturnType<typeof summarizeTurn>>
@@ -313,12 +313,16 @@ type ReviewTarget = {
   sessionId: string
   cwd: string
   turn?: number
-  path: string | null
+  expandedPaths: string[]
+  revision: number
   files: ReviewNavFile[]
 }
 
+type ReviewOpenTarget = Omit<ReviewTarget, 'revision'>
+
 class ReviewController {
   #target: ReviewTarget | null = null
+  #revision = 0
   #listeners = new Set<() => void>()
 
   getSnapshot = (): ReviewTarget | null => this.#target
@@ -326,13 +330,22 @@ class ReviewController {
     this.#listeners.add(listener)
     return () => { this.#listeners.delete(listener) }
   }
-  open(target: ReviewTarget): void {
-    this.#target = target
+  open(target: ReviewOpenTarget): void {
+    const available = new Set(target.files.map(file => file.path))
+    this.#target = {
+      ...target,
+      expandedPaths: [...new Set(target.expandedPaths.filter(path => available.has(path)))],
+      revision: ++this.#revision,
+    }
     for (const listener of this.#listeners) listener()
   }
-  select(path: string): void {
+  toggle(path: string): void {
     if (this.#target === null || !this.#target.files.some(file => file.path === path)) return
-    this.open({ ...this.#target, path: this.#target.path === path ? null : path })
+    const expandedPaths = this.#target.expandedPaths.includes(path)
+      ? this.#target.expandedPaths.filter(candidate => candidate !== path)
+      : [...this.#target.expandedPaths, path]
+    this.#target = { ...this.#target, expandedPaths }
+    for (const listener of this.#listeners) listener()
   }
   close(): void {
     if (this.#target === null) return
@@ -444,7 +457,7 @@ function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryPr
   const openTurnReview = (path = summary.files[0]?.path) => {
     if (path === undefined) return
     openReview({
-      source: 'turn', cwd, sessionId, turn: summary.turn, path,
+      source: 'turn', cwd, sessionId, turn: summary.turn, expandedPaths: [path],
       files: summary.files.map(file => ({
         path: file.path,
         oldPath: file.oldPath,
@@ -556,14 +569,81 @@ type ReviewPanelProps = {
   useSessions<T>(selector: (state: SessionsState) => T): T
 }
 
+type ReviewFileCardProps = {
+  review: ReviewController
+  target: ReviewTarget
+  file: ReviewNavFile
+  expanded: boolean
+}
+
+function ReviewFileCard({ review, target, file, expanded }: ReviewFileCardProps) {
+  const [document, setDocument] = useState<ReviewDocument | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const generation = useRef(0)
+  const revision = target.revision
+
+  useEffect(() => {
+    if (!expanded) { setDocument(null); setError(null); return }
+    const controller = new AbortController()
+    const requestGeneration = ++generation.current
+    setDocument(null)
+    setError(null)
+    const endpoint = target.source === 'turn' ? '/aezy/api/project/turn-review' : '/aezy/api/project/diff'
+    const params = target.source === 'turn'
+      ? { cwd: target.cwd, sessionId: target.sessionId, turn: String(target.turn), path: file.path }
+      : { cwd: target.cwd, path: file.path }
+    request<ReviewDocument>(endpoint, params, controller.signal).then(value => {
+      const active = review.getSnapshot()
+      if (requestGeneration !== generation.current || active?.revision !== revision || !active.expandedPaths.includes(file.path)) return
+      if (value.file.path !== file.path || value.source.kind !== target.source) throw new Error('Review response identity does not match the expanded file.')
+      setDocument(value)
+    }).catch(reason => {
+      const active = review.getSnapshot()
+      if (controller.signal.aborted || requestGeneration !== generation.current || active?.revision !== revision || !active.expandedPaths.includes(file.path)) return
+      setError(reason instanceof Error ? reason.message : String(reason))
+    })
+    return () => { controller.abort() }
+  }, [expanded, file.path, review, revision, target.cwd, target.sessionId, target.source, target.turn])
+
+  const status = document?.file.status ?? file.status
+  const binary = document?.file.binary ?? file.binary
+  const truncated = document?.file.truncated ?? file.truncated
+
+  return <ChangeSurface className="aezy-review-file" data-aezy-review-file={file.path} style={{ marginBottom: 8, overflow: 'visible' }}>
+    <button
+      type="button"
+      onClick={() => review.toggle(file.path)}
+      aria-expanded={expanded}
+      title={`${file.path}${status === undefined ? '' : ` · ${status}`}`}
+      style={{ ...changeBannerStyle, position: expanded ? 'sticky' : undefined, top: expanded ? 0 : undefined, zIndex: expanded ? 3 : undefined, width: '100%', minHeight: 32, display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto 12px', alignItems: 'center', gap: 7, padding: '5px 9px', border: 0, borderRadius: expanded ? '12px 12px 0 0' : 12, color: expanded ? palette.accent : palette.text, cursor: 'pointer', textAlign: 'left' }}
+    >
+      <FileTypeIcon path={file.path} />
+      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : ''}{file.path}</span>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 9.5, color: palette.muted }}>
+        {status !== undefined && status !== 'modified' && <span title={status}>{status}</span>}
+        {binary && status !== 'binary' && <span>binary</span>}
+        {truncated && <span style={{ color: palette.warning }}>truncated</span>}
+        <DiffStats additions={document?.file.additions ?? file.additions ?? null} deletions={document?.file.deletions ?? file.deletions ?? null} />
+      </span>
+      <span aria-hidden style={{ color: palette.muted, fontSize: 9, transform: expanded ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }}>▶</span>
+    </button>
+    {expanded && <div data-aezy-expanded-file={file.path} data-aezy-review-request={file.path} style={{ overflowX: 'auto', borderRadius: '0 0 12px 12px', background: 'var(--dsw-alias-markdown-code-block)' }}>
+      {document === null && error === null && <div style={{ padding: 24, color: palette.muted, textAlign: 'center' }}>Loading this file…</div>}
+      {error !== null && <div role="alert" style={{ margin: 12, padding: 12, border: `1px solid ${palette.error}`, borderRadius: 8, color: palette.error }}>Review unavailable: {error}</div>}
+      {document !== null && <>
+        {document.file.binary && <div style={{ padding: '30px 16px', color: palette.muted, textAlign: 'center' }}>Binary file snapshot. Textual lines are not available.</div>}
+        {document.file.truncated && <div style={{ margin: 12, padding: 10, border: `1px solid ${palette.warning}`, borderRadius: 7, color: palette.warning }}>This diff exceeded Aezy’s bounded review limit. Only a safe fallback may be available.</div>}
+        {!document.file.binary && document.parts.map(part => <StructuredPart key={part.scope} part={part} />)}
+      </>}
+    </div>}
+  </ChangeSurface>
+}
+
 function ReviewPanel({ review, surface, closeReview, syncLayout, useSessions }: ReviewPanelProps) {
   const target = useSyncExternalStore(review.subscribe, review.getSnapshot)
   const currentSession = useSessions(state => state.current)
   const currentCwd = useSessions(state => state.current === undefined ? undefined : state.byId[state.current]?.cwd)
-  const [document, setDocument] = useState<ReviewDocument | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [viewport, setViewport] = useState(() => window.innerWidth)
-  const generation = useRef(0)
   const narrow = viewport < 760
   const currentSurface = narrow ? 'overlay' : 'details'
   const matchesSession = target !== null && target.sessionId === currentSession && target.cwd === currentCwd
@@ -582,28 +662,6 @@ function ReviewPanel({ review, surface, closeReview, syncLayout, useSessions }: 
   useEffect(() => {
     if (target !== null && matchesSession) syncLayout(narrow)
   }, [matchesSession, narrow, syncLayout, target])
-
-  useEffect(() => {
-    if (!visible || target === null || target.path === null) { setDocument(null); setError(null); return }
-    const controller = new AbortController()
-    const requestGeneration = ++generation.current
-    const selectedPath = target.path
-    setDocument(null)
-    setError(null)
-    const path = target.source === 'turn' ? '/aezy/api/project/turn-review' : '/aezy/api/project/diff'
-    const params = target.source === 'turn'
-      ? { cwd: target.cwd, sessionId: target.sessionId, turn: String(target.turn), path: selectedPath }
-      : { cwd: target.cwd, path: selectedPath }
-    request<ReviewDocument>(path, params, controller.signal).then(value => {
-      if (requestGeneration !== generation.current || review.getSnapshot() !== target) return
-      if (value.file.path !== selectedPath || value.source.kind !== target.source) throw new Error('Review response identity does not match the active selection.')
-      setDocument(value)
-    }).catch(reason => {
-      if (controller.signal.aborted || requestGeneration !== generation.current) return
-      setError(reason instanceof Error ? reason.message : String(reason))
-    })
-    return () => { controller.abort() }
-  }, [review, target, visible])
 
   useEffect(() => {
     if (!visible) return
@@ -625,40 +683,7 @@ function ReviewPanel({ review, surface, closeReview, syncLayout, useSessions }: 
         </div>
       </header>
       <nav aria-label="Changed file navigation" style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto', padding: 10 }}>
-        {target.files.map(file => {
-          const expanded = file.path === target.path
-          const status = expanded ? document?.file.status ?? file.status : file.status
-          const binary = expanded ? document?.file.binary ?? file.binary : file.binary
-          const truncated = expanded ? document?.file.truncated ?? file.truncated : file.truncated
-          return <ChangeSurface key={file.path} className="aezy-review-file" data-aezy-review-file={file.path} style={{ marginBottom: 8, overflow: 'visible' }}>
-            <button
-              type="button"
-              onClick={() => review.select(file.path)}
-              aria-expanded={expanded}
-              title={`${file.path}${status === undefined ? '' : ` · ${status}`}`}
-              style={{ ...changeBannerStyle, position: expanded ? 'sticky' : undefined, top: expanded ? 0 : undefined, zIndex: expanded ? 3 : undefined, width: '100%', minHeight: 32, display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto 12px', alignItems: 'center', gap: 7, padding: '5px 9px', border: 0, borderRadius: expanded ? '12px 12px 0 0' : 12, color: expanded ? palette.accent : palette.text, cursor: 'pointer', textAlign: 'left' }}
-            >
-              <FileTypeIcon path={file.path} />
-              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : ''}{file.path}</span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 9.5, color: palette.muted }}>
-                {status !== undefined && status !== 'modified' && <span title={status}>{status}</span>}
-                {binary && status !== 'binary' && <span>binary</span>}
-                {truncated && <span style={{ color: palette.warning }}>truncated</span>}
-                <DiffStats additions={expanded ? document?.file.additions ?? file.additions ?? null : file.additions ?? null} deletions={expanded ? document?.file.deletions ?? file.deletions ?? null : file.deletions ?? null} />
-              </span>
-              <span aria-hidden style={{ color: palette.muted, fontSize: 9, transform: expanded ? 'rotate(90deg)' : undefined, transition: 'transform 120ms ease' }}>▶</span>
-            </button>
-            {expanded && <div data-aezy-expanded-file={file.path} style={{ overflowX: 'auto', borderRadius: '0 0 12px 12px', background: 'var(--dsw-alias-markdown-code-block)' }}>
-              {document === null && error === null && <div style={{ padding: 24, color: palette.muted, textAlign: 'center' }}>Loading this file…</div>}
-              {error !== null && <div role="alert" style={{ margin: 12, padding: 12, border: `1px solid ${palette.error}`, borderRadius: 8, color: palette.error }}>Review unavailable: {error}</div>}
-              {document !== null && <>
-                {document.file.binary && <div style={{ padding: '30px 16px', color: palette.muted, textAlign: 'center' }}>Binary file snapshot. Textual lines are not available.</div>}
-                {document.file.truncated && <div style={{ margin: 12, padding: 10, border: `1px solid ${palette.warning}`, borderRadius: 7, color: palette.warning }}>This diff exceeded Aezy’s bounded review limit. Only a safe fallback may be available.</div>}
-                {!document.file.binary && document.parts.map(part => <StructuredPart key={part.scope} part={part} />)}
-              </>}
-            </div>}
-          </ChangeSurface>
-        })}
+        {target.files.map(file => <ReviewFileCard key={file.path} review={review} target={target} file={file} expanded={target.expandedPaths.includes(file.path)} />)}
       </nav>
     </aside>
 
@@ -811,7 +836,7 @@ function ChangesView({ cwd, sessionId, openReview }: ChangesProps) {
           onClick={() => {
             setSelected(file.path)
             openReview({
-              source: 'working', cwd, sessionId, path: file.path,
+              source: 'working', cwd, sessionId, expandedPaths: [file.path],
               files: project.files.map(item => ({ path: item.path, oldPath: item.originalPath ?? null })),
             })
           }}
@@ -1069,7 +1094,7 @@ export function apply(ctx: ClientContext): void {
     if (narrow) ctx.layout.closeDetails()
     else ctx.layout.openDetails()
   }
-  const openReview = (target: ReviewTarget) => {
+  const openReview = (target: ReviewOpenTarget) => {
     review.open(target)
     syncLayout(window.innerWidth < 760)
   }
