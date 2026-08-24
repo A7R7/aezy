@@ -7,13 +7,15 @@ import { TurnLedger } from './ledger.js'
 import { basename, summarizeTurn } from './summary.js'
 import { parseWorktreeList, WorktreeManager } from './worktree.js'
 import { countStructuredLines, parseUnifiedDiff } from './diff.js'
+import { describeDirectory, describePreview, previewLimits } from './preview.js'
 
 const ROUTE = '/aezy/api/project'
 const MAX_BODY_BYTES = 32 * 1024
 
 export {
   basename, describeDiff, describeProject, parsePorcelainV2, parseWorktreeList,
-  countStructuredLines, parseUnifiedDiff, summarizeTurn, TurnLedger, WorktreeManager,
+  countStructuredLines, describeDirectory, describePreview, parseUnifiedDiff, previewLimits,
+  summarizeTurn, TurnLedger, WorktreeManager,
 }
 export const inject = ['webServer', 'sessions', 'tools', 'aezySecurity']
 
@@ -105,6 +107,14 @@ function createHandler(ledger, worktrees, security, warn) {
           Number(query(url, 'turn')),
           query(url, 'path'),
         ))
+        return
+      }
+      if (req.method === 'GET' && url.pathname === `${ROUTE}/tree`) {
+        json(res, 200, await describeDirectory(query(url, 'cwd'), query(url, 'path') ?? ''))
+        return
+      }
+      if (req.method === 'GET' && url.pathname === `${ROUTE}/preview`) {
+        json(res, 200, await describePreview(query(url, 'cwd'), query(url, 'path')))
         return
       }
       if (req.method === 'GET' && url.pathname === `${ROUTE}/worktrees`) {

@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { access, mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { access, mkdtemp, mkdir, readFile, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import {
-  basename, describeDiff, describeProject, parsePorcelainV2, parseUnifiedDiff, summarizeTurn, TurnLedger,
+  basename, describeDiff, describeDirectory, describePreview, describeProject, parsePorcelainV2,
+  parseUnifiedDiff, previewLimits, summarizeTurn, TurnLedger,
 } from '../src/index.js'
 
 function git(cwd, ...args) {
@@ -54,6 +55,77 @@ test('project discovery returns structured local environment and Git status', as
   assert.equal(view.repository.clean, false)
   assert.deepEqual(view.files.map(file => file.path), ['new file.txt', 'tracked.txt'])
   assert.equal(view.files.find(file => file.path === 'tracked.txt')?.worktreeStatus, 'M')
+})
+
+test('workspace tree is lazy, bounded, sorted, and excludes private Git metadata', async () => {
+  const root = await fixture()
+  await mkdir(join(root, 'alpha'))
+  await writeFile(join(root, 'zeta.ts'), 'export const zeta = true\n')
+  const tree = await describeDirectory(root)
+  assert.equal(tree.version, 1)
+  assert.equal(tree.workspaceRoot, root)
+  assert.equal(tree.directory, '')
+  assert.equal(tree.truncated, false)
+  assert.deepEqual(tree.entries.map(entry => [entry.name, entry.kind]), [
+    ['alpha', 'directory'],
+    ['nested', 'directory'],
+    ['new file.txt', 'file'],
+    ['tracked.txt', 'file'],
+    ['zeta.ts', 'file'],
+  ])
+  assert.equal(tree.entries.some(entry => entry.name === '.git'), false)
+  assert.deepEqual(await describeDirectory(root, 'nested'), {
+    version: 1,
+    workspaceRoot: root,
+    directory: 'nested',
+    entries: [],
+    truncated: false,
+    totalEntries: 0,
+  })
+  await assert.rejects(() => describeDirectory(root, '.git'), /private Git metadata/)
+  await assert.rejects(() => describeDirectory(root, '../outside'), /escapes/)
+})
+
+test('workspace preview projects bounded code, Markdown, image, binary, and symlink states', async () => {
+  const writableTemp = process.platform === 'win32' ? tmpdir() : '/tmp'
+  const root = await mkdtemp(join(writableTemp, 'aezy-preview-'))
+  await writeFile(join(root, 'main.ts'), 'const answer: number = 42\n')
+  await writeFile(join(root, 'README.md'), '# Preview\n\n- safe\n')
+  await writeFile(join(root, 'binary.bin'), Buffer.from([0, 1, 2, 3]))
+  await writeFile(join(root, 'pixel.png'), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'))
+  await writeFile(join(root, 'large.txt'), Buffer.alloc(previewLimits.textBytes + 20, 97))
+  const outside = join(writableTemp, `outside-preview-${Date.now()}.txt`)
+  await writeFile(outside, 'outside\n')
+  await symlink(outside, join(root, 'outside-link'))
+
+  const code = await describePreview(root, 'main.ts')
+  assert.equal(code.kind, 'code')
+  assert.equal(code.language, 'typescript')
+  assert.deepEqual(code.lines, ['const answer: number = 42'])
+  assert.equal(code.totalLines, 1)
+  assert.match(code.fingerprint, /^[a-f0-9]{64}$/u)
+
+  const markdown = await describePreview(root, 'README.md')
+  assert.equal(markdown.kind, 'markdown')
+  assert.match(markdown.content, /^# Preview/u)
+
+  const image = await describePreview(root, 'pixel.png')
+  assert.equal(image.kind, 'image')
+  assert.equal(image.mime, 'image/png')
+  assert.match(image.dataUrl, /^data:image\/png;base64,/u)
+
+  const binary = await describePreview(root, 'binary.bin')
+  assert.equal(binary.kind, 'binary')
+  assert.equal(binary.fingerprint, null)
+
+  const large = await describePreview(root, 'large.txt')
+  assert.equal(large.kind, 'code')
+  assert.equal(large.truncated, true)
+  assert.equal(large.totalLines, null)
+  assert.ok(large.content.length <= previewLimits.textBytes)
+
+  await assert.rejects(() => describePreview(root, 'outside-link'), /outside the workspace|symbolic-link/)
+  await assert.rejects(() => describePreview(root, '../outside.txt'), /escapes/)
 })
 
 test('non-Git workspace records exact structured Turn changes without a sticky Git error', async () => {
