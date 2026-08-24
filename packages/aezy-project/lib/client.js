@@ -105,7 +105,7 @@ window.__ModuleLoader__.load({
 					display: "inline-flex",
 					gap: 7,
 					fontVariantNumeric: "tabular-nums",
-					fontFamily: "monospace"
+					fontFamily: "var(--ds-font-family-code, monospace)"
 				},
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 					style: { color: palette.success },
@@ -198,29 +198,39 @@ window.__ModuleLoader__.load({
 				});
 			};
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
+				className: "md-code-block",
 				"data-aezy-turn-files": summary.turn,
 				style: {
-					marginTop: 14,
+					position: "relative",
+					marginTop: 16,
 					maxWidth: 720,
 					overflow: "hidden",
-					border: `1px solid ${palette.border}`,
-					borderRadius: 10,
-					background: palette.elevated,
-					color: palette.text,
-					fontSize: 12
+					borderRadius: 12,
+					background: "var(--dsw-alias-markdown-code-block)",
+					color: "var(--dsw-alias-label-primary)"
 				},
 				children: [
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+						"data-aezy-turn-banner": true,
 						style: {
 							display: "flex",
 							alignItems: "center",
 							justifyContent: "space-between",
 							gap: 12,
-							padding: "10px 12px 7px"
+							padding: "9px 14px",
+							borderRadius: "12px 12px 0 0",
+							background: "var(--dsw-alias-markdown-code-block-banner)",
+							font: "var(--dsw-font-xs-13)"
 						},
 						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("strong", {
 							style: {
+								minWidth: 0,
+								overflow: "hidden",
+								textOverflow: "ellipsis",
+								whiteSpace: "nowrap",
+								fontFamily: "var(--ds-font-family-code)",
 								fontSize: 12,
+								lineHeight: "18px",
 								fontWeight: 600
 							},
 							children: [
@@ -233,7 +243,9 @@ window.__ModuleLoader__.load({
 							style: {
 								display: "inline-flex",
 								alignItems: "center",
-								gap: 4
+								flexShrink: 0,
+								gap: 12,
+								color: "var(--dsw-alias-label-secondary)"
 							},
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 								type: "button",
@@ -244,10 +256,10 @@ window.__ModuleLoader__.load({
 								title: summary.concurrent ? "Batch Undo is disabled because another Session overlapped this Turn" : canUndo ? receiptId === null ? "Restore every file to its state before this Turn" : "Reapply the files changed by this Turn" : "At least one file cannot be restored safely",
 								style: {
 									border: 0,
-									borderRadius: 5,
-									padding: "3px 7px",
+									padding: 0,
+									margin: 0,
 									background: "transparent",
-									color: canUndo ? palette.accent : palette.muted,
+									color: canUndo ? "inherit" : "var(--dsw-alias-label-tertiary)",
 									cursor: canUndo && !mutating ? "pointer" : "not-allowed",
 									font: "inherit"
 								},
@@ -257,10 +269,10 @@ window.__ModuleLoader__.load({
 								onClick: () => openTurnReview(),
 								style: {
 									border: 0,
-									borderRadius: 5,
-									padding: "3px 7px",
+									padding: 0,
+									margin: 0,
 									background: "transparent",
-									color: palette.accent,
+									color: "inherit",
 									cursor: "pointer",
 									font: "inherit"
 								},
@@ -268,42 +280,19 @@ window.__ModuleLoader__.load({
 							})]
 						})]
 					}),
-					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-						style: {
-							padding: "0 12px 8px",
-							color: palette.muted
-						},
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
-								additions: summary.additions,
-								deletions: summary.deletions
-							}),
-							!summary.statsComplete && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								title: "One or more files have unavailable line statistics",
-								style: { marginLeft: 8 },
-								children: "partial"
-							}),
-							summary.concurrent && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								title: "Another Session was active in this repository during the Turn",
-								style: {
-									marginLeft: 8,
-									color: palette.warning
-								},
-								children: "concurrent"
-							})
-						]
-					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-						style: { borderTop: `1px solid ${palette.border}` },
+						style: {
+							padding: "12px 14px 8px",
+							background: "var(--dsw-alias-markdown-code-block)",
+							font: "var(--dsw-font-markdown-code-block)"
+						},
 						children: summary.files.map((file) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							style: {
-								minHeight: 30,
+								minHeight: 22,
 								display: "grid",
 								gridTemplateColumns: "minmax(0, 1fr) auto",
-								alignItems: "center",
-								gap: 16,
-								padding: "4px 12px",
-								borderBottom: `1px solid ${palette.border}`
+								alignItems: "baseline",
+								gap: 16
 							},
 							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 								type: "button",
@@ -317,11 +306,10 @@ window.__ModuleLoader__.load({
 									padding: 0,
 									border: 0,
 									background: "transparent",
-									color: file.afterFingerprint === null ? palette.muted : palette.text,
+									color: file.afterFingerprint === null ? "var(--dsw-alias-label-tertiary)" : "var(--dsw-alias-label-primary)",
 									cursor: "pointer",
 									textAlign: "left",
-									fontFamily: "monospace",
-									fontSize: 12,
+									font: "inherit",
 									textDecoration: file.afterFingerprint === null ? "line-through" : void 0
 								},
 								children: [
@@ -330,8 +318,7 @@ window.__ModuleLoader__.load({
 									file.binary && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 										style: {
 											marginLeft: 7,
-											color: palette.muted,
-											fontFamily: "inherit"
+											color: "var(--dsw-alias-label-tertiary)"
 										},
 										children: "binary"
 									}),
@@ -350,11 +337,50 @@ window.__ModuleLoader__.load({
 							})]
 						}, file.path))
 					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("footer", {
+						style: {
+							display: "flex",
+							flexWrap: "wrap",
+							alignItems: "center",
+							gap: 7,
+							padding: "0 14px 12px",
+							background: "var(--dsw-alias-markdown-code-block)",
+							color: "var(--dsw-alias-label-tertiary)",
+							font: "var(--dsw-font-markdown-code-block)"
+						},
+						children: [
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								"aria-hidden": true,
+								children: "└"
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(DiffStats, {
+								additions: summary.additions,
+								deletions: summary.deletions
+							}),
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", { children: [
+								"· ",
+								summary.files.length,
+								" ",
+								summary.files.length === 1 ? "file" : "files"
+							] }),
+							!summary.statsComplete && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								title: "One or more files have unavailable line statistics",
+								children: "· partial"
+							}),
+							summary.concurrent && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								title: "Another Session was active in this repository during the Turn",
+								style: { color: palette.warning },
+								children: "· concurrent"
+							})
+						]
+					}),
 					error !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 						title: error,
 						style: {
-							padding: "8px 12px",
-							color: palette.error
+							padding: "0 14px 12px",
+							background: "var(--dsw-alias-markdown-code-block)",
+							color: palette.error,
+							font: "var(--dsw-font-markdown-code-block)"
 						},
 						children: error
 					})

@@ -297,7 +297,7 @@ function DiffStats({ additions, deletions }: { additions: number | null; deletio
   if (additions === null || deletions === null) {
     return <span title="Line statistics are unavailable for a binary, oversized, or legacy ledger entry" style={{ color: palette.muted }}>—</span>
   }
-  return <span style={{ display: 'inline-flex', gap: 7, fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace' }}>
+  return <span style={{ display: 'inline-flex', gap: 7, fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--ds-font-family-code, monospace)' }}>
     <span style={{ color: palette.success }}>+{additions}</span>
     <span style={{ color: palette.error }}>-{deletions}</span>
   </span>
@@ -369,30 +369,32 @@ function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryPr
     })
   }
 
-  return <section data-aezy-turn-files={summary.turn} style={{ marginTop: 14, maxWidth: 720, overflow: 'hidden', border: `1px solid ${palette.border}`, borderRadius: 10, background: palette.elevated, color: palette.text, fontSize: 12 }}>
-    <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 12px 7px' }}>
-      <strong style={{ fontSize: 12, fontWeight: 600 }}>Edited {summary.files.length} {summary.files.length === 1 ? 'file' : 'files'}</strong>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-        <button type="button" disabled={!canUndo || mutating} onClick={() => { void toggleUndo() }} title={summary.concurrent ? 'Batch Undo is disabled because another Session overlapped this Turn' : canUndo ? (receiptId === null ? 'Restore every file to its state before this Turn' : 'Reapply the files changed by this Turn') : 'At least one file cannot be restored safely'} style={{ border: 0, borderRadius: 5, padding: '3px 7px', background: 'transparent', color: canUndo ? palette.accent : palette.muted, cursor: canUndo && !mutating ? 'pointer' : 'not-allowed', font: 'inherit' }}>{mutating ? 'Working…' : receiptId === null ? 'Undo' : 'Redo'}</button>
-        <button type="button" onClick={() => openTurnReview()} style={{ border: 0, borderRadius: 5, padding: '3px 7px', background: 'transparent', color: palette.accent, cursor: 'pointer', font: 'inherit' }}>Review changes</button>
+  return <section className="md-code-block" data-aezy-turn-files={summary.turn} style={{ position: 'relative', marginTop: 16, maxWidth: 720, overflow: 'hidden', borderRadius: 12, background: 'var(--dsw-alias-markdown-code-block)', color: 'var(--dsw-alias-label-primary)' }}>
+    <header data-aezy-turn-banner style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '9px 14px', borderRadius: '12px 12px 0 0', background: 'var(--dsw-alias-markdown-code-block-banner)', font: 'var(--dsw-font-xs-13)' }}>
+      <strong style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code)', fontSize: 12, lineHeight: '18px', fontWeight: 600 }}>Edited {summary.files.length} {summary.files.length === 1 ? 'file' : 'files'}</strong>
+      <span style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, gap: 12, color: 'var(--dsw-alias-label-secondary)' }}>
+        <button type="button" disabled={!canUndo || mutating} onClick={() => { void toggleUndo() }} title={summary.concurrent ? 'Batch Undo is disabled because another Session overlapped this Turn' : canUndo ? (receiptId === null ? 'Restore every file to its state before this Turn' : 'Reapply the files changed by this Turn') : 'At least one file cannot be restored safely'} style={{ border: 0, padding: 0, margin: 0, background: 'transparent', color: canUndo ? 'inherit' : 'var(--dsw-alias-label-tertiary)', cursor: canUndo && !mutating ? 'pointer' : 'not-allowed', font: 'inherit' }}>{mutating ? 'Working…' : receiptId === null ? 'Undo' : 'Redo'}</button>
+        <button type="button" onClick={() => openTurnReview()} style={{ border: 0, padding: 0, margin: 0, background: 'transparent', color: 'inherit', cursor: 'pointer', font: 'inherit' }}>Review changes</button>
       </span>
     </header>
-    <div style={{ padding: '0 12px 8px', color: palette.muted }}>
-      <DiffStats additions={summary.additions} deletions={summary.deletions} />
-      {!summary.statsComplete && <span title="One or more files have unavailable line statistics" style={{ marginLeft: 8 }}>partial</span>}
-      {summary.concurrent && <span title="Another Session was active in this repository during the Turn" style={{ marginLeft: 8, color: palette.warning }}>concurrent</span>}
-    </div>
-    <div style={{ borderTop: `1px solid ${palette.border}` }}>
-      {summary.files.map(file => <div key={file.path} style={{ minHeight: 30, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', gap: 16, padding: '4px 12px', borderBottom: `1px solid ${palette.border}` }}>
-        <button type="button" title={file.path} onClick={() => openTurnReview(file.path)} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: 0, border: 0, background: 'transparent', color: file.afterFingerprint === null ? palette.muted : palette.text, cursor: 'pointer', textAlign: 'left', fontFamily: 'monospace', fontSize: 12, textDecoration: file.afterFingerprint === null ? 'line-through' : undefined }}>
+    <div style={{ padding: '12px 14px 8px', background: 'var(--dsw-alias-markdown-code-block)', font: 'var(--dsw-font-markdown-code-block)' }}>
+      {summary.files.map(file => <div key={file.path} style={{ minHeight: 22, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'baseline', gap: 16 }}>
+        <button type="button" title={file.path} onClick={() => openTurnReview(file.path)} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: 0, border: 0, background: 'transparent', color: file.afterFingerprint === null ? 'var(--dsw-alias-label-tertiary)' : 'var(--dsw-alias-label-primary)', cursor: 'pointer', textAlign: 'left', font: 'inherit', textDecoration: file.afterFingerprint === null ? 'line-through' : undefined }}>
           {file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : ''}{file.path}
-          {file.binary && <span style={{ marginLeft: 7, color: palette.muted, fontFamily: 'inherit' }}>binary</span>}
+          {file.binary && <span style={{ marginLeft: 7, color: 'var(--dsw-alias-label-tertiary)' }}>binary</span>}
           {file.truncated && <span style={{ marginLeft: 7, color: palette.warning, fontFamily: 'inherit' }}>truncated</span>}
         </button>
         <DiffStats additions={file.additions} deletions={file.deletions} />
       </div>)}
     </div>
-    {error !== null && <div title={error} style={{ padding: '8px 12px', color: palette.error }}>{error}</div>}
+    <footer style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 7, padding: '0 14px 12px', background: 'var(--dsw-alias-markdown-code-block)', color: 'var(--dsw-alias-label-tertiary)', font: 'var(--dsw-font-markdown-code-block)' }}>
+      <span aria-hidden>└</span>
+      <DiffStats additions={summary.additions} deletions={summary.deletions} />
+      <span>· {summary.files.length} {summary.files.length === 1 ? 'file' : 'files'}</span>
+      {!summary.statsComplete && <span title="One or more files have unavailable line statistics">· partial</span>}
+      {summary.concurrent && <span title="Another Session was active in this repository during the Turn" style={{ color: palette.warning }}>· concurrent</span>}
+    </footer>
+    {error !== null && <div title={error} style={{ padding: '0 14px 12px', background: 'var(--dsw-alias-markdown-code-block)', color: palette.error, font: 'var(--dsw-font-markdown-code-block)' }}>{error}</div>}
   </section>
 }
 
