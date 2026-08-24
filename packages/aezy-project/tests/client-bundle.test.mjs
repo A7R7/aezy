@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
-test('built client bundle registers docked details, narrow Review overlay, Changes, Worktrees, and Turn-tail surfaces', async () => {
+test('built client bundle registers one docked Project panel, narrow overlay, Changes, Worktrees, and Turn-tail surfaces', async () => {
   let handoff
   globalThis.window = {
     __ModuleLoader__: {
@@ -19,7 +19,9 @@ test('built client bundle registers docked details, narrow Review overlay, Chang
   assert.equal(typeof handoff?.factory, 'function')
 
   const require = createRequire(new URL('../package.json', import.meta.url))
-  const plugin = handoff.factory(specifier => require(specifier))
+  const plugin = handoff.factory(specifier => specifier === '@deepseek-ai/dsh-client-ui-primitives'
+    ? { MarkdownText: () => null, ReadBlock: () => null }
+    : require(specifier))
   const injectedSlots = []
   const registrations = []
   const dispose = () => {}
@@ -47,7 +49,7 @@ test('built client bundle registers docked details, narrow Review overlay, Chang
   assert.equal(details.options.inject().surface, 'details')
   assert.equal(typeof details.component, 'function')
   const panel = registrations.find(entry => entry.options.name === 'shell.overlay')
-  assert.equal(panel.options.id, 'aezy-review')
+  assert.equal(panel.options.id, 'aezy-project')
   assert.equal(panel.options.inject().surface, 'overlay')
   assert.equal(typeof panel.component, 'function')
   const tail = registrations.find(entry => entry.options.name === 'conversation.chat.turnTail')
@@ -57,16 +59,20 @@ test('built client bundle registers docked details, narrow Review overlay, Chang
   assert.equal(tail.options.inject('session').cwd, '/repo')
   assert.equal(tail.options.inject('session').sessionId, 'session')
   assert.equal(typeof tail.options.inject('session').openReview, 'function')
+  assert.equal(typeof tail.options.inject('session').openFiles, 'function')
   assert.equal(typeof tail.component, 'function')
   const view = registrations.find(entry => entry.options.id === 'changes')
   assert.equal(view.options.label(), 'Changes')
   assert.equal(view.options.inject('session').cwd, '/repo')
   assert.equal(view.options.inject('session').sessionId, 'session')
   assert.equal(typeof view.options.inject('session').openReview, 'function')
+  assert.equal(typeof view.options.inject('session').openFiles, 'function')
   assert.equal(typeof view.component, 'function')
   const worktrees = registrations.find(entry => entry.options.id === 'worktrees')
   assert.equal(worktrees.options.label(), 'Worktrees')
-  assert.deepEqual(worktrees.options.inject('session'), { cwd: '/repo', sessionId: 'session' })
+  assert.equal(worktrees.options.inject('session').cwd, '/repo')
+  assert.equal(worktrees.options.inject('session').sessionId, 'session')
+  assert.equal(typeof worktrees.options.inject('session').openFiles, 'function')
   assert.equal(typeof worktrees.component, 'function')
 })
 
@@ -94,6 +100,17 @@ test('built structured Review surface uses DSH aliases and removes the Turn inli
   assert.match(bundle, /--dsw-alias-markdown-code-block/)
   assert.match(bundle, /--dsw-font-markdown-code-block/)
   assert.match(bundle, /data-aezy-review-panel/)
+  assert.match(bundle, /data-aezy-project-panel/)
+  assert.match(bundle, /data-aezy-files-panel/)
+  assert.match(bundle, /data-aezy-file-preview/)
+  assert.match(bundle, /data-aezy-markdown-preview/)
+  assert.match(bundle, /Files & preview/)
+  assert.match(bundle, /Browse files/)
+  assert.match(bundle, /Workspace file tree/)
+  assert.match(bundle, /Open file preview/)
+  assert.match(bundle, /\/aezy\/api\/project\/tree/)
+  assert.match(bundle, /\/aezy\/api\/project\/preview/)
+  assert.match(bundle, /@deepseek-ai\/dsh-client-ui-primitives/)
   assert.match(bundle, /data-aezy-expanded-file/)
   assert.match(bundle, /data-aezy-review-request/)
   assert.match(bundle, /aria-expanded/)
@@ -111,10 +128,12 @@ test('built structured Review surface uses DSH aliases and removes the Turn inli
   assert.doesNotMatch(source, /snapshot \$\{document\.source\.snapshotId/)
   assert.doesNotMatch(source, />\{hunk\.header\}<\/div>/)
   assert.match(source, /expandedPaths: \[\.\.\.new Set/)
-  assert.match(source, /this\.#target\.expandedPaths\.includes\(path\)/)
-  assert.match(source, /\[\.\.\.this\.#target\.expandedPaths, path\]/)
-  assert.match(source, /target\.expandedPaths\.includes\(file\.path\)/)
+  assert.match(source, /review\.expandedPaths\.includes\(path\)/)
+  assert.match(source, /\[\.\.\.review\.expandedPaths, path\]/)
+  assert.match(source, /review\.expandedPaths\.includes\(file\.path\)/)
   assert.match(source, /active\?\.revision !== revision/)
+  assert.match(source, /active\.files\.revision !== revision/)
+  assert.match(source, /controller\.abort\(\)/)
   assert.match(source, /minHeight: 28/)
   assert.match(source, /background: highlighted \? palette\.interactive : 'transparent'/)
 })

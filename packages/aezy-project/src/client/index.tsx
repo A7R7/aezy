@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type HTMLAttributes } from 'react'
+import { MarkdownText, ReadBlock } from '@deepseek-ai/dsh-client-ui-primitives'
 import { summarizeTurn } from '../summary.js'
 
 type FileRow = {
@@ -157,6 +158,7 @@ type ChangesProps = {
   cwd: string
   sessionId: string
   openReview(target: ReviewOpenTarget): void
+  openFiles(target: FilesOpenTarget): void
 }
 
 type TurnTailOwner = {
@@ -168,6 +170,7 @@ type TurnSummaryProps = {
   cwd: string
   sessionId: string
   openReview(target: ReviewOpenTarget): void
+  openFiles(target: FilesOpenTarget): void
 }
 
 type TurnSummary = NonNullable<ReturnType<typeof summarizeTurn>>
@@ -219,6 +222,7 @@ type Handoff = {
 type WorktreesProps = {
   cwd: string
   sessionId: string
+  openFiles(target: FilesOpenTarget): void
   openWorktree(path: string, worktreeId: string): Promise<void>
   returnToLocal(repositoryRoot: string, worktreeId: string, cwd: string, sessionId: string): Promise<void>
 }
@@ -320,37 +324,135 @@ type ReviewTarget = {
 
 type ReviewOpenTarget = Omit<ReviewTarget, 'revision'>
 
-class ReviewController {
-  #target: ReviewTarget | null = null
+type FilesTarget = {
+  sessionId: string
+  cwd: string
+  selectedPath: string | null
+  revision: number
+}
+
+type FilesOpenTarget = {
+  sessionId: string
+  cwd: string
+  path?: string | null
+}
+
+type ProjectPanelTarget = {
+  sessionId: string
+  cwd: string
+  mode: 'review' | 'files'
+  review: ReviewTarget | null
+  files: FilesTarget
+}
+
+type TreeEntry = {
+  name: string
+  path: string
+  kind: 'directory' | 'file' | 'symlink' | 'unsupported'
+}
+
+type DirectoryDocument = {
+  version: 1
+  workspaceRoot: string
+  directory: string
+  entries: TreeEntry[]
+  truncated: boolean
+  totalEntries: number
+}
+
+type PreviewDocument = {
+  version: 1
+  identity: string
+  workspaceRoot: string
+  path: string
+  name: string
+  kind: 'code' | 'markdown' | 'image' | 'binary'
+  size: number
+  fingerprint: string | null
+  truncated: boolean
+  message?: string
+  content?: string
+  lines?: string[]
+  totalLines?: number | null
+  language?: string | null
+  mime?: string
+  dataUrl?: string | null
+}
+
+class ProjectPanelController {
+  #target: ProjectPanelTarget | null = null
   #revision = 0
   #listeners = new Set<() => void>()
 
-  getSnapshot = (): ReviewTarget | null => this.#target
+  getSnapshot = (): ProjectPanelTarget | null => this.#target
   subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener)
     return () => { this.#listeners.delete(listener) }
   }
-  open(target: ReviewOpenTarget): void {
+  openReview(target: ReviewOpenTarget): void {
+    const current = this.#target
     const available = new Set(target.files.map(file => file.path))
-    this.#target = {
+    const sameScope = current?.sessionId === target.sessionId && current.cwd === target.cwd
+    const review = {
       ...target,
       expandedPaths: [...new Set(target.expandedPaths.filter(path => available.has(path)))],
       revision: ++this.#revision,
     }
-    for (const listener of this.#listeners) listener()
+    this.#target = {
+      sessionId: target.sessionId,
+      cwd: target.cwd,
+      mode: 'review',
+      review,
+      files: sameScope
+        ? current.files
+        : { sessionId: target.sessionId, cwd: target.cwd, selectedPath: null, revision: ++this.#revision },
+    }
+    this.#emit()
   }
-  toggle(path: string): void {
-    if (this.#target === null || !this.#target.files.some(file => file.path === path)) return
-    const expandedPaths = this.#target.expandedPaths.includes(path)
-      ? this.#target.expandedPaths.filter(candidate => candidate !== path)
-      : [...this.#target.expandedPaths, path]
-    this.#target = { ...this.#target, expandedPaths }
+  openFiles(target: FilesOpenTarget): void {
+    const current = this.#target
+    const sameScope = current?.sessionId === target.sessionId && current.cwd === target.cwd
+    const selectedPath = target.path === undefined ? (sameScope ? current.files.selectedPath : null) : target.path
+    this.#target = {
+      sessionId: target.sessionId,
+      cwd: target.cwd,
+      mode: 'files',
+      review: sameScope ? current.review : null,
+      files: { sessionId: target.sessionId, cwd: target.cwd, selectedPath, revision: ++this.#revision },
+    }
+    this.#emit()
+  }
+  show(mode: ProjectPanelTarget['mode']): void {
+    if (this.#target === null || (mode === 'review' && this.#target.review === null) || this.#target.mode === mode) return
+    this.#target = { ...this.#target, mode }
+    this.#emit()
+  }
+  selectFile(path: string): void {
+    if (this.#target === null || !path || path.includes('\0')) return
+    this.#target = {
+      ...this.#target,
+      mode: 'files',
+      files: { ...this.#target.files, selectedPath: path, revision: ++this.#revision },
+    }
+    this.#emit()
+  }
+  toggleReview(path: string): void {
+    const target = this.#target
+    if (target === null || target.review === null || !target.review.files.some(file => file.path === path)) return
+    const review = target.review
+    const expandedPaths = review.expandedPaths.includes(path)
+      ? review.expandedPaths.filter(candidate => candidate !== path)
+      : [...review.expandedPaths, path]
+    this.#target = { ...target, review: { ...review, expandedPaths } }
+    this.#emit()
+  }
+  #emit(): void {
     for (const listener of this.#listeners) listener()
   }
   close(): void {
     if (this.#target === null) return
     this.#target = null
-    for (const listener of this.#listeners) listener()
+    this.#emit()
   }
 }
 
@@ -381,7 +483,7 @@ function DiffStats({ additions, deletions }: { additions: number | null; deletio
   </span>
 }
 
-function TurnSummaryFileRow({ file, open }: { file: TurnSummary['files'][number]; open(): void }) {
+function TurnSummaryFileRow({ file, openReview, openFile }: { file: TurnSummary['files'][number]; openReview(): void; openFile(): void }) {
   const [highlighted, setHighlighted] = useState(false)
   return <div
     data-aezy-turn-file={file.path}
@@ -389,19 +491,20 @@ function TurnSummaryFileRow({ file, open }: { file: TurnSummary['files'][number]
     onPointerLeave={() => setHighlighted(false)}
     onFocusCapture={() => setHighlighted(true)}
     onBlurCapture={() => setHighlighted(false)}
-    style={{ minHeight: 28, display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto', alignItems: 'center', gap: 7, margin: '0 -6px', padding: '0 6px', borderRadius: 6, background: highlighted ? palette.interactive : 'transparent', transition: 'background 120ms ease' }}
+    style={{ minHeight: 28, display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto 18px', alignItems: 'center', gap: 7, margin: '0 -6px', padding: '0 6px', borderRadius: 6, background: highlighted ? palette.interactive : 'transparent', transition: 'background 120ms ease' }}
   >
     <FileTypeIcon path={file.path} />
-    <button type="button" title={file.path} onClick={open} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: 0, border: 0, background: 'transparent', color: file.afterFingerprint === null ? 'var(--dsw-alias-label-tertiary)' : 'var(--dsw-alias-label-primary)', cursor: 'pointer', textAlign: 'left', font: 'inherit', textDecoration: file.afterFingerprint === null ? 'line-through' : undefined }}>
+    <button type="button" title={`${file.path} · Review changes`} onClick={openReview} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: 0, border: 0, background: 'transparent', color: file.afterFingerprint === null ? 'var(--dsw-alias-label-tertiary)' : 'var(--dsw-alias-label-primary)', cursor: 'pointer', textAlign: 'left', font: 'inherit', textDecoration: file.afterFingerprint === null ? 'line-through' : undefined }}>
       {file.oldPath && file.oldPath !== file.path ? `${file.oldPath} → ` : ''}{file.path}
       {file.binary && <span style={{ marginLeft: 7, color: 'var(--dsw-alias-label-tertiary)' }}>binary</span>}
       {file.truncated && <span style={{ marginLeft: 7, color: palette.warning, fontFamily: 'inherit' }}>truncated</span>}
     </button>
     <DiffStats additions={file.additions} deletions={file.deletions} />
+    <button type="button" aria-label={`Open ${file.path} preview`} title="Open file preview" disabled={file.afterFingerprint === null} onClick={openFile} style={{ width: 18, height: 18, padding: 0, border: 0, borderRadius: 4, background: 'transparent', color: file.afterFingerprint === null ? palette.muted : palette.accent, cursor: file.afterFingerprint === null ? 'not-allowed' : 'pointer', fontSize: 12, lineHeight: '18px' }}>↗</button>
   </div>
 }
 
-function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryProps) {
+function TurnChangedFiles({ matched, cwd, sessionId, openReview, openFiles }: TurnSummaryProps) {
   const [summary, setSummary] = useState<TurnSummary | null | undefined>(undefined)
   const [receiptId, setReceiptId] = useState<string | null>(null)
   const [mutating, setMutating] = useState(false)
@@ -479,7 +582,7 @@ function TurnChangedFiles({ matched, cwd, sessionId, openReview }: TurnSummaryPr
       </span>
     </header>
     <div style={{ padding: '12px 14px 8px', background: 'var(--dsw-alias-markdown-code-block)', font: 'var(--dsw-font-markdown-code-block)' }}>
-      {summary.files.map(file => <TurnSummaryFileRow key={file.path} file={file} open={() => openTurnReview(file.path)} />)}
+      {summary.files.map(file => <TurnSummaryFileRow key={file.path} file={file} openReview={() => openTurnReview(file.path)} openFile={() => openFiles({ cwd, sessionId, path: file.path })} />)}
     </div>
     <footer style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 7, padding: '0 14px 12px', background: 'var(--dsw-alias-markdown-code-block)', color: 'var(--dsw-alias-label-tertiary)', font: 'var(--dsw-font-markdown-code-block)' }}>
       <span aria-hidden>└</span>
@@ -561,22 +664,22 @@ function StructuredPart({ part }: { part: DiffPart }) {
   </section>
 }
 
-type ReviewPanelProps = {
-  review: ReviewController
+type ProjectPanelProps = {
+  panel: ProjectPanelController
   surface: 'details' | 'overlay'
-  closeReview(): void
+  closePanel(): void
   syncLayout(narrow: boolean): void
   useSessions<T>(selector: (state: SessionsState) => T): T
 }
 
 type ReviewFileCardProps = {
-  review: ReviewController
+  panel: ProjectPanelController
   target: ReviewTarget
   file: ReviewNavFile
   expanded: boolean
 }
 
-function ReviewFileCard({ review, target, file, expanded }: ReviewFileCardProps) {
+function ReviewFileCard({ panel, target, file, expanded }: ReviewFileCardProps) {
   const [document, setDocument] = useState<ReviewDocument | null>(null)
   const [error, setError] = useState<string | null>(null)
   const generation = useRef(0)
@@ -589,21 +692,21 @@ function ReviewFileCard({ review, target, file, expanded }: ReviewFileCardProps)
     setDocument(null)
     setError(null)
     const endpoint = target.source === 'turn' ? '/aezy/api/project/turn-review' : '/aezy/api/project/diff'
-    const params = target.source === 'turn'
+    const params: Record<string, string> = target.source === 'turn'
       ? { cwd: target.cwd, sessionId: target.sessionId, turn: String(target.turn), path: file.path }
       : { cwd: target.cwd, path: file.path }
     request<ReviewDocument>(endpoint, params, controller.signal).then(value => {
-      const active = review.getSnapshot()
+      const active = panel.getSnapshot()?.review
       if (requestGeneration !== generation.current || active?.revision !== revision || !active.expandedPaths.includes(file.path)) return
       if (value.file.path !== file.path || value.source.kind !== target.source) throw new Error('Review response identity does not match the expanded file.')
       setDocument(value)
     }).catch(reason => {
-      const active = review.getSnapshot()
+      const active = panel.getSnapshot()?.review
       if (controller.signal.aborted || requestGeneration !== generation.current || active?.revision !== revision || !active.expandedPaths.includes(file.path)) return
       setError(reason instanceof Error ? reason.message : String(reason))
     })
     return () => { controller.abort() }
-  }, [expanded, file.path, review, revision, target.cwd, target.sessionId, target.source, target.turn])
+  }, [expanded, file.path, panel, revision, target.cwd, target.sessionId, target.source, target.turn])
 
   const status = document?.file.status ?? file.status
   const binary = document?.file.binary ?? file.binary
@@ -612,7 +715,7 @@ function ReviewFileCard({ review, target, file, expanded }: ReviewFileCardProps)
   return <ChangeSurface className="aezy-review-file" data-aezy-review-file={file.path} style={{ marginBottom: 8, overflow: 'visible' }}>
     <button
       type="button"
-      onClick={() => review.toggle(file.path)}
+      onClick={() => panel.toggleReview(file.path)}
       aria-expanded={expanded}
       title={`${file.path}${status === undefined ? '' : ` · ${status}`}`}
       style={{ ...changeBannerStyle, position: expanded ? 'sticky' : undefined, top: expanded ? 0 : undefined, zIndex: expanded ? 3 : undefined, width: '100%', minHeight: 32, display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto 12px', alignItems: 'center', gap: 7, padding: '5px 9px', border: 0, borderRadius: expanded ? '12px 12px 0 0' : 12, color: expanded ? palette.accent : palette.text, cursor: 'pointer', textAlign: 'left' }}
@@ -639,8 +742,160 @@ function ReviewFileCard({ review, target, file, expanded }: ReviewFileCardProps)
   </ChangeSurface>
 }
 
-function ReviewPanel({ review, surface, closeReview, syncLayout, useSessions }: ReviewPanelProps) {
-  const target = useSyncExternalStore(review.subscribe, review.getSnapshot)
+function FolderIcon({ open }: { open: boolean }) {
+  return <span aria-hidden style={{ width: 16, height: 16, display: 'inline-flex', color: open ? palette.accent : palette.warning }}>
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none">
+      <path d="M1.75 3.5h4.4l1.2 1.35h6.9v7.65H1.75z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      {open && <path d="M2.1 6.35h11.55l-1.15 6.1H1.75z" fill="var(--dsw-alias-bg-base)" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />}
+    </svg>
+  </span>
+}
+
+function parentDirectories(path: string | null): string[] {
+  if (path === null) return []
+  const parts = path.split('/').filter(Boolean)
+  const parents: string[] = []
+  for (let index = 1; index < parts.length; index += 1) parents.push(parts.slice(0, index).join('/'))
+  return parents
+}
+
+type DirectoryBranchProps = {
+  panel: ProjectPanelController
+  target: ProjectPanelTarget
+  directory: string
+  depth: number
+  expanded: ReadonlySet<string>
+  toggle(path: string): void
+}
+
+function DirectoryBranch({ panel, target, directory, depth, expanded, toggle }: DirectoryBranchProps) {
+  const [document, setDocument] = useState<DirectoryDocument | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const open = directory === '' || expanded.has(directory)
+
+  useEffect(() => {
+    if (!open) { setDocument(null); setError(null); return }
+    const controller = new AbortController()
+    setDocument(null)
+    setError(null)
+    request<DirectoryDocument>('/aezy/api/project/tree', { cwd: target.cwd, path: directory }, controller.signal)
+      .then(value => {
+        const active = panel.getSnapshot()
+        if (controller.signal.aborted || active?.sessionId !== target.sessionId || active.cwd !== target.cwd) return
+        if (value.directory !== directory) throw new Error('Directory response identity does not match the requested path.')
+        setDocument(value)
+      })
+      .catch(reason => {
+        if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason))
+      })
+    return () => { controller.abort() }
+  }, [directory, open, panel, target.cwd, target.sessionId])
+
+  if (!open) return null
+  if (error !== null) return <div role="alert" style={{ padding: `5px 8px 5px ${10 + depth * 16}px`, color: palette.error, fontSize: 11 }}>{error}</div>
+  if (document === null) return <div style={{ padding: `5px 8px 5px ${10 + depth * 16}px`, color: palette.muted, fontSize: 11 }}>Loading…</div>
+
+  return <>
+    {document.entries.map(entry => {
+      const directoryEntry = entry.kind === 'directory'
+      const entryOpen = directoryEntry && expanded.has(entry.path)
+      const supported = directoryEntry || entry.kind === 'file'
+      const selected = target.files.selectedPath === entry.path
+      return <div key={entry.path}>
+        <button
+          type="button"
+          role="treeitem"
+          aria-level={depth + 1}
+          aria-expanded={directoryEntry ? entryOpen : undefined}
+          disabled={!supported}
+          title={entry.kind === 'symlink' ? `${entry.path} · symbolic links are not previewed` : entry.path}
+          onClick={() => { if (directoryEntry) toggle(entry.path); else if (entry.kind === 'file') panel.selectFile(entry.path) }}
+          style={{ boxSizing: 'border-box', width: '100%', minHeight: 26, display: 'grid', gridTemplateColumns: '12px 16px minmax(0, 1fr)', alignItems: 'center', gap: 5, padding: `3px 8px 3px ${8 + depth * 16}px`, border: 0, borderRadius: 5, background: selected ? palette.interactive : 'transparent', color: supported ? palette.text : palette.muted, cursor: supported ? 'pointer' : 'not-allowed', textAlign: 'left' }}
+        >
+          <span aria-hidden style={{ color: palette.muted, fontSize: 8, transform: entryOpen ? 'rotate(90deg)' : undefined, visibility: directoryEntry ? 'visible' : 'hidden' }}>▶</span>
+          {directoryEntry ? <FolderIcon open={entryOpen} /> : <FileTypeIcon path={entry.path} />}
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{entry.name}</span>
+        </button>
+        {directoryEntry && entryOpen && <DirectoryBranch panel={panel} target={target} directory={entry.path} depth={depth + 1} expanded={expanded} toggle={toggle} />}
+      </div>
+    })}
+    {document.entries.length === 0 && <div style={{ padding: `5px 8px 5px ${10 + depth * 16}px`, color: palette.muted, fontSize: 11 }}>Empty directory</div>}
+    {document.truncated && <div style={{ padding: `5px 8px 5px ${10 + depth * 16}px`, color: palette.warning, fontSize: 11 }}>Showing {document.entries.length} of {document.totalEntries} entries.</div>}
+  </>
+}
+
+function FilePreview({ panel, target }: { panel: ProjectPanelController; target: ProjectPanelTarget }) {
+  const path = target.files.selectedPath
+  const revision = target.files.revision
+  const [document, setDocument] = useState<PreviewDocument | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (path === null) { setDocument(null); setError(null); return }
+    const controller = new AbortController()
+    setDocument(null)
+    setError(null)
+    request<PreviewDocument>('/aezy/api/project/preview', { cwd: target.cwd, path }, controller.signal)
+      .then(value => {
+        const active = panel.getSnapshot()
+        if (controller.signal.aborted || active?.mode !== 'files' || active.sessionId !== target.sessionId
+          || active.cwd !== target.cwd || active.files.revision !== revision || active.files.selectedPath !== path) return
+        if (value.path !== path) throw new Error('Preview response identity does not match the selected file.')
+        setDocument(value)
+      })
+      .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason)) })
+    return () => { controller.abort() }
+  }, [panel, path, revision, target.cwd, target.sessionId])
+
+  if (path === null) return <div style={{ display: 'grid', minHeight: 160, placeItems: 'center', padding: 24, color: palette.muted, textAlign: 'center' }}>Select a file from the workspace tree.</div>
+  if (error !== null) return <div role="alert" style={{ margin: 12, padding: 12, border: `1px solid ${palette.error}`, borderRadius: 8, color: palette.error }}>Preview unavailable: {error}</div>
+  if (document === null) return <div style={{ display: 'grid', minHeight: 160, placeItems: 'center', padding: 24, color: palette.muted }}>Loading preview…</div>
+
+  const lines = (document.lines ?? []).map((text, index) => ({ number: index + 1, text }))
+  return <div data-aezy-file-preview={document.path} data-preview-kind={document.kind} style={{ minWidth: 0, padding: 10 }}>
+    {document.truncated && <div style={{ marginBottom: 10, padding: 9, border: `1px solid ${palette.warning}`, borderRadius: 7, color: palette.warning, fontSize: 11 }}>{document.message ?? 'Preview output was safely bounded.'}</div>}
+    {document.kind === 'code' && <ReadBlock label={document.path} lines={lines} totalLines={document.totalLines ?? Math.max(lines.length + 1, 1)} lang={document.language ?? undefined} maxLines={120} />}
+    {document.kind === 'markdown' && <ChangeSurface className="aezy-markdown-preview" style={{ overflow: 'visible' }}>
+      <div style={{ ...changeBannerStyle, padding: '8px 11px', borderRadius: '12px 12px 0 0', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{document.path}</div>
+      <div data-aezy-markdown-preview style={{ padding: '2px 14px 14px', overflowWrap: 'anywhere' }}><MarkdownText text={document.content ?? ''} /></div>
+    </ChangeSurface>}
+    {document.kind === 'image' && <ChangeSurface className="aezy-image-preview">
+      <div style={{ ...changeBannerStyle, padding: '8px 11px', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{document.path}</div>
+      {document.dataUrl === null || document.dataUrl === undefined
+        ? <div style={{ padding: 28, color: palette.muted, textAlign: 'center' }}>{document.message ?? 'Image preview is unavailable.'}</div>
+        : <div style={{ display: 'grid', minHeight: 180, placeItems: 'center', padding: 12, backgroundImage: 'linear-gradient(45deg, rgba(127,127,127,.08) 25%, transparent 25%), linear-gradient(-45deg, rgba(127,127,127,.08) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(127,127,127,.08) 75%), linear-gradient(-45deg, transparent 75%, rgba(127,127,127,.08) 75%)', backgroundSize: '16px 16px', backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0' }}><img src={document.dataUrl} alt={document.name} style={{ display: 'block', maxWidth: '100%', maxHeight: '65vh', objectFit: 'contain' }} /></div>}
+    </ChangeSurface>}
+    {document.kind === 'binary' && <div style={{ padding: 30, border: `1px solid ${palette.border}`, borderRadius: 10, color: palette.muted, textAlign: 'center' }}>{document.message ?? 'Binary preview is unavailable.'}</div>}
+  </div>
+}
+
+function FilesPanel({ panel, target }: { panel: ProjectPanelController; target: ProjectPanelTarget }) {
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(parentDirectories(target.files.selectedPath)))
+  useEffect(() => {
+    setExpanded(current => new Set([...current, ...parentDirectories(target.files.selectedPath)]))
+  }, [target.files.revision, target.files.selectedPath])
+  useEffect(() => { setExpanded(new Set(parentDirectories(target.files.selectedPath))) }, [target.cwd, target.sessionId])
+  const toggle = useCallback((path: string) => {
+    setExpanded(current => {
+      const next = new Set(current)
+      if (next.has(path)) next.delete(path)
+      else next.add(path)
+      return next
+    })
+  }, [])
+
+  return <div data-aezy-files-panel style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <section aria-label="Workspace file tree" style={{ flex: '0 1 38%', minHeight: 112, maxHeight: 320, overflow: 'auto', padding: '7px 6px 9px', borderBottom: `1px solid ${palette.border}` }}>
+      <div role="tree" aria-label="Files"><DirectoryBranch panel={panel} target={target} directory="" depth={0} expanded={expanded} toggle={toggle} /></div>
+    </section>
+    <section aria-label="File preview" style={{ flex: '1 1 62%', minHeight: 0, overflow: 'auto', background: palette.panel }}>
+      <FilePreview panel={panel} target={target} />
+    </section>
+  </div>
+}
+
+function ProjectPanel({ panel: controller, surface, closePanel, syncLayout, useSessions }: ProjectPanelProps) {
+  const target = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const currentSession = useSessions(state => state.current)
   const currentCwd = useSessions(state => state.current === undefined ? undefined : state.byId[state.current]?.cwd)
   const [viewport, setViewport] = useState(() => window.innerWidth)
@@ -656,8 +911,8 @@ function ReviewPanel({ review, surface, closeReview, syncLayout, useSessions }: 
   }, [])
 
   useEffect(() => {
-    if (target !== null && !matchesSession) closeReview()
-  }, [closeReview, matchesSession, target])
+    if (target !== null && !matchesSession) closePanel()
+  }, [closePanel, matchesSession, target])
 
   useEffect(() => {
     if (target !== null && matchesSession) syncLayout(narrow)
@@ -665,34 +920,44 @@ function ReviewPanel({ review, surface, closeReview, syncLayout, useSessions }: 
 
   useEffect(() => {
     if (!visible) return
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') closeReview() }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') closePanel() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [closeReview, visible])
+  }, [closePanel, visible])
 
   if (!visible || target === null) return null
 
-  const panel = <aside aria-label="Review changes" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: palette.panel, color: palette.text }}>
+  const review = target.review
+  const content = target.mode === 'review' && review !== null
+    ? <nav aria-label="Changed file navigation" style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto', padding: 10 }}>
+        {review.files.map(file => <ReviewFileCard key={file.path} panel={controller} target={review} file={file} expanded={review.expandedPaths.includes(file.path)} />)}
+      </nav>
+    : <FilesPanel panel={controller} target={target} />
+
+  const panel = <aside aria-label="Project panel" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: palette.panel, color: palette.text }}>
       <header style={{ flex: '0 0 auto', padding: '12px 14px 10px', borderBottom: `1px solid ${palette.border}`, background: palette.panel }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div style={{ minWidth: 0 }}>
-            <strong style={{ display: 'block', fontSize: 14 }}>Review changes</strong>
-            <span style={{ display: 'inline-block', marginTop: 4, padding: '2px 7px', borderRadius: 999, background: palette.interactive, color: target.source === 'turn' ? palette.accent : palette.warning, fontSize: 10.5, fontWeight: 600 }}>{target.source === 'turn' ? `Historical · Turn ${target.turn}` : 'Current · Working changes'}</span>
+            <strong style={{ display: 'block', fontSize: 14 }}>{target.mode === 'review' ? 'Review changes' : 'Files & preview'}</strong>
+            <span title={target.cwd} style={{ display: 'block', maxWidth: 280, marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: palette.muted, fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 10.5 }}>{target.cwd}</span>
           </div>
-          <button type="button" aria-label="Close Review panel" onClick={closeReview} style={{ border: 0, padding: 4, background: 'transparent', color: palette.muted, cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
+          <button type="button" aria-label="Close Project panel" onClick={closePanel} style={{ border: 0, padding: 4, background: 'transparent', color: palette.muted, cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
+        </div>
+        <div role="tablist" aria-label="Project panel views" style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 9 }}>
+          <button type="button" role="tab" aria-selected={target.mode === 'review'} disabled={review === null} onClick={() => controller.show('review')} style={{ padding: '3px 8px', border: 0, borderRadius: 6, background: target.mode === 'review' ? palette.interactive : 'transparent', color: review === null ? palette.muted : target.mode === 'review' ? palette.accent : palette.text, cursor: review === null ? 'not-allowed' : 'pointer', fontSize: 11 }}>Review</button>
+          <button type="button" role="tab" aria-selected={target.mode === 'files'} onClick={() => controller.show('files')} style={{ padding: '3px 8px', border: 0, borderRadius: 6, background: target.mode === 'files' ? palette.interactive : 'transparent', color: target.mode === 'files' ? palette.accent : palette.text, cursor: 'pointer', fontSize: 11 }}>Files</button>
+          {target.mode === 'review' && review !== null && <span style={{ marginLeft: 3, padding: '2px 7px', borderRadius: 999, background: palette.interactive, color: review.source === 'turn' ? palette.accent : palette.warning, fontSize: 10, fontWeight: 600 }}>{review.source === 'turn' ? `Historical · Turn ${review.turn}` : 'Current · Working changes'}</span>}
         </div>
       </header>
-      <nav aria-label="Changed file navigation" style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto', padding: 10 }}>
-        {target.files.map(file => <ReviewFileCard key={file.path} review={review} target={target} file={file} expanded={target.expandedPaths.includes(file.path)} />)}
-      </nav>
+      {content}
     </aside>
 
   return surface === 'overlay'
-    ? <div data-aezy-review-panel data-surface="overlay" data-source={target.source} style={{ position: 'absolute', inset: 0, background: 'var(--dsw-alias-bg-overlay, rgba(0,0,0,.36))' }}>{panel}</div>
-    : <div data-aezy-review-panel data-surface="details" data-source={target.source} style={{ width: '100%', height: '100%' }}>{panel}</div>
+    ? <div data-aezy-project-panel data-aezy-review-panel={target.mode === 'review' ? '' : undefined} data-surface="overlay" data-mode={target.mode} style={{ position: 'absolute', inset: 0, background: 'var(--dsw-alias-bg-overlay, rgba(0,0,0,.36))' }}>{panel}</div>
+    : <div data-aezy-project-panel data-aezy-review-panel={target.mode === 'review' ? '' : undefined} data-surface="details" data-mode={target.mode} style={{ width: '100%', height: '100%' }}>{panel}</div>
 }
 
-function ChangesView({ cwd, sessionId, openReview }: ChangesProps) {
+function ChangesView({ cwd, sessionId, openReview, openFiles }: ChangesProps) {
   const [project, setProject] = useState<ProjectView | null>(null)
   const [ledger, setLedger] = useState<LedgerView | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -815,7 +1080,10 @@ function ChangesView({ cwd, sessionId, openReview }: ChangesProps) {
           {project.environment.packageManager ? ` · ${project.environment.packageManager}` : ''}
         </div>}
       </div>
-      <button type="button" onClick={() => void refresh()} disabled={loading} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${palette.border}`, background: palette.button, color: palette.text, cursor: loading ? 'wait' : 'pointer' }}>{loading ? 'Refreshing…' : 'Refresh'}</button>
+      <div style={{ display: 'flex', gap: 7 }}>
+        <button type="button" onClick={() => openFiles({ cwd, sessionId })} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${palette.border}`, background: palette.button, color: palette.text, cursor: 'pointer' }}>Browse files</button>
+        <button type="button" onClick={() => void refresh()} disabled={loading} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${palette.border}`, background: palette.button, color: palette.text, cursor: loading ? 'wait' : 'pointer' }}>{loading ? 'Refreshing…' : 'Refresh'}</button>
+      </div>
     </header>
 
     {error !== null && <div role="alert" style={{ marginTop: 14, padding: 10, border: `1px solid ${palette.error}`, borderRadius: 7, color: palette.error }}>{error}</div>}
@@ -830,22 +1098,21 @@ function ChangesView({ cwd, sessionId, openReview }: ChangesProps) {
 
     {project !== null && project.files.length > 0 && <div style={{ display: 'grid', gridTemplateColumns: 'minmax(210px, 30%) minmax(0, 1fr)', gap: 18, marginTop: 16, alignItems: 'start' }}>
       <nav aria-label="Changed files" style={{ border: `1px solid ${palette.border}`, borderRadius: 8, overflow: 'hidden' }}>
-        {project.files.map(file => <button
+        {project.files.map(file => <div
           key={file.path}
-          type="button"
-          onClick={() => {
+          style={{ width: '100%', display: 'grid', gridTemplateColumns: '30px minmax(0, 1fr) 22px auto', alignItems: 'center', gap: 8, padding: '9px 10px', boxSizing: 'border-box', borderBottom: `1px solid ${palette.border}`, background: selected === file.path ? palette.interactive : 'transparent', color: palette.text }}
+        >
+          <span style={{ color: file.conflict ? palette.error : palette.accent, fontFamily: 'monospace', fontSize: 11 }}>{statusLabel(file)}</span>
+          <button type="button" title={`${file.path} · Review working changes`} onClick={() => {
             setSelected(file.path)
             openReview({
               source: 'working', cwd, sessionId, expandedPaths: [file.path],
               files: project.files.map(item => ({ path: item.path, oldPath: item.originalPath ?? null })),
             })
-          }}
-          style={{ width: '100%', display: 'grid', gridTemplateColumns: '30px minmax(0, 1fr) auto', gap: 8, padding: '9px 10px', border: 0, borderBottom: `1px solid ${palette.border}`, background: selected === file.path ? palette.interactive : 'transparent', color: palette.text, textAlign: 'left', cursor: 'pointer' }}
-        >
-          <span style={{ color: file.conflict ? palette.error : palette.accent, fontFamily: 'monospace', fontSize: 11 }}>{statusLabel(file)}</span>
-          <span title={file.path} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 12 }}>{file.path}</span>
+          }} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: 0, border: 0, background: 'transparent', color: palette.text, cursor: 'pointer', textAlign: 'left', fontFamily: 'monospace', fontSize: 12 }}>{file.path}</button>
+          <button type="button" aria-label={`Open ${file.path} preview`} title="Open file preview" onClick={() => openFiles({ cwd, sessionId, path: file.path })} style={{ width: 22, height: 22, padding: 0, border: 0, borderRadius: 5, background: 'transparent', color: palette.accent, cursor: 'pointer' }}>↗</button>
           {ledgerByPath.has(file.path) && <span title={ledgerByPath.get(file.path)?.turn.concurrent ? 'Observed while another Session was active in this repository' : 'Latest observed Agent turn'} style={{ color: ledgerByPath.get(file.path)?.turn.concurrent ? palette.warning : palette.muted, fontSize: 10 }}>T{ledgerByPath.get(file.path)?.turn.turn}</span>}
-        </button>)}
+        </div>)}
       </nav>
       <main style={{ minWidth: 0 }}>
         {selected !== null && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
@@ -883,7 +1150,18 @@ function parseValidationLines(value: string): Handoff['validations'] {
   })
 }
 
-function WorktreesView({ cwd, sessionId, openWorktree, returnToLocal }: WorktreesProps) {
+function handoffChangedFiles(handoff: Handoff): Array<{ path: string; label: string; previousPath?: string }> {
+  const files = new Map<string, { path: string; label: string; previousPath?: string }>()
+  for (const file of handoff.git.committedFiles) files.set(file.path, { path: file.path, label: `committed · ${file.status}`, previousPath: file.previousPath })
+  for (const file of handoff.git.workingFiles) {
+    const label = `working · ${file.conflict ? 'conflict' : `${file.indexStatus}${file.worktreeStatus}`}`
+    const previous = files.get(file.path)
+    files.set(file.path, { path: file.path, label: previous === undefined ? label : `${previous.label} · ${label}`, previousPath: previous?.previousPath })
+  }
+  return [...files.values()].sort((left, right) => left.path.localeCompare(right.path))
+}
+
+function WorktreesView({ cwd, sessionId, openFiles, openWorktree, returnToLocal }: WorktreesProps) {
   const [project, setProject] = useState<ProjectView | null>(null)
   const [registry, setRegistry] = useState<WorktreeList | null>(null)
   const [name, setName] = useState('')
@@ -1077,7 +1355,26 @@ function WorktreesView({ cwd, sessionId, openWorktree, returnToLocal }: Worktree
         <h2 style={{ margin: 0, fontSize: 14 }}>Structured handoff {handoff.id}</h2>
         <button type="button" onClick={() => void navigator.clipboard.writeText(JSON.stringify(handoff, null, 2))} style={{ padding: '5px 8px', border: `1px solid ${palette.border}`, borderRadius: 5, background: palette.button, color: palette.text }}>Copy JSON</button>
       </div>
-      <pre style={{ margin: '8px 0 0', padding: 12, maxHeight: 420, overflow: 'auto', border: `1px solid ${palette.border}`, borderRadius: 7, background: palette.code, color: palette.text, fontSize: 11, lineHeight: 1.5 }}>{JSON.stringify(handoff, null, 2)}</pre>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 9, color: palette.muted, fontSize: 11 }}>
+        <span>{handoff.git.branch}</span><span>base {shortCommit(handoff.git.base)}</span><span>head {shortCommit(handoff.git.head)}</span><span>{handoff.git.clean ? 'clean' : 'working changes'}</span>
+      </div>
+      <div style={{ marginTop: 10, padding: 10, border: `1px solid ${palette.border}`, borderRadius: 7, background: palette.elevated, color: palette.text, whiteSpace: 'pre-wrap', fontSize: 12 }}>{handoff.instructions}</div>
+      <ChangeSurface className="aezy-handoff-files" style={{ marginTop: 10 }}>
+        <div style={{ ...changeBannerStyle, padding: '8px 11px', fontWeight: 600 }}>Changed files</div>
+        <div style={{ padding: '7px 8px' }}>
+          {handoffChangedFiles(handoff).map(file => <button key={file.path} type="button" onClick={() => openFiles({ cwd, sessionId, path: file.path })} title={`Preview ${file.path} in the current Session workspace`} style={{ width: '100%', minHeight: 28, display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto', alignItems: 'center', gap: 7, padding: '3px 5px', border: 0, borderRadius: 5, background: 'transparent', color: palette.text, cursor: 'pointer', textAlign: 'left' }}>
+            <FileTypeIcon path={file.path} />
+            <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{file.previousPath !== undefined ? `${file.previousPath} → ` : ''}{file.path}</span>
+            <span style={{ color: palette.muted, fontSize: 10 }}>{file.label} · ↗</span>
+          </button>)}
+          {handoffChangedFiles(handoff).length === 0 && <div style={{ padding: 8, color: palette.muted, fontSize: 11 }}>No changed files recorded.</div>}
+        </div>
+      </ChangeSurface>
+      {handoff.validations.length > 0 && <div style={{ marginTop: 10, color: palette.muted, fontSize: 11 }}>{handoff.validations.map((validation, index) => <div key={`${validation.command}-${index}`}>{validation.status} · <code>{validation.command}</code>{validation.summary ? ` · ${validation.summary}` : ''}</div>)}</div>}
+      <details style={{ marginTop: 10 }}>
+        <summary style={{ color: palette.muted, cursor: 'pointer', fontSize: 11 }}>Raw handoff JSON</summary>
+        <pre style={{ margin: '8px 0 0', padding: 12, maxHeight: 320, overflow: 'auto', border: `1px solid ${palette.border}`, borderRadius: 7, background: palette.code, color: palette.text, fontSize: 11, lineHeight: 1.5 }}>{JSON.stringify(handoff, null, 2)}</pre>
+      </details>
     </section>}
   </div>
 }
@@ -1085,9 +1382,9 @@ function WorktreesView({ cwd, sessionId, openWorktree, returnToLocal }: Worktree
 export const inject = ['slots', 'sessions', 'workspaces', 'layout']
 
 export function apply(ctx: ClientContext): void {
-  const review = new ReviewController()
-  const closeReview = () => {
-    review.close()
+  const panel = new ProjectPanelController()
+  const closePanel = () => {
+    panel.close()
     ctx.layout.closeDetails()
   }
   const syncLayout = (narrow: boolean) => {
@@ -1095,26 +1392,30 @@ export function apply(ctx: ClientContext): void {
     else ctx.layout.openDetails()
   }
   const openReview = (target: ReviewOpenTarget) => {
-    review.open(target)
+    panel.openReview(target)
+    syncLayout(window.innerWidth < 760)
+  }
+  const openFiles = (target: FilesOpenTarget) => {
+    panel.openFiles(target)
     syncLayout(window.innerWidth < 760)
   }
 
   ctx.slots.inject('details', () => ctx.slots.register({
     name: 'details',
     priority: -10,
-    inject: (): Omit<ReviewPanelProps, 'useSessions'> => ({
-      review, surface: 'details', closeReview, syncLayout,
+    inject: (): Omit<ProjectPanelProps, 'useSessions'> => ({
+      panel, surface: 'details', closePanel, syncLayout,
     }),
-  }, ReviewPanel))
+  }, ProjectPanel))
 
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({
     name: 'shell.overlay',
-    id: 'aezy-review',
+    id: 'aezy-project',
     order: 100,
-    inject: (): Omit<ReviewPanelProps, 'useSessions'> => ({
-      review, surface: 'overlay', closeReview, syncLayout,
+    inject: (): Omit<ProjectPanelProps, 'useSessions'> => ({
+      panel, surface: 'overlay', closePanel, syncLayout,
     }),
-  }, ReviewPanel))
+  }, ProjectPanel))
 
   ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
     name: 'conversation.chat.turnTail',
@@ -1125,7 +1426,7 @@ export function apply(ctx: ClientContext): void {
     inject: (sessionId: string): Omit<TurnSummaryProps, 'matched'> => {
       const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
       if (cwd === undefined) throw new Error(`aezy-project: session "${sessionId}" has no working directory`)
-      return { cwd, sessionId, openReview }
+      return { cwd, sessionId, openReview, openFiles }
     },
   }, TurnChangedFiles))
 
@@ -1137,7 +1438,7 @@ export function apply(ctx: ClientContext): void {
     inject: (sessionId: string): ChangesProps => {
       const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
       if (cwd === undefined) throw new Error(`aezy-project: session "${sessionId}" has no working directory`)
-      return { cwd, sessionId, openReview }
+      return { cwd, sessionId, openReview, openFiles }
     },
   }, ChangesView))
 
@@ -1149,7 +1450,7 @@ export function apply(ctx: ClientContext): void {
     inject: (sessionId: string): Omit<WorktreesProps, 'openWorktree' | 'returnToLocal'> => {
       const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
       if (cwd === undefined) throw new Error(`aezy-project: session "${sessionId}" has no working directory`)
-      return { cwd, sessionId }
+      return { cwd, sessionId, openFiles }
     },
   }, (props: Omit<WorktreesProps, 'openWorktree' | 'returnToLocal'>) => <WorktreesView
     {...props}
