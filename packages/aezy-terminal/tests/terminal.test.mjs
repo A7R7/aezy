@@ -77,3 +77,10 @@ test('bounds input and permits only the user interrupt signal', async () => {
   await assert.rejects(() => bridge.send({ ...identity, terminalId: opened.terminal.id, text: 'bad\0input' }), /NUL/)
   await assert.rejects(() => bridge.signal({ ...identity, terminalId: opened.terminal.id, signal: 'SIGKILL' }), /only SIGINT/)
 })
+
+test('bounds the number of user terminals per Session', async () => {
+  const { bridge } = fixture()
+  const identity = { sessionId: 'session-a', cwd: '/repo/a' }
+  for (let index = 0; index < terminalLimits.maxTerminals; index += 1) await bridge.open(identity)
+  await assert.rejects(() => bridge.open(identity), error => error instanceof TerminalRequestError && error.status === 409)
+})

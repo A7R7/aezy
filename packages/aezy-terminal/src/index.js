@@ -6,11 +6,13 @@ const UI_NAME_PREFIX = 'aezy-ui:'
 const MAX_BODY_BYTES = 32 * 1024
 const MAX_INPUT_BYTES = 16 * 1024
 const READ_LINES = 1000
+const MAX_TERMINALS = 8
 
 export const terminalLimits = Object.freeze({
   maxBodyBytes: MAX_BODY_BYTES,
   maxInputBytes: MAX_INPUT_BYTES,
   readLines: READ_LINES,
+  maxTerminals: MAX_TERMINALS,
 })
 
 export class TerminalRequestError extends Error {
@@ -99,6 +101,9 @@ export class TerminalBridge {
     const { agent, sessionId, cwd } = this.owner(input)
     if (!this.terminals.listBackends().includes('shell')) {
       throw new TerminalRequestError('The DSH platform shell backend is unavailable.', 503)
+    }
+    if (this.uiSnapshots(agent).length >= MAX_TERMINALS) {
+      throw new TerminalRequestError(`A Session can open at most ${MAX_TERMINALS} Integrated Terminals.`, 409)
     }
     try {
       const created = await this.terminals.spawn(agent, {

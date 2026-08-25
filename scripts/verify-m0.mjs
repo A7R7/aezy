@@ -42,6 +42,7 @@ invariant(dump.includes('@aezy/base'), 'Composed config does not include @aezy/b
 invariant(dump.includes('@aezy/web'), 'Composed config does not include @aezy/web')
 invariant(dump.includes('@aezy/brand'), 'Composed config does not include @aezy/brand')
 invariant(dump.includes('@aezy/security'), 'Composed config does not include @aezy/security')
+invariant(dump.includes('@aezy/terminal'), 'Composed config does not include @aezy/terminal')
 invariant(dump.indexOf('@aezy/base') < dump.indexOf('@aezy/web'), 'Aezy bundle order is invalid')
 
 for (const id of [
@@ -65,6 +66,10 @@ const brandRow = row(dump, 'aezy-brand')
 invariant(brandRow.includes("name: '@aezy/brand'"), 'Aezy brand occupant is not composed')
 const securityRow = row(dump, 'aezy-security')
 invariant(securityRow.includes("name: '@aezy/security'"), 'Aezy security boundary is not composed')
+const terminalRow = row(dump, 'aezy-terminal')
+invariant(terminalRow.includes("name: '@aezy/terminal'"), 'Aezy terminal bridge is not composed')
+invariant(row(dump, 'terminal').includes("name: '@deepseek-ai/dsh-terminal'"), 'DSH terminal registry is not composed')
+invariant(row(dump, 'terminal-shell').includes("name: '@deepseek-ai/dsh-terminal-bash'"), 'DSH platform terminal backend is not composed')
 
 const presetRow = row(dump, 'agent-presets')
 invariant(/\n    default: aezy(?:\n|$)/.test(presetRow), 'Aezy must be the default Agent preset')
@@ -82,6 +87,7 @@ const expectedLocalPlugins = {
   '@aezy/brand': join(repoRoot, 'packages', 'aezy-brand'),
   '@aezy/security': join(repoRoot, 'packages', 'aezy-security'),
   '@aezy/project': join(repoRoot, 'packages', 'aezy-project'),
+  '@aezy/terminal': join(repoRoot, 'packages', 'aezy-terminal'),
 }
 for (const [name, path] of Object.entries(expectedLocalPlugins)) {
   invariant(profile.dependencies?.[name] === `link:${path}`, `${name} profile link does not follow the current checkout`)
@@ -151,6 +157,7 @@ try {
   invariant(html.includes('"id":"@aezy/brand"'), 'Aezy Web did not load the Aezy brand occupant')
   invariant(html.includes('"id":"@aezy/security"'), 'Aezy Web did not load the Aezy Security view')
   invariant(html.includes('"id":"@aezy/project"'), 'Aezy Web did not load the Aezy Project views')
+  invariant(html.includes('"id":"@aezy/terminal"'), 'Aezy Web did not load the Aezy Integrated Terminal view')
   invariant(
     !html.includes('"id":"@deepseek-ai/dsh-client-ui-brand-official"'),
     'Aezy Web still loads the disabled official DSH brand occupant',
