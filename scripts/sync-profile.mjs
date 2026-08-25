@@ -28,6 +28,7 @@ const brandPlugin = join(repoRoot, 'packages', 'aezy-brand')
 const securityPlugin = join(repoRoot, 'packages', 'aezy-security')
 const projectPlugin = join(repoRoot, 'packages', 'aezy-project')
 const terminalPlugin = join(repoRoot, 'packages', 'aezy-terminal')
+const activityPlugin = join(repoRoot, 'packages', 'aezy-activity')
 const localPlugins = [
   ['@aezy/base', baseBundle],
   ['@aezy/web', webBundle],
@@ -35,6 +36,7 @@ const localPlugins = [
   ['@aezy/security', securityPlugin],
   ['@aezy/project', projectPlugin],
   ['@aezy/terminal', terminalPlugin],
+  ['@aezy/activity', activityPlugin],
 ]
 
 let install = true
@@ -74,6 +76,7 @@ if (install) {
     securityPlugin,
     projectPlugin,
     terminalPlugin,
+    activityPlugin,
   ], { stdio: 'inherit', env: dshEnv() })
   void result
 }

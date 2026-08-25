@@ -83,3 +83,9 @@
 
     - id: aezy-terminal
       name: '@aezy/terminal'
+
+# Thin browser-only projection of DSH Session/Job/Subagent/interaction and
+# durable usage facts. It owns no Task, usage, notification, or PTY state.
+- insert:
+    - id: aezy-activity
+      name: '@aezy/activity'

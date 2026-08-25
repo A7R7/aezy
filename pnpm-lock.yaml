@@ -99,6 +99,30 @@ importers:
         specifier: 0.3.1
         version: 0.3.1
 
+  packages/aezy-activity:
+    dependencies:
+      '@deepseek-ai/dsh-client-runtime':
+        specifier: 0.1.1-rc.1
+        version: 0.1.1-rc.1(b69c9fc4f56ad05437f526ec2fd0a251)
+      '@deepseek-ai/dsh-client-ui-conversation':
+        specifier: 0.1.1-rc.1
+        version: 0.1.1-rc.1(31ba7f17c9b64bce30217ab2bbd68600)
+      '@deepseek-ai/dsh-client-ui-layout':
+        specifier: 0.1.1-rc.1
+        version: 0.1.1-rc.1(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-client-runtime@0.1.1-rc.1(b69c9fc4f56ad05437f526ec2fd0a251))(@deepseek-ai/dsh-client-ui-theme@0.1.1-rc.1(d225e4c5b49bb8e7249104c9d9f69e69))(@deepseek-ai/dsh-invariants@0.1.1-rc.1(@deepseek-ai/cordis@4.0.1))
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: 0.1.1-rc.1
+        version: 0.1.1-rc.1(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.1-rc.1(@deepseek-ai/cordis@4.0.1))
+      '@deepseek-ai/dsh-session-stats':
+        specifier: 0.1.1-rc.1
+        version: 0.1.1-rc.1(5923a3b73d49601ae7358cab918eff65)
+      '@deepseek-ai/dsh-token-meter':
+        specifier: 0.1.1-rc.1
+        version: 0.1.1-rc.1(6a0180ae74e211934a53125ebb61582b)
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+
   packages/aezy-base: {}
 
   packages/aezy-brand:
