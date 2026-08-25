@@ -47,17 +47,20 @@ function fixture() {
 test('binds open/list/read/send/signal/close to the exact Session and cwd', async () => {
   const { bridge } = fixture()
   const identity = { sessionId: 'session-a', cwd: '/repo/a' }
-  assert.deepEqual(bridge.list(identity).terminals, [])
+  assert.deepEqual((await bridge.list(identity)).terminals, [])
   const opened = await bridge.open(identity)
   assert.equal(opened.terminal.id, 'pty-1')
   assert.equal(opened.terminal.title, 'Terminal 1')
+  assert.equal(opened.terminal.currentCwd, '/repo/a')
   assert.equal(opened.output, 'dsh> ')
-  assert.equal(bridge.list(identity).terminals.length, 1)
-  assert.match(bridge.read({ ...identity, terminalId: 'pty-1' }).output, /\/repo\/a/)
+  assert.equal((await bridge.list(identity)).terminals.length, 1)
+  const read = await bridge.read({ ...identity, terminalId: 'pty-1' })
+  assert.equal(read.terminal.currentCwd, '/repo/a')
+  assert.match(read.output, /\/repo\/a/)
   assert.equal((await bridge.send({ ...identity, terminalId: 'pty-1', text: 'pwd' })).waitReason, 'stdin_read')
   assert.equal((await bridge.signal({ ...identity, terminalId: 'pty-1', signal: 'SIGINT' })).delivered, true)
   assert.equal((await bridge.close({ ...identity, terminalId: 'pty-1' })).closed, true)
-  assert.deepEqual(bridge.list(identity).terminals, [])
+  assert.deepEqual((await bridge.list(identity)).terminals, [])
 })
 
 test('fails closed for cold, cwd-drifted, foreign, and non-UI terminals', async () => {
@@ -65,8 +68,8 @@ test('fails closed for cold, cwd-drifted, foreign, and non-UI terminals', async 
   await assert.rejects(() => bridge.open({ sessionId: 'cold', cwd: '/repo/a' }), error => error instanceof TerminalRequestError && error.status === 409)
   await assert.rejects(() => bridge.open({ sessionId: 'session-a', cwd: '/repo/b' }), /identity does not match/)
   byOwner.get(owner).push({ sessionId: 'pty-model', name: 'model-terminal', type: 'shell', status: { kind: 'running' } })
-  assert.deepEqual(bridge.list({ sessionId: 'session-a', cwd: '/repo/a' }).terminals, [])
-  assert.throws(() => bridge.read({ sessionId: 'session-a', cwd: '/repo/a', terminalId: 'pty-foreign' }), error => error instanceof TerminalRequestError && error.status === 404)
+  assert.deepEqual((await bridge.list({ sessionId: 'session-a', cwd: '/repo/a' })).terminals, [])
+  await assert.rejects(() => bridge.read({ sessionId: 'session-a', cwd: '/repo/a', terminalId: 'pty-foreign' }), error => error instanceof TerminalRequestError && error.status === 404)
 })
 
 test('bounds input and permits only the user interrupt signal', async () => {
@@ -90,5 +93,5 @@ test('marks a read window truncated when retained output exceeds the projected l
   const identity = { sessionId: 'session-a', cwd: '/repo/a' }
   const opened = await bridge.open(identity)
   terminals.read = () => ({ text: 'latest', totalLines: terminalLimits.readLines + 1, lineBegin: 0, lineEnd: 1, truncated: false })
-  assert.equal(bridge.read({ ...identity, terminalId: opened.terminal.id }).truncated, true)
+  assert.equal((await bridge.read({ ...identity, terminalId: opened.terminal.id })).truncated, true)
 })

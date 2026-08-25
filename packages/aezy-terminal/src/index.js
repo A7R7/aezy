@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto'
+import { readlink } from 'node:fs/promises'
+import { isAbsolute } from 'node:path'
 import { TerminalError, TerminalSessionId } from '@deepseek-ai/dsh-terminal'
 
 const ROUTE = '/aezy/api/terminal'
@@ -30,12 +32,13 @@ function requiredString(value, name) {
   return value
 }
 
-function terminalView(snapshot, index) {
+function terminalView(snapshot, index, currentCwd) {
   return {
     id: snapshot.sessionId,
     title: `Terminal ${index + 1}`,
     type: snapshot.type,
     ...(snapshot.pid !== undefined ? { pid: snapshot.pid } : {}),
+    currentCwd,
     status: snapshot.status,
   }
 }
@@ -86,14 +89,26 @@ export class TerminalBridge {
     return { id: TerminalSessionId(terminalId), snapshot: snapshots[index], index }
   }
 
-  list(input) {
+  async currentCwd(snapshot, fallback) {
+    if (process.platform !== 'linux' || !Number.isSafeInteger(snapshot.pid) || snapshot.pid <= 0) return fallback
+    try {
+      const cwd = await readlink(`/proc/${snapshot.pid}/cwd`)
+      return isAbsolute(cwd) ? cwd : fallback
+    } catch {
+      return fallback
+    }
+  }
+
+  async list(input) {
     const { agent, sessionId, cwd } = this.owner(input)
     const snapshots = this.uiSnapshots(agent)
     return {
       sessionId,
       cwd,
       backendAvailable: this.terminals.listBackends().includes('shell'),
-      terminals: snapshots.map(terminalView),
+      terminals: await Promise.all(snapshots.map(async (snapshot, index) => terminalView(
+        snapshot, index, await this.currentCwd(snapshot, cwd),
+      ))),
     }
   }
 
@@ -116,7 +131,7 @@ export class TerminalBridge {
       return {
         sessionId,
         cwd,
-        terminal: terminalView(created, Math.max(0, index)),
+        terminal: terminalView(created, Math.max(0, index), await this.currentCwd(created, cwd)),
         output: created.motd,
       }
     } catch (error) {
@@ -124,7 +139,7 @@ export class TerminalBridge {
     }
   }
 
-  read(input) {
+  async read(input) {
     const { agent, sessionId, cwd } = this.owner(input)
     const target = this.expectTerminal(agent, input.terminalId)
     try {
@@ -133,7 +148,7 @@ export class TerminalBridge {
       return {
         sessionId,
         cwd,
-        terminal: terminalView(snapshot, target.index),
+        terminal: terminalView(snapshot, target.index, await this.currentCwd(snapshot, cwd)),
         output: result.text,
         totalLines: result.totalLines,
         truncated: result.truncated || result.totalLines > READ_LINES,
@@ -265,11 +280,11 @@ export function createHandler(bridge, warn = () => {}) {
     const url = new URL(req.url ?? '/', 'http://aezy.local')
     try {
       if (req.method === 'GET' && url.pathname === ROUTE) {
-        json(res, 200, bridge.list({ sessionId: query(url, 'sessionId'), cwd: query(url, 'cwd') }))
+        json(res, 200, await bridge.list({ sessionId: query(url, 'sessionId'), cwd: query(url, 'cwd') }))
         return
       }
       if (req.method === 'GET' && url.pathname === `${ROUTE}/read`) {
-        json(res, 200, bridge.read({
+        json(res, 200, await bridge.read({
           sessionId: query(url, 'sessionId'), cwd: query(url, 'cwd'), terminalId: query(url, 'terminalId'),
         }))
         return
