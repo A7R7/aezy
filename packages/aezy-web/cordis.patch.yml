@@ -68,3 +68,18 @@
 - insert:
     - id: aezy-project
       name: '@aezy/project'
+
+# Published DSH owns PTY ids, shell selection, sandbox binding, process trees,
+# scrollback bounds and cleanup. Aezy contributes only the Session/cwd-fenced
+# user transport and the browser view below.
+- insert:
+    - id: terminal
+      name: '@deepseek-ai/dsh-terminal'
+
+    - id: terminal-shell
+      name: '@deepseek-ai/dsh-terminal-bash'
+      config:
+        shellDialect: !!js "process.platform === 'win32' ? 'pwsh' : 'bash'"
+
+    - id: aezy-terminal
+      name: '@aezy/terminal'
