@@ -11,6 +11,7 @@ Aezy 是基于 DeepSeek Harness（DSH）公开扩展机制构建的独立编程 
 - `packages/aezy-brand/`：占据 DSH 通用品牌 slots 的最薄文字品牌插件；暂以字母 `A` 作为图形占位。
 - `packages/aezy-project/`：M1 Project/Repository/Changes/turn ledger、M3 Worktree/Session binding/结构化 Handoff，以及 M4.1 Review + Files Project Panel 插件。
 - `packages/aezy-security/`：M2 持久 Approval Rules、独立 Network Policy、决策解释与审计插件。
+- `packages/aezy-terminal/`：复用 DSH PTY registry/platform shell 的 Session-scoped Integrated Terminal Host bridge 与 Web view。
 - Aezy 源码只放在参考树外的独立插件、bundle 和应用目录中，不写入 `.local/deepseek-harness/`。
 
 DSH 参考树不进入 Aezy 的 Git index，以免数千个上游文件拖慢日常 `status`、diff 和 IDE Git 集成；`reference/dsh.lock.json` 是其来源与 revision 的可提交真相源。新的 Aezy clone 如需恢复本地参考树，可执行：
@@ -39,7 +40,7 @@ pnpm run test:m0
 pnpm run aezy:web -- --host 127.0.0.1 --port 3080
 ```
 
-`profile:sync` 通过 DSH 的 `plugin --profile` 路径安装两个 Aezy 外置 bundle、`@aezy/brand`、`@aezy/security` 与 `@aezy/project` 普通插件依赖，并在两个 bundle 之间叠加当前 DSH 安装自带的 Web bundle，将 profile 固定为：
+`profile:sync` 通过 DSH 的 `plugin --profile` 路径安装两个 Aezy 外置 bundle、`@aezy/brand`、`@aezy/security`、`@aezy/project` 与 `@aezy/terminal` 普通插件依赖，并在两个 bundle 之间叠加当前 DSH 安装自带的 Web bundle，将 profile 固定为：
 
 ```text
 @deepseek-ai/dsh-base
@@ -143,9 +144,29 @@ objects。Project Panel 的 workspace、目录与 diff Ask action 只把引用�
 草稿，不自动发送，也不创建另一套会话。完整自动、真实 rc.1 Host、模型、浏览器和
 历史漂移证据见 [M4 签收记录](doc/milestones/m4.md)。
 
-下一顺序为用户 Integrated Terminal UI，然后是 Activity / Status / Usage /
-Notifications 与 localhost Browser interaction。真正 Side Chat 等待 DSH Interactive
-Side Sessions/fork/merge-back seam，不在 Aezy 中复制持久会话内核。
+## Integrated Terminal
+
+`@aezy/terminal` 已通过公开 `conversation.view` seam 增加占据 Session 主内容区的
+Terminal tab，并把当前 Session/cwd 严格绑定到发布版 `@deepseek-ai/dsh-terminal` 与
+平台 shell backend。支持最多 8 个终端标签、保留有界 scrollback、逐行命令/交互回复、
+命令历史、`SIGINT`、退出状态和显式关闭；Chat/Terminal 切换不会关闭 PTY，Session/
+Workspace 切换不会串 terminal identity。
+
+DSH 0.1.1 的公开 terminal contract 是 line-oriented，而不是 raw byte TTY，也没有 resize
+API；因此当前 UI 明确是 line terminal，不引入 xterm 或复制 PTY/ConPTY/job/shell/process
+lifecycle。PTY 在 owning Agent 或 Host dispose 时由 DSH await cleanup，Host restart 后不承诺
+恢复进程。完整证据见 [Integrated Terminal 签收记录](doc/milestones/terminal.md)。
+
+```bash
+pnpm run build:terminal
+pnpm run test:terminal
+# 已启动真实 Aezy Host 时：
+AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:terminal:http
+```
+
+下一顺序为 Activity / Status / Usage / Notifications，然后是 localhost Browser
+interaction。真正 Side Chat 等待 DSH Interactive Side Sessions/fork/merge-back seam，
+不在 Aezy 中复制持久会话内核。
 
 ## 研究资料
 

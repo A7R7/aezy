@@ -1,6 +1,6 @@
 # DSH Web 与 Codex Desktop 功能差距报告
 
-> 本报告的 72 项矩阵以 rc.7 为基线。rc.8 补充了 `@file/@session`、动态 Web renderer、Windows 持久 PowerShell等能力；0.1.1-rc.1 又补充 credentials/authorization 内核、Subagent lineage、Session projection、vision 与 Web 细节。增量见 [rc.8](dsh-rc8-update-impact-report.md) 和 [0.1.1-rc.1](dsh-0.1.1-rc1-update-impact-report.md) 更新报告。Project/Git/ledger/Worktree/Approval Rules/Network Policy 等核心缺口仍成立。
+> 本报告的 72 项矩阵以 rc.7 的 DSH Web 为基线。rc.8 补充了 `@file/@session`、动态 Web renderer、Windows 持久 PowerShell等能力；0.1.1-rc.1 又补充 credentials/authorization 内核、Subagent lineage、Session projection、vision 与 Web 细节。增量见 [rc.8](dsh-rc8-update-impact-report.md) 和 [0.1.1-rc.1](dsh-0.1.1-rc1-update-impact-report.md) 更新报告。矩阵描述上游，不会随着 Aezy 每个里程碑重写；截至 2026-08-25，Aezy 已在外置插件中完成 Project/Git/Turn Journal、Approval/Network、Worktree/Handoff、Review/Files/Contextual References 和 [Integrated Terminal](../milestones/terminal.md)。
 
 ## 结论
 
@@ -60,7 +60,7 @@ DSH 已有 seam 或详细 proposed note 的 Task Surface、Side Session、Recall
 | 16 | 文件浏览器 | 部分 | P1 | directory picker 能浏览/创建目录，但没有项目 file tree、打开文件、repo 搜索和“加入上下文”工作台。 |
 | 17 | 文件预览 | 部分 | P1 | 对话能渲染 Markdown、图片、工具结果和 deliverable 链接；没有通用 code/PDF/spreadsheet/document/presentation preview。先做 code/Markdown/image/diff。 |
 | 18 | `@` Context 引用 | 部分 | P1 | input trigger 已支持 skill、subagent 等来源；没有任意文件/目录、symbol、Git diff 等统一 context object registry。 |
-| 19 | Integrated Terminal | 缺失 | P1 | `terminal/*` 是可选的模型 PTY 工具，不是用户可打开的多 tab terminal；Web 没有终端面板、shell 选择或把手工输出交回 Agent 的路径。 |
+| 19 | Integrated Terminal | 缺失 | P1 | DSH `terminal/*` 是可选模型 PTY，不带用户 Web UI；Aezy 已通过外置 `@aezy/terminal` 薄接入其 line-oriented registry/backend，多 tab、Session/cwd fence 与 SIGINT 已签收，raw TTY/resize 仍等待上游。 |
 
 ### Git 与代码审查
 

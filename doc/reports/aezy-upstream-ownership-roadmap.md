@@ -49,14 +49,14 @@ rc.8 已交付 `@file/@session`、Windows 持久 PowerShell、可安装 Product 
 | 上游 `@file/@session` reference | **rc.8 已交付，Aezy 薄集成** | 使用上游 Host index、Remote 和 Web source；验证 Aezy profile 中可用 | 不另建文件索引、Session mention 或引用准备协议 | 上游 seam 无法承载真实引用用例 |
 | Review + Files Project Panel | **M4.1A/B 已实现** | 复用 `@aezy/project` Git/Turn ledger；desktop 占用公开 `details`，narrow 使用 `shell.overlay`；提供 structured Review、多开 accordion、lazy file tree，以及复用 DSH `ReadBlock` / `MarkdownText` 的 code/Markdown/image Preview | 当前已知代价是 shadow Tool Details；不复制 layout/Markdown/highlight/file-index 内核，不做 editor/stage/hunk apply/PR/Side Session | 上游新增通用 panel router 或 file-preview surface 时优先迁移并恢复多 occupant |
 | `@directory` / `@diff` + Contextual Ask | **M4.2 已完成** | 在上游 `@file/@session` input-trigger/reference codec 上补目录/diff reference；目录发现复用 `fileReferences.list`，Project Panel 只向当前 Session draft staging canonical mention | 不重复 `@file/@session`、文件索引、composer/draft/消息持久化，不建立 Side Session 状态机 | 新上游 generic project-context resolver 或第二个独立消费者出现时评估抽包 |
-| 用户 Integrated Terminal UI | **dogfood 驱动；复用 rc.8 backend** | 未来在 Aezy Web 增加用户 PTY tabs、cwd/environment 绑定；当前继续用 shell/job | 不 fork PTY/Windows persistent PowerShell，不重写 job/terminal lifecycle | 真实交互命令阻塞 M1-M3 |
+| 用户 Integrated Terminal UI | **已完成；复用 DSH 0.1.1 backend** | `@aezy/terminal` 以 Session/cwd fence、最多 8 个 UI PTY tabs、bounded polling、line input/history、SIGINT 与公开 `conversation.view` 薄接入 owner-scoped registry | 不 fork PTY/Windows persistent PowerShell，不重写 job/shell/process lifecycle；上游没有 raw TTY/resize 时不以 xterm 伪装 | 上游新增 browser/raw TTY/resize 或 bottom-dock seam 时迁移 transport/layout |
 | Activity / Status / Usage / Notifications | **薄投影后按痛点增强** | 汇总现有 Session、Job、Subagent、approval、trajectory 投影 | 不另建 Task runtime 或第二套状态机 | 状态不可见开始阻塞多任务 dogfood |
 | Browser automation | **后续 Aezy 产品能力** | 前端 dogfood 成为主要场景后实现 localhost、screenshot、click/type/scroll | 不阻塞本地通用 coding loop；不先扩展到 Computer Use | 前端任务无法仅靠 shell/test 验收 |
 | Profile bundle / plugin settings / credential authorization | **上游继续交付，Aezy 薄封装** | 提供 Aezy 默认 bundle、必要配置和兼容性检查；消费上游 credential/authorization seam | 不另建插件市场、安装器、OAuth/refresh 协议或凭据存储内核 | 当前接口确实阻塞 Aezy bundle/onboarding |
 | Subagent + Job、Experimental Agent Teams、Task Surface | **上游薄集成；Task Surface 继续等待** | 保留当前 subagent/job；复用 rc.1 lineage header；Agent Teams 保持实验禁用 | 不创建第二套 Task Surface；不把共享 checkout 的 Agent Teams 当作 Worktree 隔离 | Task Surface 转 implemented；或缺口阻塞 M3 |
 | Interactive Side Sessions / merge-back | **等待上游** | 暂用现有 fork/subagent，必要时只做无新持久协议的轻入口 | 不实现平行 Session 内核、merge-back 事件体系或专用存储 | proposed note 转 implemented 或产品需求成为 P0 |
 | Compaction / recall / Session projection | **等待上游** | 使用现有 compaction、token meter、history paging；可薄展示压力 | 不实现第二套摘要、`history_read`/`history_search`、日志索引或 Session projection | 新 RC；或长任务 dogfood 出现可复现数据丢失 |
-| PTY/persistent shell backend | **rc.8 已补 Windows 持久 PowerShell，Aezy 薄集成** | 复用 terminal seam/provider；真实 Windows 验证后用 preset patch 启用 | 不 fork backend，不自行补 ConPTY | 用户终端 UI 需要新的公开 seam |
+| PTY/persistent shell backend | **rc.8 已补 Windows 持久 PowerShell，Aezy 已薄集成** | Web composition 挂载发布版 registry 与按平台选择的 bash/pwsh provider；Windows 仍需真实主机复验 | 不 fork backend，不自行补 ConPTY/raw TTY/resize | 上游 terminal protocol 或 Windows provider 变化 |
 | MCP/ACP rich content、transport、reconnect | **rc.8 部分进展，继续等待/薄配置** | 需要时挂载现有 client/server，并加最小 Aezy 权限入口 | 不 fork transport、rich-content mapping、重连状态机或协议 | 真实 MCP 用例无法通过现有 seam 完成 |
 | Automations / Cloud / Remote / PR | **长期后续** | 保留扩展点和环境类型空间 | 不用 Schedule/E2B/shell/`gh` POC 冒充完整产品闭环 | 本地 M1-M4 稳定且出现明确用例 |
 
@@ -172,9 +172,8 @@ durable context、Working/Historical source identity、Project Panel 当前 Sess
 
 后续项不是一个捆绑交付，固定顺序如下：
 
-1. 用户 Integrated Terminal UI；
-2. Activity / Status / Usage / Notifications；
-3. localhost Browser + browser interaction。
+1. Activity / Status / Usage / Notifications；
+2. localhost Browser + browser interaction。
 
 真正 Side Chat 继续等待 DSH Interactive Side Sessions/fork/merge-back 公开 seam；
 Aezy 不建立第二套持久会话状态机。

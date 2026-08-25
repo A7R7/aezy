@@ -3,7 +3,7 @@
 > 交接日期：2026-08-25<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 当前分支：`main`<br>
-> 功能基线：`5a92271843 feat(project): add contextual ask entry points`
+> 功能基线：`7188e6298e fix(terminal): expose bounded read truncation`
 
 ## 1. 最终目标与不可破坏的边界
 
@@ -45,6 +45,7 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 - `packages/aezy-brand`：最薄品牌 occupant，占据 DSH 通用品牌 slots；当前继续使用字母 `A`，未设计新图标。
 - `packages/aezy-project`：Project/Repository/Changes、Git-independent Turn File Change Journal + optional Git enrichment、M3 受管 Worktree/Session binding/结构化 Handoff，以及 M4 Review + Files + Contextual References Project Panel。
 - `packages/aezy-security`：M2 持久 Approval Rules、Network Policy、解释与审计。
+- `packages/aezy-terminal`：Session/cwd-fenced Integrated Terminal Host bridge 与 Session-scoped Web view；PTY/shell/process lifecycle 复用 DSH。
 
 默认运行状态位于 `~/.aezy/dsh/`，除非显式设置 `DSH_HOME`。pnpm store 位于仓库已忽略的 `.local/pnpm-store/`。
 
@@ -217,6 +218,26 @@ Aezy 的目标是成为一个精简、类似 Codex 的完整编程 Agent。它�
 完整边界、limits、Session `m42-browser-qa` Turn 2–5、浏览器与 Historical drift 证据见
 `doc/milestones/m4.md`。
 
+### Integrated Terminal UI
+
+状态：Complete，自动、真实 rc.1 PTY/HTTP、Aezy 自仓库与宽/窄、深/浅浏览器 QA 已签收。
+
+已完成：
+
+- 外置 `@aezy/terminal` 挂载发布版 DSH terminal registry 与 platform bash/pwsh backend；
+- exact live Session/cwd/Agent fence；cold、cwd drift、foreign 与模型自有 terminal fail closed；
+- 公开 `conversation.view` 中占据主内容区的 Terminal tab，不使用 floating overlay，也不
+  侵占 Project details panel；
+- 每 Session 最多 8 个 UI PTY tabs，支持 line input、Shift+Enter、per-tab history、bounded
+  scrollback polling、SIGINT、exit/PID/backend status 和显式关闭；
+- Chat/Terminal 切换恢复 DSH registry 中的 PTY；Session/Workspace 切换不串内容；owner/Host
+  dispose 继续由 DSH awaited cleanup；
+- 不复制 PTY/job/shell/Windows persistent PowerShell/ConPTY/process lifecycle，不引入 xterm。
+
+重要限制：DSH 0.1.1 公开的是 line-oriented terminal contract，没有 raw byte input 或 resize
+API。因此当前产品明确显示 `Line terminal`，不支持 full-screen TUI/完整 VT emulation；Host
+restart 不恢复进程。完整证据见 `doc/milestones/terminal.md`。
+
 ### Turn File Change Journal 基础层修复
 
 状态：Complete，真实 rc.1 HTTP、Git/非 Git 模型 dogfood 均通过。
@@ -279,6 +300,8 @@ rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,67
 - `pnpm run test:m2` → 11/11
 - `pnpm run test:m3` → 6/6
 - `pnpm run test:m0` → composition/Web/Workspace/Session/preset smoke passed
+- `pnpm run test:terminal` → 7/7
+- `pnpm run test:terminal:http` → 真实 DSH PTY open/send/read、多 tab、SIGINT、Session/cwd fence passed
 - `pnpm run test:m1:http` → Git/non-Git ledger、Turn Review、batch Undo/Redo、request fence passed
 - `pnpm run test:m2:http` → policy、precedence、request fence、restart persistence passed
 - `pnpm run test:m3:http` → Worktree Session、handoff、拒绝路径、retained branch、Security audit passed
@@ -302,6 +325,9 @@ rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,67
   `@diff`、`@directory:src` 和 Historical Turn 2 context 均由真实模型消费，当前文件漂移
   后 Historical 仍保持原内容；1440 details、680 overlay、三个 Panel Ask、tree 自动增删、
   pageerror 0 passed；
+- Integrated Terminal → commits `f22a7f0677` / `bef5cb0ef8` / `7188e6298e`；真实 rc.1 Host 执行
+  `printf`/`pwd` 与 SIGINT `sleep 30`，1440 dark/680 light、Chat view persistence、双 Session
+  isolation、pageerror 0 passed；
 - `pnpm run dogfood:turn-journal` → 非 Git真实模型 `write + edit`、structured Historical Review passed（Session `turn-journal-dogfood-mt6qureu`）
 - `pnpm run dogfood:turn-summary` → 原 Git-enriched Turn summary 回归 passed（Session `turn-summary-dogfood-mt6qvc9u`）
 - `git diff --check` → passed
@@ -312,9 +338,10 @@ rc.8 → 0.1.1-rc.1 的边界为 172 个 commit、2,368 个变更文件、+23,67
 http://127.0.0.1:3090
 ```
 
-它是当前 rc.1 profile；M4.2 开工探测时 `/tree` 已返回 200，说明它已加载 M4.1B。M4.2
-本轮在独立真实 3094 Host 签收；要让 3090 加载新的 client source 与 Host pre-step
-listener，应正常停止并重新启动：
+它已在 Integrated Terminal 签收后正常 SIGTERM 并重启到当前 rc.1 profile；root 与
+`@aezy/terminal` module 均为 200，served client SHA-256
+`224235d5a1e36f3f2de4de0de510583723e9bf208457f1b4b398fb88e45ecdef` 与 checkout
+一致，3090 的真实 Terminal HTTP smoke 已通过。继续启动命令为：
 
 ```bash
 cd /home/aaron/repos/aezy-dsh-mvp
@@ -326,7 +353,7 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3090
 交接时的功能基线提交：
 
 ```text
-5a92271843 feat(project): add contextual ask entry points
+7188e6298e fix(terminal): expose bounded read truncation
 ```
 
 用户已有三个未跟踪项，必须保留、不得纳入普通实现提交：
@@ -345,15 +372,15 @@ git status --short
 
 不要使用 `git add -A` 或 `git add .`；应精确列出本步骤文件。
 
-## 7. 下一步：用户 Integrated Terminal UI
+## 7. 下一步：Activity / Status / Usage / Notifications
 
-M4.1A/B 与 M4.2 已完成。下一切片固定为 **用户 Integrated Terminal UI**：复用 DSH
-已经发布的 terminal/PTY backend，只补 Aezy Workspace/Environment 绑定、tab/chrome 与
-用户输入入口，不 fork PTY、job、shell、Windows persistent PowerShell 或进程生命周期。
+M4.1A/B、M4.2 与 Integrated Terminal 已完成。下一切片固定为
+**Activity / Status / Usage / Notifications**：薄投影现有 Session、Job、Subagent、approval、
+trajectory 与 terminal 状态，不建立第二套 Task runtime、usage ledger 或通知状态机。
 
-其后顺序是 Activity / Status / Usage / Notifications，再到 localhost Browser + browser
-interaction。M4.2 的 reference hard limits、Historical ledger truth、Session/cwd fence 与
-Project Panel current-Session Ask 不应在 Terminal 工作中泛化重构。
+其后顺序是 localhost Browser + browser interaction。M4.2 的 reference hard limits、
+Historical ledger truth、Session/cwd fence 与 Project Panel current-Session Ask 不应在
+后续状态面工作中泛化重构。
 
 不要继续把 Worktree 扩大成 PR/Cloud/Remote，也不要实现 DSH 很可能自行维护的
 Task/Session/Subagent/merge-back 内核。真正 Side Chat 等 DSH Interactive Side
@@ -374,8 +401,9 @@ PTY、Task、Session、MCP、Subagent 或 compaction 内核，应暂停并重新
 | Project、Turn Journal、Git enrichment、Worktree、Handoff、client | `packages/aezy-project/` |
 | M2 policy、store、client | `packages/aezy-security/` |
 | 品牌 slots | `packages/aezy-brand/` |
+| Integrated Terminal Host/client | `packages/aezy-terminal/` |
 | Profile 同步/启动 | `scripts/sync-profile.mjs`、`scripts/run-profile.mjs`、`scripts/lib/profile.mjs` |
-| M0-M4.2 与 Turn Journal 签收 | `doc/milestones/m0.md`、`m1.md`、`m2.md`、`m3.md`、`m4.md`、`turn-journal.md` |
+| M0-M4.2、Terminal 与 Turn Journal 签收 | `doc/milestones/m0.md`、`m1.md`、`m2.md`、`m3.md`、`m4.md`、`terminal.md`、`turn-journal.md` |
 | 当前路线和所有权 | `doc/reports/aezy-upstream-ownership-roadmap.md` |
 | DSH rc.1 影响 | `doc/reports/dsh-0.1.1-rc1-update-impact-report.md` |
 | DSH 插件审计 | `doc/reports/dsh-plugin-function-report.md` |
@@ -401,6 +429,8 @@ PTY、Task、Session、MCP、Subagent 或 compaction 内核，应暂停并重新
    skill fallback 将一次性 Playwright Chromium 与缺失 NSS runtime 解压到 `/tmp` 完成
    真实 Host QA；没有修改系统安装，这不是 Aezy Web 错误。
 10. 网络命令遵守代理环境变量；缺失时回退 `http://127.0.0.1:7890`。
+11. DSH 0.1.1 terminal 是 line-oriented sanitizer/read/send seam，不是 browser raw TTY。不要
+    为追求 xterm 外观在 Aezy 复制 PTY/resize/VT 协议；等待上游公开 seam。
 
 ## 10. 新对话建议的首条指令
 
@@ -412,10 +442,10 @@ doc/reports/aezy-upstream-ownership-roadmap.md，检查 git status、当前 DSH 
 以及 3090 Aezy Host 状态。遵守只读 .local/deepseek-harness、只用外置插件扩展、
 保留三个既有未跟踪 dogfood/test 项、每个大步骤单独提交的边界。
 
-M4.1A/B、M4.2 Project Panel/Contextual References 与 Turn Journal 基础层修复已完成；先阅读
-doc/milestones/m4.md、doc/milestones/turn-journal.md 并复验相关测试。
-接下来实施用户 Integrated Terminal UI，复用 DSH terminal/PTY backend，并严格绑定
-Aezy Workspace/Environment；不要复制 shell/job/PTY 生命周期。
+M4.1A/B、M4.2 Project Panel/Contextual References、Integrated Terminal 与 Turn Journal
+基础层修复已完成；先阅读 doc/milestones/m4.md、doc/milestones/terminal.md、
+doc/milestones/turn-journal.md 并复验相关测试。
+接下来实施 Activity / Status / Usage / Notifications，只薄投影现有 DSH/Aezy 状态。
 不要修改 DSH 源码，不要实现第二套 Session/Subagent/Task/PTY/compaction 内核，
 也不要提前扩展 Cloud/Remote/PR。
 ```

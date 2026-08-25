@@ -14,7 +14,8 @@
   "plugins": [
     "@aezy/brand",
     "@aezy/security",
-    "@aezy/project"
+    "@aezy/project",
+    "@aezy/terminal"
   ],
   "upstreamReview": {
     "checkedAt": "2026-08-25",
@@ -22,7 +23,7 @@
     "latestObservedCommit": "b150a551b8d465e31e418e1b2eaf5e79bbb7d28e",
     "latestObservedTree": "53915efe4e2126cc7779b73dfc8a3bcec5318c44",
     "runtimeDecision": "remain-on-reviewed-rc.1-baseline",
-    "ownershipImpact": "rc.2 does not add a generic/additive details panel router, reusable file-tree/preview surface, or generic project-context resolver; M4 remains out of tree while reusing the public single details slot, additive shell.overlay, dsh-client-ui-primitives, inputTriggers.registerSource, remote.fileReferences.list, and agent/pre-step durable-message seams; Aezy does not duplicate @file/@session, composer, Session, or message persistence, and shadowing Tool Details remains an explicit compatibility cost until a generic router exists"
+    "ownershipImpact": "rc.2 does not add a generic/additive details panel router, reusable file-tree/preview surface, generic project-context resolver, browser terminal transport, raw TTY resize seam, or bottom dock. M4 and Integrated Terminal remain out of tree while reusing the public details/shell.overlay/conversation.view seams, input/reference services, and the published owner-scoped DSH terminal registry/platform backend. Aezy does not duplicate @file/@session, composer, Session, PTY, shell, job, process cleanup, or message persistence."
   },
   "policy": {
     "referenceTree": "read-only",
