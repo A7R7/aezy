@@ -8,6 +8,9 @@
 - `f22a7f0677 feat(terminal): bridge DSH PTY sessions to Aezy Web`
 - `bef5cb0ef8 feat(terminal): add Session-scoped integrated UI`
 - `7188e6298e fix(terminal): expose bounded read truncation`
+- `6cb1fae8e4 feat(terminal): project live shell cwd`
+- `3016aa4d01 fix(terminal): follow sandboxed shell cwd`
+- `d0a3c60c64 feat(terminal): move UI into side panel`
 
 开工时重新查询公开 Git tags，最新仍为 `dsh-v0.1.1-rc.2`
 （`b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`）。rc.2 没有 browser terminal
@@ -23,8 +26,8 @@ Aezy Web composition 新挂载发布版 `@deepseek-ai/dsh-terminal` registry 和
    cwd drift、foreign Session 全部 fail closed；
 2. 只投影名称带 Aezy UI namespace 的 PTY，不允许用户 bridge 枚举或控制模型通过
    terminal tools 打开的 session；
-3. 通过公开 `conversation.view` 注册 Terminal tab，提供多标签 chrome、输入、读取、
-   `SIGINT` 和关闭入口。
+3. 通过公开 Session header action、`details` 与 `shell.overlay` 注册右侧 Terminal panel，
+   提供多标签 chrome、输入、读取、`SIGINT` 和关闭入口。
 
 PTY id、owner authority、backend registry、sandbox policy、shell argv/env、进程组信号、
 scrollback retention、超时、退出与 awaited process-tree cleanup 均由 DSH 维护。Aezy 没有
@@ -40,14 +43,18 @@ terminal resize、逐字节输入或完整 VT emulation。未来上游公开 raw
 
 ## 产品行为
 
-- Terminal 是原生 Session view tab，占据主内容区，不使用 floating overlay，也不占用
-  M4 Project details panel；DSH 当前没有 additive bottom dock，所以第一版不改写 AppFrame；
+- Terminal 桌面端动态占用原生、可调宽度的 `details` column，与 Chat 同时可见且不改变
+  对话滚动；窄屏才降级为全宽 `shell.overlay`。关闭后释放单槽位，不永久遮蔽 M4 Project
+  Review/Files panel；
 - 每个 Session 最多 8 个 UI terminal；标签可以切换、新建和关闭；状态显示 running、exit
   code/signal、PID 和 backend type；
 - Enter 提交命令或 interactive reply，Shift+Enter 保留多行，Up/Down 浏览每个 tab 独立
   history；持续读取最新 1000 行，DSH 超出 retention 时显示 truncated 状态；
 - Ctrl-C 只投递上游允许的 `SIGINT`；UI 不暴露 SIGKILL 或任意 signal；
-- Chat/Terminal 切换只卸载 view，PTY 留在 Host registry；重新进入从 DSH list/read 恢复；
+- 关闭/重开 panel 只卸载 view，PTY 留在 Host registry；重新进入从 DSH list/read 恢复；
+- Linux 通过 DSH snapshot 的公开 PID 读取 shell 实际 cwd，并只把最后一个可输入的可视
+  `dsh> ` 投影为“cwd 加 `>`”；执行 `cd` 后随 read polling 更新。读取失败回退 Session cwd，
+  raw scrollback 与 DSH controlled prompt/readiness 协议均不改写；
 - Session/Workspace 切换按 exact owner 隔离，旧响应不能投影到新 Session；
 - owning Agent 或 Host dispose 时 DSH 关闭 PTY。进程不是 durable Session history，Host
   restart 后不恢复，也不冒充可恢复终端。
@@ -55,23 +62,24 @@ terminal resize、逐字节输入或完整 VT emulation。未来上游公开 raw
 ## 自动与真实验证
 
 - `pnpm run test:terminal`：7/7，覆盖 Host open/list/read/send/signal/close、cold/cwd/foreign/
-  non-UI fence、16 KiB input、NUL、SIGINT、8-session bound，以及 browser bundle/view seam；
+  non-UI fence、16 KiB input、NUL、SIGINT、8-session bound，以及 browser bundle/panel seam；
 - `pnpm run test:m0`：全新临时 `DSH_HOME` 的真实 rc.1 composition/Web/Workspace/Session/
   preset smoke 通过，HTML 实际加载 `@aezy/terminal`；
-- `pnpm run test:terminal:http`：真实 rc.1 Host + DSH PTY 执行 `printf`/`pwd`，确认 cwd，
-  同 Session 两 PTY、错误 cwd 409、request fence 403，并用 SIGINT 中断 `sleep 30`；
+- `pnpm run test:terminal:http`：真实 rc.1 Host + DSH PTY 执行 `printf`/`pwd`/`cd /tmp`，
+  确认 live cwd 会从 Session 目录更新为 `/tmp`；同 Session 两 PTY、错误 cwd 409、request
+  fence 403，并用 SIGINT 中断 `sleep 30`；
 - M1 22/22、M2 11/11、M3 6/6、brand 1/1、peer check、`git diff --check` 通过；
-- Browser QA 使用真实 3095 Host 和 Aezy 仓库 cwd：1440×960 dark 主视图
-  `1152×758`；680×820 light 主视图宽 616，input right edge 672≤680；无 overflow；
-  Chat→Terminal 后两个 PTY 与命令输出保持，另一个 Session 只有自己的一个 PTY，切回仍
-  保持；`pageerror=[]`；测试退出时显式关闭本轮 PTY；
-- `computer-use` 因当前 Codex task 的 WSL `file://` cwd 再次拒绝初始化；按 skill fallback
-  在 `/tmp` 使用一次性 Playwright Chromium、NSS runtime 与 Windows fonts fontconfig 完成
-  QA。没有新增仓库浏览器依赖，也没有修改系统安装。
+- 新版 Browser QA 使用真实 3095 Host 和 Aezy 仓库 cwd：1440×960 时 Terminal 是原生静态
+  `details` 列，`left=1081`、`width=359`、`right=1440`，Chat tab 全程仍为 selected；
+  680×820 时只渲染宽 680 的 overlay，input right edge=680，无 overflow；`cd /tmp` 后输出
+  末尾与 input prompt 都显示 `/tmp>`。关闭/reopen 保留两 PTY 与 scrollback，Session 切换
+  自动关闭旧 panel，新 Session 只有自己的一个 PTY；`pageerror=[]`；
+- 浏览器验证沿用 `/tmp` 的一次性 Playwright Chromium、NSS runtime 与 Windows fonts
+  fontconfig；没有新增仓库浏览器依赖，也没有修改系统安装。
 
-浏览器 QA Session：`terminal-browser-mt7y0rht` 与
-`terminal-browser-other-mt7y0rht`。截图只保留为本机临时证据：
-`/tmp/aezy-terminal-dark-wide.png`、`/tmp/aezy-terminal-light-narrow.png`。
+新版浏览器 QA Session：`terminal-panel-mt80q6it` 与
+`terminal-panel-other-mt80q6it`。截图只保留为本机临时证据：
+`/tmp/aezy-terminal-panel-dark-wide.png`、`/tmp/aezy-terminal-panel-light-narrow.png`。
 
 ## 后续
 

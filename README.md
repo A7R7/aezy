@@ -146,11 +146,14 @@ objects。Project Panel 的 workspace、目录与 diff Ask action 只把引用�
 
 ## Integrated Terminal
 
-`@aezy/terminal` 已通过公开 `conversation.view` seam 增加占据 Session 主内容区的
-Terminal tab，并把当前 Session/cwd 严格绑定到发布版 `@deepseek-ai/dsh-terminal` 与
-平台 shell backend。支持最多 8 个终端标签、保留有界 scrollback、逐行命令/交互回复、
-命令历史、`SIGINT`、退出状态和显式关闭；Chat/Terminal 切换不会关闭 PTY，Session/
-Workspace 切换不会串 terminal identity。
+`@aezy/terminal` 通过公开 `details` / `shell.overlay` seam 将 Integrated Terminal 放入
+Session-scoped 右侧 panel：桌面端占据主页面空间并继承 DSH 可调宽度 details column，
+窄屏才降级为 overlay，不再替换 Chat 主视图。当前 Session/cwd 严格绑定到发布版
+`@deepseek-ai/dsh-terminal` 与平台 shell backend。支持最多 8 个终端标签、保留有界
+scrollback、逐行命令/交互回复、命令历史、`SIGINT`、退出状态和显式关闭；关闭 panel
+不会关闭 PTY，Session/Workspace 切换不会串 terminal identity。Linux 提示符投影 shell
+实际 cwd，执行 `cd` 后会更新；失败时安全回退到 Session cwd，DSH 内部 `dsh> ` readiness
+协议保持不变。
 
 DSH 0.1.1 的公开 terminal contract 是 line-oriented，而不是 raw byte TTY，也没有 resize
 API；因此当前 UI 明确是 line terminal，不引入 xterm 或复制 PTY/ConPTY/job/shell/process
