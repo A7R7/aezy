@@ -25,6 +25,8 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
 - `packages/aezy-security/`：Approval Rules、Network Policy、解释与审计。
 - `packages/aezy-terminal/`：复用 DSH PTY registry/platform shell 的 Integrated Terminal
   Host bridge 与右侧 panel。
+- `packages/aezy-activity/`：只读投影 DSH Session/Job/Subagent/interaction、durable usage 与
+  现有 Terminal status 的 Activity dashboard。
 - `doc/`：按 milestone、roadmap、reference 和 archive 分层的项目文档；入口见
   [`doc/README.md`](doc/README.md)。
 
@@ -61,6 +63,7 @@ CLI 和真实 profile/Web/Workspace/Session/preset 链路，不使用替代 runt
 | M4.1 | Structured Review、自动刷新 file tree、code/Markdown/image preview | [`m4.md`](doc/milestones/m4.md) |
 | M4.2 | `@directory`、Working/Historical `@diff` 与 Contextual Ask | [`m4.md`](doc/milestones/m4.md) |
 | Terminal | 多标签、Session-scoped DSH line PTY side panel | [`terminal.md`](doc/milestones/terminal.md) |
+| Activity | Status、Usage、Notifications 与 recent/background activity dashboard | [`activity.md`](doc/milestones/activity.md) |
 
 关键语义：
 
@@ -73,6 +76,8 @@ CLI 和真实 profile/Web/Workspace/Session/preset 链路，不使用替代 runt
 - Terminal transport 是 DSH 0.1.1 的 line-oriented contract，不是 raw browser TTY；Aezy
   不复制 VT/PTY/resize/ConPTY 生命周期。Linux 活动提示符会随 shell `cd` 更新实际 cwd。
 - M2 Network Policy 是 Agent tool boundary，不是操作系统防火墙。
+- Activity notifications 不另建 inbox/read state；Session、Job、Subagent、usage、trajectory
+  与 Terminal 状态始终读取 DSH/Aezy 已有权威 projection，缺失时显示 unavailable。
 
 ## 构建与测试
 
@@ -82,6 +87,7 @@ pnpm run build:m1
 pnpm run build:m2
 pnpm run build:m3
 pnpm run build:terminal
+pnpm run build:activity
 
 pnpm run test:brand
 pnpm run test:m0
@@ -89,6 +95,7 @@ pnpm run test:m1
 pnpm run test:m2
 pnpm run test:m3
 pnpm run test:terminal
+pnpm run test:activity
 pnpm peers check
 ```
 
@@ -99,6 +106,7 @@ AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:m1:http
 AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:m2:http
 AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:m3:http
 AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:terminal:http
+AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:activity:http
 ```
 
 需要真实模型时再按对应 milestone 运行 `dogfood:*` 命令，不把一次性 dogfood 过程记录复制
@@ -122,7 +130,7 @@ Aezy 的构建和运行仍只消费 npm 发布包；恢复参考树不会改变 
 - 文档阅读顺序：[`doc/README.md`](doc/README.md)
 - 活动所有权路线：[`doc/roadmap/aezy-upstream-ownership-roadmap.md`](doc/roadmap/aezy-upstream-ownership-roadmap.md)
 
-下一切片是 **Activity / Status / Usage / Notifications**：只薄投影现有 Session、Job、
-Subagent、approval、trajectory、terminal 和 provider usage 事实，不建立第二套 Task runtime、
-usage ledger 或通知状态机。其后才是 localhost Browser + browser interaction；真正 Side Chat
-等待 DSH Interactive Side Sessions/fork/merge-back 公开 seam。
+下一切片是 **localhost Browser + browser interaction**：先服务本地 coding loop 的页面
+发现/启动、screenshot、click/type/scroll 与可审计证据，不扩成 Cloud browser fleet 或通用
+Computer Use。真正 Side Chat 继续等待 DSH Interactive Side Sessions/fork/merge-back 公开
+seam。

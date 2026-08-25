@@ -2,10 +2,15 @@
 
 ## 当前状态
 
-**In progress（2026-08-25 owner/seam decision complete）。** 本切片只增加外置 Aezy
+**Complete（2026-08-25）。** 本切片只增加外置 Aezy
 dashboard；DSH 的 Session、Job、Subagent、approval、trajectory、terminal 和 provider
 usage 仍是唯一事实 owner。dashboard 不写长期状态，不从事件流重算另一份 ledger，也不实现
 Task、通知、usage 或 PTY 生命周期。
+
+实现提交：
+
+- `297f2525c5 docs(activity): record owner and seam decision`
+- `38ff79419a feat(activity): project DSH runtime status dashboard`
 
 开工时重新查询公开 Git tags，最新仍为 `dsh-v0.1.1-rc.2`
 （`b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`）。对 rc.1→rc.2 的相关 package/source diff
@@ -46,3 +51,33 @@ Terminal 的公开实现 seam 没有逻辑变化；Session runtime 的变化只�
 3. Session、notification、Job/Subagent 和 Terminal 输出都有硬上限；无 durable Aezy truth store。
 4. 真实 rc.1 Host 验证 module、Session projection 与 fenced Terminal list；浏览器宽/窄屏验证。
 5. 不捆绑 Cloud/Remote/PR、Side Chat、merge-back、Browser interaction 或 native desktop shell。
+
+## 自动与真实验证
+
+- `pnpm run test:activity`：2/2，覆盖动态 header/details/overlay 注册与 disposer、Session
+  navigation、事实源字段、硬上限、Terminal 只读 fence，以及无 localStorage/indexedDB/native
+  Notification/SessionEvent 重放/PTY 控制；
+- `pnpm run test:m0`：真实 rc.1 profile composition、Web、Workspace、Session 与 Aezy preset
+  smoke 通过，HTML module manifest 加载 `@aezy/activity`；
+- `AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:activity:http`：真实 Host 新建 Session，
+  读取 DSH tail-page `tokenUsage`、`contextPressure`、`sessionStats` durable projections，并通过
+  existing Session/cwd-fenced Terminal list；
+- `pnpm run test:terminal` 7/7、`pnpm peers check` 与 `git diff --check` 通过；参考树仍是
+  detached rc.1 clean checkout。
+
+真实 browser QA 使用两个 non-blank Aezy Session：`activity-panel-mt8gr0d3` 与
+`activity-panel-other-mt8gr0d3`。1440×960 下 Activity 是 `left=1081`、`width=359`、
+`right=1440` 的原生 details 列，Chat 保持可见，横向 overflow=0；680×820 下只显示
+`left=0`、`width=680` 的 overlay，overflow=0。Session 切换关闭旧 panel，另一 Session 不继承
+第一个 Session 的 Terminal projection；四个 section 均可见，provider usage/trajectory/
+Terminal 数量来自真实 projection，`pageerror=[]`。截图是本机临时证据：
+`/tmp/aezy-activity-panel-dark-wide.png`、`/tmp/aezy-activity-panel-light-narrow.png`。
+
+3090 已在实现后正常 SIGTERM/restart；`packages/aezy-activity/lib/client.js` SHA-256 为
+`dac5432d1461a888546dc1ff4c2e927fff53258b1dbe50a4a8928fb7836f2c5d`。
+
+## 后续
+
+下一切片是 localhost Browser + browser interaction。它应先服务本地 coding loop，并在开工
+前重新核对上游 browser/tool/approval seam；不与 Cloud browser fleet、Remote/PR、Side Chat、
+merge-back 或通用 Computer Use 捆绑。
