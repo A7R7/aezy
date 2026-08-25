@@ -1,5 +1,5 @@
 import {
-  useCallback, useEffect, useRef, useState, type KeyboardEvent,
+  useCallback, useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent,
 } from 'react'
 
 type TerminalStatus =
@@ -11,6 +11,7 @@ type TerminalTab = {
   title: string
   type: string
   pid?: number
+  currentCwd: string
   status: TerminalStatus
 }
 
@@ -38,14 +39,33 @@ type ClientContext = {
   }
   sessions: {
     list: {
-      getSnapshot(): { byId: Record<string, { cwd?: string }> }
+      getSnapshot(): { current?: string; byId: Record<string, { cwd?: string }> }
+      subscribe(listener: () => void): () => void
     }
+  }
+  layout: {
+    openDetails(): void
+    closeDetails(): void
   }
 }
 
 type TerminalViewProps = {
   sessionId: string
   cwd: string
+}
+
+type TerminalPanelTarget = TerminalViewProps
+
+type TerminalPanelProps = {
+  panel: TerminalPanelController
+  surface: 'details' | 'overlay'
+  closePanel(): void
+  syncLayout(narrow: boolean): void
+}
+
+type TerminalHeaderActionProps = {
+  sessionId: string
+  openTerminal(sessionId: string): void
 }
 
 const palette = {
@@ -99,11 +119,59 @@ function statusLabel(status: TerminalStatus): string {
   return status.signal === null ? 'Exited' : `Exited · ${status.signal}`
 }
 
+function displayOutput(output: string, currentCwd: string): string {
+  const controlledPrompt = 'dsh> '
+  return output.endsWith(controlledPrompt)
+    ? `${output.slice(0, -controlledPrompt.length)}${currentCwd}> `
+    : output
+}
+
+class TerminalPanelController {
+  private target: TerminalPanelTarget | null = null
+  private readonly listeners = new Set<() => void>()
+
+  getSnapshot = (): TerminalPanelTarget | null => this.target
+
+  subscribe = (listener: () => void): (() => void) => {
+    this.listeners.add(listener)
+    return () => this.listeners.delete(listener)
+  }
+
+  open(target: TerminalPanelTarget): void {
+    this.target = target
+    this.emit()
+  }
+
+  close(): void {
+    if (this.target === null) return
+    this.target = null
+    this.emit()
+  }
+
+  private emit(): void {
+    for (const listener of this.listeners) listener()
+  }
+}
+
 function TerminalGlyph() {
   return <svg aria-hidden="true" width="15" height="15" viewBox="0 0 16 16" fill="none">
     <rect x="1.5" y="2" width="13" height="11.5" rx="2" stroke="currentColor" />
     <path d="m4 5 2.2 2L4 9M8 10h3.5" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
+}
+
+function TerminalHeaderAction({ sessionId, openTerminal }: TerminalHeaderActionProps) {
+  return <button
+    type="button"
+    data-aezy-open-terminal
+    title="Open Integrated Terminal"
+    aria-label="Open Integrated Terminal"
+    onClick={() => openTerminal(sessionId)}
+    style={{ height: 28, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '0 8px', border: `1px solid ${palette.border}`, borderRadius: 7, background: palette.surface, color: palette.text, cursor: 'pointer', fontSize: 11 }}
+  >
+    <TerminalGlyph />
+    <span>Terminal</span>
+  </button>
 }
 
 export function TerminalView({ sessionId, cwd }: TerminalViewProps) {
@@ -313,7 +381,7 @@ export function TerminalView({ sessionId, cwd }: TerminalViewProps) {
         </div>
       })}
       <button type="button" data-aezy-terminal-new onClick={() => { void openTerminal() }} disabled={opening || !backendAvailable || tabs.length >= 8} title="New terminal" aria-label="New terminal" style={{ ...buttonStyle, minWidth: 30, padding: '0 8px', opacity: opening || tabs.length >= 8 ? .5 : 1, fontSize: 17 }}>+</button>
-      <div title={cwd} style={{ minWidth: 120, marginLeft: 'auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: palette.muted, fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{cwd}</div>
+      <div title={active?.currentCwd ?? cwd} style={{ minWidth: 80, marginLeft: 'auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: palette.muted, fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11 }}>{active?.currentCwd ?? cwd}</div>
     </div>
 
     {error !== null && <div role="alert" data-aezy-terminal-error style={{ padding: '7px 11px', borderBottom: `1px solid ${palette.border}`, background: 'var(--dsw-alias-state-error-secondary, rgba(211,51,51,.1))', color: palette.danger, fontSize: 12 }}>{error}</div>}
@@ -338,10 +406,10 @@ export function TerminalView({ sessionId, cwd }: TerminalViewProps) {
           onClick={() => { inputRef.current?.focus() }}
           style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto', padding: '14px 16px', background: palette.terminal, color: palette.text, cursor: 'text' }}
         >
-          <pre style={{ margin: 0, minHeight: '100%', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 12.5, lineHeight: 1.65 }}>{outputs[active.id] ?? ''}</pre>
+          <pre style={{ margin: 0, minHeight: '100%', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 12.5, lineHeight: 1.65 }}>{displayOutput(outputs[active.id] ?? '', active.currentCwd)}</pre>
         </div>
-        <div data-aezy-terminal-input style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto auto', alignItems: 'end', gap: 8, padding: '9px 10px', borderTop: `1px solid ${palette.border}`, background: palette.terminalBanner }}>
-          <span aria-hidden="true" style={{ padding: '7px 0', color: palette.accent, fontFamily: 'var(--ds-font-family-code, monospace)', fontWeight: 700 }}>&gt;</span>
+        <div data-aezy-terminal-input style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', alignItems: 'end', gap: 8, padding: '8px 10px 9px', borderTop: `1px solid ${palette.border}`, background: palette.terminalBanner }}>
+          <span title={active.currentCwd} style={{ gridColumn: '1 / -1', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: palette.accent, fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 11.5, fontWeight: 650 }}>{active.currentCwd}&gt;</span>
           <textarea
             ref={inputRef}
             rows={1}
@@ -366,20 +434,112 @@ export function TerminalView({ sessionId, cwd }: TerminalViewProps) {
   </section>
 }
 
-export const inject = ['slots', 'sessions']
+function TerminalPanel({ panel, surface, closePanel, syncLayout }: TerminalPanelProps) {
+  const target = useSyncExternalStore(panel.subscribe, panel.getSnapshot)
+  const [viewport, setViewport] = useState(() => window.innerWidth)
+  const narrow = viewport < 760
+  const currentSurface = narrow ? 'overlay' : 'details'
+  const visible = target !== null && surface === currentSurface
+
+  useEffect(() => {
+    const onResize = () => setViewport(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  useEffect(() => {
+    if (target !== null) syncLayout(narrow)
+  }, [narrow, syncLayout, target])
+
+  useEffect(() => {
+    if (!visible) return
+    const onKey = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape') closePanel() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [closePanel, visible])
+
+  if (!visible || target === null) return null
+
+  const content = <aside aria-label="Integrated Terminal panel" data-aezy-terminal-panel data-session-id={target.sessionId} style={{ width: '100%', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: palette.page, color: palette.text }}>
+    <header style={{ flex: '0 0 auto', minHeight: 49, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 11px 8px 13px', borderBottom: `1px solid ${palette.border}`, background: palette.page }}>
+      <div style={{ minWidth: 0 }}>
+        <strong style={{ display: 'block', fontSize: 14 }}>Integrated Terminal</strong>
+        <span title={target.cwd} style={{ display: 'block', maxWidth: 360, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: palette.muted, fontFamily: 'var(--ds-font-family-code, monospace)', fontSize: 10.5 }}>{target.cwd}</span>
+      </div>
+      <button type="button" aria-label="Close Integrated Terminal panel" onClick={closePanel} style={{ border: 0, padding: 4, background: 'transparent', color: palette.muted, cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
+    </header>
+    <div style={{ flex: '1 1 auto', minHeight: 0 }}><TerminalView sessionId={target.sessionId} cwd={target.cwd} /></div>
+  </aside>
+
+  return surface === 'overlay'
+    ? <div data-aezy-terminal-panel-surface="overlay" style={{ position: 'absolute', inset: 0, zIndex: 2, background: 'var(--dsw-alias-bg-overlay, rgba(0,0,0,.36))' }}>{content}</div>
+    : <div data-aezy-terminal-panel-surface="details" style={{ width: '100%', height: '100%' }}>{content}</div>
+}
+
+export const inject = ['slots', 'sessions', 'layout']
 
 export function apply(ctx: ClientContext): void {
-  ctx.slots.inject('conversation.view', () => ctx.slots.register({
-    name: 'conversation.view',
-    id: 'terminal',
+  const panel = new TerminalPanelController()
+  let disposePanelSlots: (() => void) | null = null
+
+  const syncLayout = (narrow: boolean) => {
+    if (narrow) ctx.layout.closeDetails()
+    else ctx.layout.openDetails()
+  }
+  const unmountPanel = () => {
+    disposePanelSlots?.()
+    disposePanelSlots = null
+  }
+  const closePanel = () => {
+    panel.close()
+    ctx.layout.closeDetails()
+    unmountPanel()
+  }
+  const mountPanel = () => {
+    if (disposePanelSlots !== null) return
+    const disposeDetails = ctx.slots.register({
+      name: 'details',
+      priority: -20,
+      inject: (): TerminalPanelProps => ({ panel, surface: 'details', closePanel, syncLayout }),
+    }, TerminalPanel)
+    const disposeOverlay = ctx.slots.register({
+      name: 'shell.overlay',
+      id: 'aezy-terminal',
+      order: 110,
+      inject: (): TerminalPanelProps => ({ panel, surface: 'overlay', closePanel, syncLayout }),
+    }, TerminalPanel)
+    disposePanelSlots = () => {
+      disposeOverlay()
+      disposeDetails()
+    }
+  }
+  const openTerminal = (sessionId: string) => {
+    const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
+    if (cwd === undefined) throw new Error(`aezy-terminal: session "${sessionId}" has no working directory`)
+    panel.open({ sessionId, cwd })
+    mountPanel()
+    syncLayout(window.innerWidth < 760)
+  }
+
+  ctx.effect(() => ctx.sessions.list.subscribe(() => {
+    const target = panel.getSnapshot()
+    if (target === null) return
+    const state = ctx.sessions.list.getSnapshot()
+    const current = state.current ?? target.sessionId
+    if (current !== target.sessionId || state.byId[target.sessionId]?.cwd !== target.cwd) closePanel()
+  }), 'aezy-terminal: close panel on Session identity change')
+
+  ctx.effect(() => () => {
+    panel.close()
+    unmountPanel()
+  }, 'aezy-terminal: dispose dynamic side panel')
+
+  ctx.slots.inject('conversation.session.header.actions', () => ctx.slots.register({
+    name: 'conversation.session.header.actions',
+    id: 'aezy-terminal',
     order: 40,
-    label: () => 'Terminal',
-    inject: (sessionId: string) => {
-      const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
-      if (cwd === undefined) throw new Error(`aezy-terminal: session "${sessionId}" has no working directory`)
-      return { sessionId, cwd }
-    },
-  }, TerminalView))
+    inject: (): Pick<TerminalHeaderActionProps, 'openTerminal'> => ({ openTerminal }),
+  }, TerminalHeaderAction))
 }
 
 export default { inject, apply }

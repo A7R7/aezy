@@ -57,6 +57,30 @@ window.__ModuleLoader__.load({
 			if (status.exitCode !== null) return `Exited ${status.exitCode}`;
 			return status.signal === null ? "Exited" : `Exited · ${status.signal}`;
 		}
+		function displayOutput(output, currentCwd) {
+			return output.endsWith("dsh> ") ? `${output.slice(0, -5)}${currentCwd}> ` : output;
+		}
+		var TerminalPanelController = class {
+			target = null;
+			listeners = /* @__PURE__ */ new Set();
+			getSnapshot = () => this.target;
+			subscribe = (listener) => {
+				this.listeners.add(listener);
+				return () => this.listeners.delete(listener);
+			};
+			open(target) {
+				this.target = target;
+				this.emit();
+			}
+			close() {
+				if (this.target === null) return;
+				this.target = null;
+				this.emit();
+			}
+			emit() {
+				for (const listener of this.listeners) listener();
+			}
+		};
 		function TerminalGlyph() {
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("svg", {
 				"aria-hidden": "true",
@@ -78,6 +102,29 @@ window.__ModuleLoader__.load({
 					strokeLinecap: "round",
 					strokeLinejoin: "round"
 				})]
+			});
+		}
+		function TerminalHeaderAction({ sessionId, openTerminal }) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+				type: "button",
+				"data-aezy-open-terminal": true,
+				title: "Open Integrated Terminal",
+				"aria-label": "Open Integrated Terminal",
+				onClick: () => openTerminal(sessionId),
+				style: {
+					height: 28,
+					display: "inline-flex",
+					alignItems: "center",
+					gap: 5,
+					padding: "0 8px",
+					border: `1px solid ${palette.border}`,
+					borderRadius: 7,
+					background: palette.surface,
+					color: palette.text,
+					cursor: "pointer",
+					fontSize: 11
+				},
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(TerminalGlyph, {}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "Terminal" })]
 			});
 		}
 		function TerminalView({ sessionId, cwd }) {
@@ -432,9 +479,9 @@ window.__ModuleLoader__.load({
 								children: "+"
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								title: cwd,
+								title: active?.currentCwd ?? cwd,
 								style: {
-									minWidth: 120,
+									minWidth: 80,
 									marginLeft: "auto",
 									overflow: "hidden",
 									textOverflow: "ellipsis",
@@ -443,7 +490,7 @@ window.__ModuleLoader__.load({
 									fontFamily: "var(--ds-font-family-code, monospace)",
 									fontSize: 11
 								},
-								children: cwd
+								children: active?.currentCwd ?? cwd
 							})
 						]
 					}),
@@ -528,30 +575,35 @@ window.__ModuleLoader__.load({
 									fontSize: 12.5,
 									lineHeight: 1.65
 								},
-								children: outputs[active.id] ?? ""
+								children: displayOutput(outputs[active.id] ?? "", active.currentCwd)
 							})
 						}),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							"data-aezy-terminal-input": true,
 							style: {
 								display: "grid",
-								gridTemplateColumns: "auto minmax(0, 1fr) auto auto",
+								gridTemplateColumns: "minmax(0, 1fr) auto auto",
 								alignItems: "end",
 								gap: 8,
-								padding: "9px 10px",
+								padding: "8px 10px 9px",
 								borderTop: `1px solid ${palette.border}`,
 								background: palette.terminalBanner
 							},
 							children: [
-								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									"aria-hidden": "true",
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+									title: active.currentCwd,
 									style: {
-										padding: "7px 0",
+										gridColumn: "1 / -1",
+										minWidth: 0,
+										overflow: "hidden",
+										textOverflow: "ellipsis",
+										whiteSpace: "nowrap",
 										color: palette.accent,
 										fontFamily: "var(--ds-font-family-code, monospace)",
-										fontWeight: 700
+										fontSize: 11.5,
+										fontWeight: 650
 									},
-									children: ">"
+									children: [active.currentCwd, ">"]
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("textarea", {
 									ref: inputRef,
@@ -645,22 +697,200 @@ window.__ModuleLoader__.load({
 				]
 			});
 		}
-		const inject = ["slots", "sessions"];
+		function TerminalPanel({ panel, surface, closePanel, syncLayout }) {
+			const target = (0, react.useSyncExternalStore)(panel.subscribe, panel.getSnapshot);
+			const [viewport, setViewport] = (0, react.useState)(() => window.innerWidth);
+			const narrow = viewport < 760;
+			const visible = target !== null && surface === (narrow ? "overlay" : "details");
+			(0, react.useEffect)(() => {
+				const onResize = () => setViewport(window.innerWidth);
+				window.addEventListener("resize", onResize);
+				return () => window.removeEventListener("resize", onResize);
+			}, []);
+			(0, react.useEffect)(() => {
+				if (target !== null) syncLayout(narrow);
+			}, [
+				narrow,
+				syncLayout,
+				target
+			]);
+			(0, react.useEffect)(() => {
+				if (!visible) return;
+				const onKey = (event) => {
+					if (event.key === "Escape") closePanel();
+				};
+				window.addEventListener("keydown", onKey);
+				return () => window.removeEventListener("keydown", onKey);
+			}, [closePanel, visible]);
+			if (!visible || target === null) return null;
+			const content = /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("aside", {
+				"aria-label": "Integrated Terminal panel",
+				"data-aezy-terminal-panel": true,
+				"data-session-id": target.sessionId,
+				style: {
+					width: "100%",
+					height: "100%",
+					minHeight: 0,
+					display: "flex",
+					flexDirection: "column",
+					overflow: "hidden",
+					background: palette.page,
+					color: palette.text
+				},
+				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
+					style: {
+						flex: "0 0 auto",
+						minHeight: 49,
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "space-between",
+						gap: 10,
+						padding: "8px 11px 8px 13px",
+						borderBottom: `1px solid ${palette.border}`,
+						background: palette.page
+					},
+					children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						style: { minWidth: 0 },
+						children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", {
+							style: {
+								display: "block",
+								fontSize: 14
+							},
+							children: "Integrated Terminal"
+						}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+							title: target.cwd,
+							style: {
+								display: "block",
+								maxWidth: 360,
+								marginTop: 2,
+								overflow: "hidden",
+								textOverflow: "ellipsis",
+								whiteSpace: "nowrap",
+								color: palette.muted,
+								fontFamily: "var(--ds-font-family-code, monospace)",
+								fontSize: 10.5
+							},
+							children: target.cwd
+						})]
+					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+						type: "button",
+						"aria-label": "Close Integrated Terminal panel",
+						onClick: closePanel,
+						style: {
+							border: 0,
+							padding: 4,
+							background: "transparent",
+							color: palette.muted,
+							cursor: "pointer",
+							fontSize: 20,
+							lineHeight: 1
+						},
+						children: "×"
+					})]
+				}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+					style: {
+						flex: "1 1 auto",
+						minHeight: 0
+					},
+					children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(TerminalView, {
+						sessionId: target.sessionId,
+						cwd: target.cwd
+					})
+				})]
+			});
+			return surface === "overlay" ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				"data-aezy-terminal-panel-surface": "overlay",
+				style: {
+					position: "absolute",
+					inset: 0,
+					zIndex: 2,
+					background: "var(--dsw-alias-bg-overlay, rgba(0,0,0,.36))"
+				},
+				children: content
+			}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+				"data-aezy-terminal-panel-surface": "details",
+				style: {
+					width: "100%",
+					height: "100%"
+				},
+				children: content
+			});
+		}
+		const inject = [
+			"slots",
+			"sessions",
+			"layout"
+		];
 		function apply(ctx) {
-			ctx.slots.inject("conversation.view", () => ctx.slots.register({
-				name: "conversation.view",
-				id: "terminal",
+			const panel = new TerminalPanelController();
+			let disposePanelSlots = null;
+			const syncLayout = (narrow) => {
+				if (narrow) ctx.layout.closeDetails();
+				else ctx.layout.openDetails();
+			};
+			const unmountPanel = () => {
+				disposePanelSlots?.();
+				disposePanelSlots = null;
+			};
+			const closePanel = () => {
+				panel.close();
+				ctx.layout.closeDetails();
+				unmountPanel();
+			};
+			const mountPanel = () => {
+				if (disposePanelSlots !== null) return;
+				const disposeDetails = ctx.slots.register({
+					name: "details",
+					priority: -20,
+					inject: () => ({
+						panel,
+						surface: "details",
+						closePanel,
+						syncLayout
+					})
+				}, TerminalPanel);
+				const disposeOverlay = ctx.slots.register({
+					name: "shell.overlay",
+					id: "aezy-terminal",
+					order: 110,
+					inject: () => ({
+						panel,
+						surface: "overlay",
+						closePanel,
+						syncLayout
+					})
+				}, TerminalPanel);
+				disposePanelSlots = () => {
+					disposeOverlay();
+					disposeDetails();
+				};
+			};
+			const openTerminal = (sessionId) => {
+				const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd;
+				if (cwd === void 0) throw new Error(`aezy-terminal: session "${sessionId}" has no working directory`);
+				panel.open({
+					sessionId,
+					cwd
+				});
+				mountPanel();
+				syncLayout(window.innerWidth < 760);
+			};
+			ctx.effect(() => ctx.sessions.list.subscribe(() => {
+				const target = panel.getSnapshot();
+				if (target === null) return;
+				const state = ctx.sessions.list.getSnapshot();
+				if ((state.current ?? target.sessionId) !== target.sessionId || state.byId[target.sessionId]?.cwd !== target.cwd) closePanel();
+			}), "aezy-terminal: close panel on Session identity change");
+			ctx.effect(() => () => {
+				panel.close();
+				unmountPanel();
+			}, "aezy-terminal: dispose dynamic side panel");
+			ctx.slots.inject("conversation.session.header.actions", () => ctx.slots.register({
+				name: "conversation.session.header.actions",
+				id: "aezy-terminal",
 				order: 40,
-				label: () => "Terminal",
-				inject: (sessionId) => {
-					const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd;
-					if (cwd === void 0) throw new Error(`aezy-terminal: session "${sessionId}" has no working directory`);
-					return {
-						sessionId,
-						cwd
-					};
-				}
-			}, TerminalView));
+				inject: () => ({ openTerminal })
+			}, TerminalHeaderAction));
 		}
 		var client_default = {
 			inject,
