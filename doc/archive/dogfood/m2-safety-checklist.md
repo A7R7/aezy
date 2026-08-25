@@ -1,5 +1,7 @@
 # M2 安全检查清单
 
+> **Archived dogfood evidence.** 当前 M2 状态与结论见 `doc/milestones/m2.md`。
+
 ## 执行组合
 
 - [x] policy 在公开 `tools/pre-execute` seam 读取完整 parsed arguments。

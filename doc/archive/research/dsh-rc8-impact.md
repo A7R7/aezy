@@ -1,5 +1,9 @@
 # DSH v0.1.0-rc.8 更新与 Aezy 影响报告
 
+> **Archived：已被 0.1.1-rc.1 基线取代的增量研究。** 当前版本判断请读
+> [DSH 0.1.1-rc.1 影响报告](../../reference/dsh-0.1.1-rc1-impact.md)。本文只用于追溯
+> rc.7 → rc.8 的历史决策。
+
 ## 结论
 
 `dsh-v0.1.0-rc.8` 不是小型修补版本。它相对 rc.7 包含 536 个 commit、1,604 个变更文件、54,064 行新增和 10,533 行删除；workspace 包从 219 个增加到 226 个。Aezy 已把只读参考树和发布包运行时一起升级到 rc.8，并通过真实 profile、Web Host、Workspace、Session、M1 Changes/ledger/revert/undo 验证。

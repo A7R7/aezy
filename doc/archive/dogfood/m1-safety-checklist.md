@@ -1,5 +1,7 @@
 # M1 安全检查清单
 
+> **Archived dogfood evidence.** 当前 M1 状态与结论见 `doc/milestones/m1.md`。
+
 > 在真实 dogfood 与后续迭代中逐项核对；任何一项不满足即视为失败，不得放行。
 
 ## 参考树不可变性

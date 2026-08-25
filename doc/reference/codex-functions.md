@@ -1,5 +1,8 @@
 # Codex Desktop / Harness 主要功能表
 
+> 长期产品参考基线，不是 Aezy 当前状态或下一步清单。当前状态请读根 `HANDOFF.md`，
+> 能力所有权请读 `doc/roadmap/aezy-upstream-ownership-roadmap.md`。
+
 ## 1. 项目与工作区
 
 * 打开本地文件夹作为项目。

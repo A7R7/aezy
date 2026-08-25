@@ -1,46 +1,43 @@
 # Aezy
 
-Aezy 是基于 DeepSeek Harness（DSH）公开扩展机制构建的独立编程 Agent。Aezy 不修改或 fork DSH 的内部插件；所有产品能力通过仓库外置的 Cordis 插件、bundle 和 profile patch 覆盖或补足。
+Aezy 是基于 DeepSeek Harness（DSH）公开扩展机制构建的独立编程 Agent。Aezy 不 fork
+或修改 DSH 内部插件；产品能力通过参考树外的 Cordis plugin、bundle、profile patch 和
+adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、approval 与 UI seam。
+
+## 架构边界
+
+- `.local/deepseek-harness/` 是 ignored、read-only 的上游参考快照；运行时不从中相对导入源码。
+- `reference/dsh.lock.json` 与 `compatibility/dsh.json` 是支持版本的机器可读真相源。
+- 上游状态机只做薄接入，不在 Aezy 建立第二套 Session、Task、Subagent、PTY、compaction
+  或 merge-back 内核。
+- 非必要 DSH 组件通过 Aezy profile patch 禁用，不删除或修改上游 package。
+
+当前运行基线是 DSH `0.1.1-rc.1`，tag/commit 为
+`dsh-v0.1.1-rc.1` / `528c682e061696f5a160f363f236ecbf53cbd006`。默认运行状态位于
+`~/.aezy/dsh/`，仓库依赖缓存位于已忽略的 `.local/pnpm-store/`。
 
 ## 仓库布局
 
-- `.local/deepseek-harness/`：只读 DSH 上游参考源码，当前固定在 `dsh-v0.1.1-rc.1`（`528c682e061696f5a160f363f236ecbf53cbd006`）。
-- `reference/dsh.lock.json`：DSH 来源、revision、Git tree 和本地参考路径的机器可读锁定记录。
-- `doc/`：Aezy 的功能基线、DSH 插件审计和 Codex Desktop 差距报告。
-- `packages/aezy-base/`、`packages/aezy-web/`：Aezy 的外置 composition 与默认 Agent preset。
-- `packages/aezy-brand/`：占据 DSH 通用品牌 slots 的最薄文字品牌插件；暂以字母 `A` 作为图形占位。
-- `packages/aezy-project/`：M1 Project/Repository/Changes/turn ledger、M3 Worktree/Session binding/结构化 Handoff，以及 M4.1 Review + Files Project Panel 插件。
-- `packages/aezy-security/`：M2 持久 Approval Rules、独立 Network Policy、决策解释与审计插件。
-- `packages/aezy-terminal/`：复用 DSH PTY registry/platform shell 的 Session-scoped Integrated Terminal Host bridge 与 Web view。
-- Aezy 源码只放在参考树外的独立插件、bundle 和应用目录中，不写入 `.local/deepseek-harness/`。
+- `packages/aezy-base/`、`packages/aezy-web/`：最小 Host/Web composition 与 Aezy preset。
+- `packages/aezy-brand/`：DSH 通用品牌 slots 的 Aezy occupant。
+- `packages/aezy-project/`：Project、Turn Journal、Git enrichment、Worktree/Handoff、
+  Review/Files panel 与 Contextual References。
+- `packages/aezy-security/`：Approval Rules、Network Policy、解释与审计。
+- `packages/aezy-terminal/`：复用 DSH PTY registry/platform shell 的 Integrated Terminal
+  Host bridge 与右侧 panel。
+- `doc/`：按 milestone、roadmap、reference 和 archive 分层的项目文档；入口见
+  [`doc/README.md`](doc/README.md)。
 
-DSH 参考树不进入 Aezy 的 Git index，以免数千个上游文件拖慢日常 `status`、diff 和 IDE Git 集成；`reference/dsh.lock.json` 是其来源与 revision 的可提交真相源。新的 Aezy clone 如需恢复本地参考树，可执行：
-
-```bash
-git clone https://github.com/deepseek-ai/deepseek-harness.git .local/deepseek-harness
-git -C .local/deepseek-harness checkout --detach 528c682e061696f5a160f363f236ecbf53cbd006
-```
-
-恢复后应保持该目录只读使用；Aezy 构建和运行仍只消费发布到 npm 的 DSH package，不依赖本地参考树。
-
-## 扩展边界
-
-Aezy 只依赖 DSH 发布的 package、服务、事件、slot、Remote API 和 profile/bundle 接口。缺失能力应由新的 Aezy 插件提供；默认行为应由 Aezy bundle/profile patch 覆盖。即使上游实现薄弱，也不在参考树中直接修补。
-
-DSH 更新以新的已审核上游 revision 整体替换参考树。Aezy 插件通过端到端测试证明与所支持 DSH revision 的兼容性。
-
-## M0：运行 Aezy profile
-
-Aezy 当前固定使用 DSH `0.1.1-rc.1`。依赖缓存写入仓库中已忽略的 `.local/pnpm-store/`；包含凭据、设置、profile 和 session 的运行状态默认写入 `~/.aezy/dsh/`，以确保 DSH 能在 WSL 的原生 Linux 文件系统上执行 owner-only 权限校验。可用 `DSH_HOME` 显式覆盖该位置。首次运行会从旧的 `.local/dsh/` 复制现有状态，但不会复制必须重新生成的 profile `node_modules`。
+## 安装与运行
 
 ```bash
 pnpm install
 pnpm run profile:sync
 pnpm run test:m0
-pnpm run aezy:web -- --host 127.0.0.1 --port 3080
+pnpm run aezy:web -- --host 127.0.0.1 --port 3080 --no-open
 ```
 
-`profile:sync` 通过 DSH 的 `plugin --profile` 路径安装两个 Aezy 外置 bundle、`@aezy/brand`、`@aezy/security`、`@aezy/project` 与 `@aezy/terminal` 普通插件依赖，并在两个 bundle 之间叠加当前 DSH 安装自带的 Web bundle，将 profile 固定为：
+`profile:sync` 通过 DSH `plugin --profile` 安装 Aezy 外置 bundle/plugins，并组成：
 
 ```text
 @deepseek-ai/dsh-base
@@ -49,134 +46,83 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3080
 → @aezy/web
 ```
 
-首次真实 Agent turn 需要在 Web 的 Models 设置中配置可用 provider。`test:m0` 不使用模型 mock；它验证发布版 DSH CLI、完整 profile composition、Aezy 禁用策略、默认 preset、真实 Web Host/frontend，以及 Workspace/Session/preset Remote API 链路。当前签收状态见 [M0 里程碑记录](doc/milestones/m0.md)。
+首次真实 Agent Turn 需要在 Web Models 设置中配置可用 provider。`test:m0` 使用发布版 DSH
+CLI 和真实 profile/Web/Workspace/Session/preset 链路，不使用替代 runtime。
 
-## M1：Workspace & Changes
+## 已完成能力
 
-`@aezy/project` 使用公开 `ctx.webServer`、`session/event`、`tools/execute`、`dsh.client`、`conversation.view`、`conversation.chat.turnTail`、`details` 和 `shell.overlay` seam 提供结构化 workspace/repository status/diff、持久 Turn File Change Journal、可选 Git enrichment，以及 Codex 式 Turn change card。非 Git workspace 的 `write` / `edit` 仍会形成稳定 Historical Review；Git 继续补充 fingerprint、rename/binary、concurrent 与 fail-closed Undo/Redo。shell-only 副作用显式标记 partial/unobserved，不伪装完整。完整签收见 [Turn Journal 基础层修复](doc/milestones/turn-journal.md)。
+| 切片 | 产品能力 | 记录 |
+| --- | --- | --- |
+| M0 | 外置 composition、真实 profile、Aezy preset | [`m0.md`](doc/milestones/m0.md) |
+| Turn foundation | 非 Git structured Turn journal + optional Git enrichment | [`turn-journal.md`](doc/milestones/turn-journal.md) |
+| M1 | Project/Changes、Historical Review、fingerprint-safe atomic Undo/Redo | [`m1.md`](doc/milestones/m1.md) |
+| M2 | 持久 Approval Rules、Network Policy 与安全审计 | [`m2.md`](doc/milestones/m2.md) |
+| M3 | 受管 Worktree/Session binding 与结构化 Handoff | [`m3.md`](doc/milestones/m3.md) |
+| M4.1 | Structured Review、自动刷新 file tree、code/Markdown/image preview | [`m4.md`](doc/milestones/m4.md) |
+| M4.2 | `@directory`、Working/Historical `@diff` 与 Contextual Ask | [`m4.md`](doc/milestones/m4.md) |
+| Terminal | 多标签、Session-scoped DSH line PTY side panel | [`terminal.md`](doc/milestones/terminal.md) |
+
+关键语义：
+
+- Historical Turn 始终读取 durable ledger object，不用当前 worktree 重算。
+- Git 为 Turn journal 提供 repository identity、rename/binary、fingerprint、concurrent 与
+  safe Undo/Redo；非 Git structured `write/edit` 仍可 Review，未知 shell 副作用标记
+  `partial/unobserved`。
+- Review/Files 和 Terminal 在桌面使用 DSH 原生、占据页面空间的 `details` 列，窄屏才降级
+  为 overlay。Terminal 只在打开期间动态占用单槽位，关闭后释放，不永久遮蔽 Project panel。
+- Terminal transport 是 DSH 0.1.1 的 line-oriented contract，不是 raw browser TTY；Aezy
+  不复制 VT/PTY/resize/ConPTY 生命周期。Linux 活动提示符会随 shell `cd` 更新实际 cwd。
+- M2 Network Policy 是 Agent tool boundary，不是操作系统防火墙。
+
+## 构建与测试
 
 ```bash
+pnpm run build:brand
 pnpm run build:m1
-pnpm run test:m1
-AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run dogfood:turn-summary
-# 已启动独立 Aezy 测试 Host 时：
-pnpm run test:m1:http
-pnpm run dogfood:turn-journal
-```
-
-M1 已完成签收：真实模型在 Aezy Workspace 中完成跨文件 Turn，随后通过实际 Web `Changes` 查看 diff、部分撤销、整页刷新恢复和 receipt Undo。签收证据、Session id 和 fail-closed 边界见 [M1 里程碑记录](doc/milestones/m1.md)。
-
-## M2：Security Boundary
-
-`@aezy/security` 使用 DSH rc.1 的公开 `tools/pre-execute` 与单调 `tools.guard()` seam，在 DSH 原生一次性审批之前执行持久规则。Security view 可设置 global/repository Network Policy，添加、查看和撤销 deny/ask/allow 规则，并查看经过脱敏的近期决策审计。
-
-默认 Network Policy 为 `ask`。它覆盖 Agent 发起的网络工具与 shell 命令；未知 shell 在 `ask`/`deny` 下按 `possible network` 保守处理。模型服务和 DSH control-plane 流量不在此工具边界内，这也不是操作系统级网络沙箱。M2 的完整签收证据见 [M2 里程碑记录](doc/milestones/m2.md)。
-
-```bash
 pnpm run build:m2
-pnpm run test:m2
-pnpm run test:m2:http
-# 已在 3090 启动真实 Aezy Host 时，可运行真实模型 deny dogfood：
-pnpm run dogfood:m2
-```
-
-M2 已完成自动与真实模型签收；人工浏览器主题/交互复核项保留在 [M2 安全检查清单](doc/dogfood/m2-safety-checklist.md)。
-
-## M3：Worktree & Handoff
-
-`@aezy/project` 现在提供受管 Worktree identity/lifecycle、DSH Workspace/Session
-绑定、结构化 handoff 与 fail-closed cleanup。创建只接收短名称和精确 Git commit，
-目标固定派生在 `DSH_HOME/aezy/worktrees/<repository-identity>/`，不会接受任意路径；
-dirty Local 必须明确确认，且其 staged/unstaged/untracked 内容不会被暗中复制。
-
-Web `Worktrees` view 可从 Local 创建并打开隔离 Session，在 Worktree 内生成包含
-base/head、branch、已提交/未提交文件、Git status、验证结果和接手说明的 handoff，
-再归档/释放当前 Session 并回到 Local。清理会拒绝 dirty/conflict、活动 Session、
-所有权或路径/branch 漂移、以及没有与当前 HEAD 匹配的 clean handoff；成功时只执行
-非强制 `git worktree remove`，保留 branch 和 commits。
-
-```bash
 pnpm run build:m3
+pnpm run build:terminal
+
+pnpm run test:brand
+pnpm run test:m0
+pnpm run test:m1
+pnpm run test:m2
 pnpm run test:m3
-pnpm run test:m3:http
-# 已启动带真实模型配置的 Aezy Host 时：
-AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run dogfood:m3
+pnpm run test:terminal
+pnpm peers check
 ```
 
-M3 已完成真实 rc.1 HTTP 与 Aezy 自仓库模型 dogfood 签收；完整证据、Session、
-handoff 和保留分支见 [M3 里程碑记录](doc/milestones/m3.md)。
-
-## M4.1：Review + Files Project Panel
-
-Turn card 不再在消息流内展开 raw unified diff。Review 与文件行现在打开 Aezy
-Session-scoped 右侧 panel：桌面使用 DSH 原生 details column 占据主页面空间并可拖拽，
-窄屏降级为全宽 overlay。文件名纵向排列，点击一个文件名只在其正下方展开该文件的
-lazy-loaded diff。Working 与 Historical Turn 读取同一 structured DTO renderer，但
-来源与 identity 严格分离；Historical 继续读取 ledger object，后续 worktree 漂移不会
-改变快照。
-
-Renderer 提供 old/new line number、addition/deletion gutter、sticky file/hunk header、
-changed-file lazy navigation，以及 added/deleted/renamed/binary/truncated 和 malformed
-raw fallback 状态。完整自动、真实 rc.1 HTTP、Aezy 自身模型 dogfood 与浏览器 QA
-见 [M4.1A 签收记录](doc/milestones/m4.md)。
-
-消息流中的 Turn changes summary 使用与 DSH `md-code-block` 相同的 code-block/banner
-theme aliases、12px 圆角和 code font；文件明细位于简洁 body，总计位于
-`└ +A -D · N files` footer，Undo/Redo 与 Review 保留在 banner action 区。
-
-当前 rc.1/rc.2 没有 generic/additive details router，因此 desktop occupant 会 shadow
-上游 Tool Details；这是 docked 布局的已知兼容性代价，未来出现公开 router 后迁移。
-
-M4.1B 继续复用同一 panel，增加 Session-scoped、逐目录按需加载的文件树，以及
-code/Markdown/image preview。代码和 Markdown 分别直接复用 DSH 发布的 `ReadBlock`
-与 `MarkdownText`；Changes、Turn 文件行和 Handoff changed-file list 都能跳转。Host
-拒绝 workspace 越界、`.git`、symlink 和不安全 binary，并对目录、文本行/字节与图片
-设置硬上限；文件快速切换会取消旧请求，Session/cwd 切换立即关闭旧 panel。
-
-M4.1B 的自动、真实 rc.1 HTTP、真实模型与宽/窄、深/浅浏览器证据也记录在
-[M4 签收记录](doc/milestones/m4.md)。展开目录会以 fingerprint 门控的 bounded polling
-自动反映文件新增/删除，折叠或 Session/cwd 切换立即取消旧请求。
-
-M4.2 已在上游 `@file/@session` 输入管线之上增加 `@directory` 与 Working/Historical
-`@diff`。目录候选复用发布版 `fileReferences.list`，引用通过 canonical URI 与公开
-`agent/pre-step` 生成有界、durable、untrusted context；Historical 继续只读 Turn ledger
-objects。Project Panel 的 workspace、目录与 diff Ask action 只把引用追加到当前 Session
-草稿，不自动发送，也不创建另一套会话。完整自动、真实 rc.1 Host、模型、浏览器和
-历史漂移证据见 [M4 签收记录](doc/milestones/m4.md)。
-
-## Integrated Terminal
-
-`@aezy/terminal` 通过公开 `details` / `shell.overlay` seam 将 Integrated Terminal 放入
-Session-scoped 右侧 panel：桌面端占据主页面空间并继承 DSH 可调宽度 details column，
-窄屏才降级为 overlay，不再替换 Chat 主视图。当前 Session/cwd 严格绑定到发布版
-`@deepseek-ai/dsh-terminal` 与平台 shell backend。支持最多 8 个终端标签、保留有界
-scrollback、逐行命令/交互回复、命令历史、`SIGINT`、退出状态和显式关闭；关闭 panel
-不会关闭 PTY，Session/Workspace 切换不会串 terminal identity。Linux 提示符投影 shell
-实际 cwd，执行 `cd` 后会更新；失败时安全回退到 Session cwd，DSH 内部 `dsh> ` readiness
-协议保持不变。
-
-DSH 0.1.1 的公开 terminal contract 是 line-oriented，而不是 raw byte TTY，也没有 resize
-API；因此当前 UI 明确是 line terminal，不引入 xterm 或复制 PTY/ConPTY/job/shell/process
-lifecycle。PTY 在 owning Agent 或 Host dispose 时由 DSH await cleanup，Host restart 后不承诺
-恢复进程。完整证据见 [Integrated Terminal 签收记录](doc/milestones/terminal.md)。
+已有 Aezy Host 时可运行真实 HTTP/PTY 回归：
 
 ```bash
-pnpm run build:terminal
-pnpm run test:terminal
-# 已启动真实 Aezy Host 时：
+AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:m1:http
+AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:m2:http
+AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:m3:http
 AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:terminal:http
 ```
 
-下一顺序为 Activity / Status / Usage / Notifications，然后是 localhost Browser
-interaction。真正 Side Chat 等待 DSH Interactive Side Sessions/fork/merge-back seam，
-不在 Aezy 中复制持久会话内核。
+需要真实模型时再按对应 milestone 运行 `dogfood:*` 命令，不把一次性 dogfood 过程记录复制
+到 README。
 
-## 研究资料
+## DSH 参考树
 
-- [Codex Desktop / Harness 功能表](doc/codex-functions.md)
-- [DSH 内置与第一方插件功能报告](doc/reports/dsh-plugin-function-report.md)
-- [DSH 第一方包与插件逐项清单](doc/reports/dsh-first-party-package-inventory.md)
-- [DSH Web 与 Codex Desktop 功能差距报告](doc/reports/dsh-web-vs-codex-desktop-gap-report.md)
-- [DSH v0.1.0-rc.8 更新与 Aezy 影响报告](doc/reports/dsh-rc8-update-impact-report.md)
-- [DSH v0.1.1-rc.1 更新与 Aezy 影响报告](doc/reports/dsh-0.1.1-rc1-update-impact-report.md)
-- [Aezy 上游等待边界与实施路线图](doc/reports/aezy-upstream-ownership-roadmap.md)
+新的 clone 如需恢复只读参考树：
+
+```bash
+git clone https://github.com/deepseek-ai/deepseek-harness.git .local/deepseek-harness
+git -C .local/deepseek-harness checkout --detach 528c682e061696f5a160f363f236ecbf53cbd006
+```
+
+Aezy 的构建和运行仍只消费 npm 发布包；恢复参考树不会改变 runtime composition。升级 DSH
+前必须核对不可变 Git tag/commit/tree，并作为独立 reviewed revision replacement 处理。
+
+## 文档与下一步
+
+- 当前接手状态：[`HANDOFF.md`](HANDOFF.md)
+- 文档阅读顺序：[`doc/README.md`](doc/README.md)
+- 活动所有权路线：[`doc/roadmap/aezy-upstream-ownership-roadmap.md`](doc/roadmap/aezy-upstream-ownership-roadmap.md)
+
+下一切片是 **Activity / Status / Usage / Notifications**：只薄投影现有 Session、Job、
+Subagent、approval、trajectory、terminal 和 provider usage 事实，不建立第二套 Task runtime、
+usage ledger 或通知状态机。其后才是 localhost Browser + browser interaction；真正 Side Chat
+等待 DSH Interactive Side Sessions/fork/merge-back 公开 seam。

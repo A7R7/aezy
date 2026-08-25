@@ -1,6 +1,7 @@
-# DSH 内置与第一方插件功能报告
+# DSH package 架构与能力目录
 
-> 本报告主体是 rc.7 的完整审计快照。当前 Aezy 基线是 0.1.1-rc.1；rc.8 与 rc.1 的新增/移除包、bundle 变化和路线影响分别见 [rc.8 更新报告](dsh-rc8-update-impact-report.md) 与 [0.1.1-rc.1 更新报告](dsh-0.1.1-rc1-update-impact-report.md)。本文的架构结论仍有效，但数量和逐包名录不应当作当前版本的完整清单。
+> 长期参考文档。主体是 rc.7 架构审计，能力分层结论仍有效；历史逐包快照已归档，
+> 当前版本变化以 [rc.1 影响报告](dsh-0.1.1-rc1-impact.md) 和 compatibility metadata 为准。
 
 ## 结论
 
@@ -14,7 +15,7 @@ DeepSeek Harness（DSH）不是“核心程序加若干插件”，而是由 ven
 
 本报告基于只读参考树中的官方上游 `dsh-v0.1.0-rc.7`（`99f6f02f`），交叉读取了 [架构说明](../../.local/deepseek-harness/docs/architecture.md)、[包分组](../../.local/deepseek-harness/packages/README.md)、[base bundle](../../.local/deepseek-harness/packages/bundle/base/cordis.patch.yml)、[Web bundle](../../.local/deepseek-harness/packages/bundle/web-app/cordis.patch.yml)、[headless bundle](../../.local/deepseek-harness/packages/bundle/headless/cordis.patch.yml)、package manifest、package README 和关键入口源码。
 
-“包”“插件”“默认实例”必须分开：DSH 参考树有 219 个 `packages/*/*` workspace 包，全部依赖 Cordis，但其中包含运行时插件、浏览器插件、bundle、SDK/协议、纯 UI 组件、工具库、示例与测试支持。39 个包声明 `dsh.client`，3 个包声明 `dsh.bundle`；三个 shipped patch 直接引用 125 个不同的第一方包根。完整逐包清单见 [DSH 第一方包与插件逐项清单](dsh-first-party-package-inventory.md)。
+“包”“插件”“默认实例”必须分开：DSH 参考树有 219 个 `packages/*/*` workspace 包，全部依赖 Cordis，但其中包含运行时插件、浏览器插件、bundle、SDK/协议、纯 UI 组件、工具库、示例与测试支持。39 个包声明 `dsh.client`，3 个包声明 `dsh.bundle`；三个 shipped patch 直接引用 125 个不同的第一方包根。rc.7 的完整逐包事实保留在 [历史第一方清单](../archive/research/dsh-first-party-package-inventory-rc7.md)，不再作为活动文档维护。
 
 本报告把“内置”定义为 shipped profile 通过 base、web-app 或 headless patch 直接挂载或覆盖的条目；把“第一方”定义为本仓库 `@deepseek-ai/dsh-*` workspace 包，包括默认未挂载的可选能力；`vendor/`、测试 fixture、示例 `cordis.yml` 和社区 marketplace 不计入逐插件判断。
 
@@ -116,6 +117,6 @@ Web 最大短板不是聊天页，而是项目工作台：没有 repository/file
 
 第一阶段不要删除 package、重写 Agent Loop 或建立第二套状态库。在参考树外创建 `aezy-base`/`aezy-web` bundle 与 patch 层，覆盖 shipped rows 的 `disabled` 与 config；先跑通“打开项目 → 发起任务 → 读改代码 → shell/build/test → approval → diff/review → 继续 thread”的真实链路。DSH 参考树保持原样，Aezy 不永久移除或修改其中的 package。
 
-具体所有权、等待触发器与 M0-M5 交付门槛见 [Aezy 上游等待边界与实施路线图](aezy-upstream-ownership-roadmap.md)。上游 “remove repository plugin” 指移除重复的第三方插件分发路径，不是 Git Repository 产品域；Aezy 仍统一通过 `dsh plugin`、installable profile bundle 与 `cordis.patch.yml` 交付外置能力。
+具体所有权、等待触发器与交付门槛见 [Aezy 上游等待边界与实施路线图](../roadmap/aezy-upstream-ownership-roadmap.md)。上游 “remove repository plugin” 指移除重复的第三方插件分发路径，不是 Git Repository 产品域；Aezy 仍统一通过 `dsh plugin`、installable profile bundle 与 `cordis.patch.yml` 交付外置能力。
 
-逐包事实以 [第一方清单](dsh-first-party-package-inventory.md) 和各 package README 为准；本报告的保留/禁用判断是 Aezy 产品决策，不是对上游 package 质量的排名。
+逐包历史事实以 [rc.7 第一方清单](../archive/research/dsh-first-party-package-inventory-rc7.md) 和各 package README 为准；本目录的保留/禁用判断是 Aezy 产品决策，不是对上游 package 质量的排名。

@@ -1,6 +1,8 @@
-# DSH Web 与 Codex Desktop 功能差距报告
+# Codex Desktop / DSH 能力差距参考矩阵
 
-> 本报告的 72 项矩阵以 rc.7 的 DSH Web 为基线。rc.8 补充了 `@file/@session`、动态 Web renderer、Windows 持久 PowerShell等能力；0.1.1-rc.1 又补充 credentials/authorization 内核、Subagent lineage、Session projection、vision 与 Web 细节。增量见 [rc.8](dsh-rc8-update-impact-report.md) 和 [0.1.1-rc.1](dsh-0.1.1-rc1-update-impact-report.md) 更新报告。矩阵描述上游，不会随着 Aezy 每个里程碑重写；截至 2026-08-25，Aezy 已在外置插件中完成 Project/Git/Turn Journal、Approval/Network、Worktree/Handoff、Review/Files/Contextual References 和 [Integrated Terminal](../milestones/terminal.md)。
+> 长期参考矩阵，72 项上游判断以 rc.7 为原始基线，不随 Aezy 每个里程碑重写。
+> rc.8 调研已[归档](../archive/research/dsh-rc8-impact.md)，当前增量见
+> [rc.1 影响报告](dsh-0.1.1-rc1-impact.md)。Aezy 的当前交付状态以 milestone 和 roadmap 为准。
 
 ## 结论
 
@@ -8,11 +10,11 @@ DSH 已经有一套相当完整的 Agent runtime，但还不是一套完整的 C
 
 因此 Aezy 不应先重写 Agent Loop。最短路径是保留 DSH runtime，先建立最小外置 bundle/profile，再按 **Project/Repository/Local Environment + Git/Diff/change ledger/revert → Approval Rules + Network Policy → Worktree/Handoff** 的顺序补齐 Aezy 自有产品域。文件浏览、`@file`、用户 Integrated Terminal、Activity 和 Browser 改为按真实 dogfood 痛点推进；Cloud、Computer Use、远控、自动化和完整 Desktop Shell 不阻塞本地编程闭环。
 
-DSH 已有 seam 或详细 proposed note 的 Task Surface、Side Session、Recallable Compaction、Subagent/Job 状态、PTY backend、MCP/ACP transport 与 profile/settings 最后一公里，不进入 Aezy 的近期重型内核计划。Aezy 只做当前 profile 所需的薄装配和状态透传，并在每个里程碑前重新检查 upstream。详细所有权与等待门槛见 [Aezy 上游等待边界与实施路线图](aezy-upstream-ownership-roadmap.md)。
+DSH 已有 seam 或详细 proposed note 的 Task Surface、Side Session、Recallable Compaction、Subagent/Job 状态、PTY backend、MCP/ACP transport 与 profile/settings 最后一公里，不进入 Aezy 的近期重型内核计划。Aezy 只做当前 profile 所需的薄装配和状态透传，并在每个里程碑前重新检查 upstream。详细所有权与等待门槛见 [Aezy 上游等待边界与实施路线图](../roadmap/aezy-upstream-ownership-roadmap.md)。
 
 ## 评估口径
 
-对比基线是用户提供的 [Codex Desktop / Harness 主要功能表](../codex-functions.md) 共 72 项；DSH 基线是 `dsh-v0.1.0-rc.7`（`99f6f02f`）的 shipped Web profile。状态含义如下：
+对比基线是 [Codex Desktop / Harness 主要功能表](codex-functions.md) 共 72 项；DSH 基线是 `dsh-v0.1.0-rc.7`（`99f6f02f`）的 shipped Web profile。状态含义如下：
 
 - **已有**：Web 中有直接可用的产品入口，或作为 Agent coding loop 的默认能力端到端可用。
 - **部分**：只有后端 seam/可选插件、只有 Agent 可通过 shell 间接完成、或 Web 只覆盖了功能的一部分。
@@ -182,4 +184,4 @@ Cloud Mode 不能用现有 E2B POC 贴标签；Automations 不能用 Session-loc
 - [Sandbox 与 approval](../../.local/deepseek-harness/packages/sandbox/README.md)
 - [Subagent capability](../../.local/deepseek-harness/packages/subagent/README.md)
 - [Schedule 的 Session-local 限制](../../.local/deepseek-harness/packages/schedule/schedule/README.md)
-- [插件功能主报告](dsh-plugin-function-report.md)
+- [DSH package 架构与能力目录](dsh-package-catalog.md)

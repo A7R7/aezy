@@ -1,5 +1,7 @@
 # M1 运行期观察（rc.8 Aezy 外置插件架构与 Changes 表面）
 
+> **Archived dogfood evidence.** 当前 M1 状态与结论见 `doc/milestones/m1.md`。
+
 > 本笔记基于对当前 rc.8 profile 的实际代码与运行路径的三条证据化观察，非设计文档复述。
 
 ## 观察一：整个 M1 表面只通过公开 seam 挂载，参考树保持只读

@@ -164,7 +164,7 @@ client/layout/slot seam，明确每项数据的权威 owner。
 统一 harness agent loop 需另做所有权设计，并等待/复用成熟的 DSH public seam，不应顺手
 捆入状态 dashboard。
 
-活动路线与上游/Aezy 所有权：`doc/reports/aezy-upstream-ownership-roadmap.md`。
+活动路线与上游/Aezy 所有权：`doc/roadmap/aezy-upstream-ownership-roadmap.md`。
 
 ## 7. 文件地图
 
@@ -177,9 +177,11 @@ client/layout/slot seam，明确每项数据的权威 owner。
 | Security policy/store/client | `packages/aezy-security/` |
 | Integrated Terminal Host/client | `packages/aezy-terminal/` |
 | Profile 同步与启动 | `scripts/sync-profile.mjs`、`scripts/run-profile.mjs` |
+| 文档入口与阅读分层 | `doc/README.md` |
 | 当前 milestone 证据 | `doc/milestones/` |
-| 所有权与上游影响调研 | `doc/reports/` |
-| Codex 产品功能参考基线 | `doc/codex-functions.md` |
+| 活动所有权路线 | `doc/roadmap/` |
+| 长期产品与 DSH 参考 | `doc/reference/` |
+| 被取代的调研与 dogfood 证据 | `doc/archive/` |
 
 ## 8. 已知陷阱
 
@@ -200,7 +202,7 @@ client/layout/slot seam，明确每项数据的权威 owner。
 
 ```text
 请先完整阅读仓库根目录 HANDOFF.md、README.md 和
-doc/reports/aezy-upstream-ownership-roadmap.md，检查 git status、当前 DSH tag、3090 Host
+doc/roadmap/aezy-upstream-ownership-roadmap.md，检查 git status、当前 DSH tag、3090 Host
 以及 HANDOFF 中记录的功能基线。遵守 .local/deepseek-harness 只读、只用外置插件扩展、
 保留三个既有未跟踪 dogfood/test 项、每个大步骤独立且精确提交的边界。
 
