@@ -136,7 +136,7 @@ export class TerminalBridge {
         terminal: terminalView(snapshot, target.index),
         output: result.text,
         totalLines: result.totalLines,
-        truncated: result.truncated,
+        truncated: result.truncated || result.totalLines > READ_LINES,
       }
     } catch (error) {
       throw translateTerminalError(error)

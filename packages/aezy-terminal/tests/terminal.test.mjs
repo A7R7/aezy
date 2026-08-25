@@ -41,7 +41,7 @@ function fixture() {
     agents: { get: id => id === owner.id ? owner : id === other.id ? other : undefined },
     terminals,
   })
-  return { bridge, owner, other, byOwner }
+  return { bridge, owner, other, byOwner, terminals }
 }
 
 test('binds open/list/read/send/signal/close to the exact Session and cwd', async () => {
@@ -83,4 +83,12 @@ test('bounds the number of user terminals per Session', async () => {
   const identity = { sessionId: 'session-a', cwd: '/repo/a' }
   for (let index = 0; index < terminalLimits.maxTerminals; index += 1) await bridge.open(identity)
   await assert.rejects(() => bridge.open(identity), error => error instanceof TerminalRequestError && error.status === 409)
+})
+
+test('marks a read window truncated when retained output exceeds the projected line bound', async () => {
+  const { bridge, terminals } = fixture()
+  const identity = { sessionId: 'session-a', cwd: '/repo/a' }
+  const opened = await bridge.open(identity)
+  terminals.read = () => ({ text: 'latest', totalLines: terminalLimits.readLines + 1, lineBegin: 0, lineEnd: 1, truncated: false })
+  assert.equal(bridge.read({ ...identity, terminalId: opened.terminal.id }).truncated, true)
 })
