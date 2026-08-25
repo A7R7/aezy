@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { readlink } from 'node:fs/promises'
+import { readFile, readlink } from 'node:fs/promises'
 import { isAbsolute } from 'node:path'
 import { TerminalError, TerminalSessionId } from '@deepseek-ai/dsh-terminal'
 
@@ -9,6 +9,8 @@ const MAX_BODY_BYTES = 32 * 1024
 const MAX_INPUT_BYTES = 16 * 1024
 const READ_LINES = 1000
 const MAX_TERMINALS = 8
+const MAX_CWD_PROCESS_DEPTH = 8
+const MAX_CWD_PROCESSES = 64
 
 export const terminalLimits = Object.freeze({
   maxBodyBytes: MAX_BODY_BYTES,
@@ -91,12 +93,30 @@ export class TerminalBridge {
 
   async currentCwd(snapshot, fallback) {
     if (process.platform !== 'linux' || !Number.isSafeInteger(snapshot.pid) || snapshot.pid <= 0) return fallback
-    try {
-      const cwd = await readlink(`/proc/${snapshot.pid}/cwd`)
-      return isAbsolute(cwd) ? cwd : fallback
-    } catch {
-      return fallback
+    const visited = new Set()
+    let deepest = null
+    const visit = async (pid, depth) => {
+      if (depth > MAX_CWD_PROCESS_DEPTH || visited.size >= MAX_CWD_PROCESSES || visited.has(pid)) return
+      visited.add(pid)
+      try {
+        const cwd = await readlink(`/proc/${pid}/cwd`)
+        if (isAbsolute(cwd) && (deepest === null || depth >= deepest.depth)) deepest = { cwd, depth }
+      } catch {
+        return
+      }
+      if (depth === MAX_CWD_PROCESS_DEPTH) return
+      try {
+        const raw = await readFile(`/proc/${pid}/task/${pid}/children`, 'utf8')
+        const children = raw.trim().split(/\s+/u).filter(Boolean).map(Number)
+        for (const child of children) {
+          if (Number.isSafeInteger(child) && child > 0) await visit(child, depth + 1)
+        }
+      } catch {
+        // The process may exit between the public DSH snapshot and this projection.
+      }
     }
+    await visit(snapshot.pid, 0)
+    return deepest?.cwd ?? fallback
   }
 
   async list(input) {

@@ -68,6 +68,13 @@ try {
   assert.match(read.output, new RegExp(cwd.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   assert.equal(read.truncated, false)
 
+  await terminal('/send', {
+    method: 'POST',
+    body: JSON.stringify({ ...identity, terminalId: first.terminal.id, text: 'cd /tmp' }),
+  })
+  const moved = await terminal(`/read?${query}&terminalId=${encodeURIComponent(first.terminal.id)}`)
+  assert.equal(moved.terminal.currentCwd, '/tmp')
+
   const second = await terminal('/open', { method: 'POST', body: JSON.stringify(identity) })
   opened.push(second.terminal.id)
   const listed = await terminal(`?${query}`)
