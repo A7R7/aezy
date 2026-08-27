@@ -4,6 +4,11 @@
   "tag": "dsh-v0.1.1-rc.1",
   "commit": "528c682e061696f5a160f363f236ecbf53cbd006",
   "tree": "19e109115f57ace4170caf25dadbb59021126174",
+  "reference": {
+    "tag": "dsh-v0.1.1-rc.2",
+    "commit": "b150a551b8d465e31e418e1b2eaf5e79bbb7d28e",
+    "tree": "53915efe4e2126cc7779b73dfc8a3bcec5318c44"
+  },
   "profile": "aezy",
   "bundles": [
     "@deepseek-ai/dsh-base",
@@ -18,7 +23,7 @@
     "@aezy/terminal"
   ],
   "upstreamReview": {
-    "checkedAt": "2026-08-25",
+    "checkedAt": "2026-08-27",
     "latestObservedTag": "dsh-v0.1.1-rc.2",
     "latestObservedCommit": "b150a551b8d465e31e418e1b2eaf5e79bbb7d28e",
     "latestObservedTree": "53915efe4e2126cc7779b73dfc8a3bcec5318c44",

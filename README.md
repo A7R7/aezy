@@ -16,6 +16,11 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
 `dsh-v0.1.1-rc.1` / `528c682e061696f5a160f363f236ecbf53cbd006`。默认运行状态位于
 `~/.aezy/dsh/`，仓库依赖缓存位于已忽略的 `.local/pnpm-store/`。
 
+只读上游参考快照已更新到 `dsh-v0.1.1-rc.2` /
+`b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；这只更新审计基准，不会隐式改变上述 rc.1
+发布包 runtime。参考 revision 由 `reference/dsh.lock.json` 记录，runtime 兼容声明由
+`compatibility/dsh.json` 记录。
+
 ## 仓库布局
 
 - `packages/aezy-base/`、`packages/aezy-web/`：最小 Host/Web composition 与 Aezy preset。
@@ -110,7 +115,7 @@ AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:terminal:http
 
 ```bash
 git clone https://github.com/deepseek-ai/deepseek-harness.git .local/deepseek-harness
-git -C .local/deepseek-harness checkout --detach 528c682e061696f5a160f363f236ecbf53cbd006
+git -C .local/deepseek-harness checkout --detach b150a551b8d465e31e418e1b2eaf5e79bbb7d28e
 ```
 
 Aezy 的构建和运行仍只消费 npm 发布包；恢复参考树不会改变 runtime composition。升级 DSH
