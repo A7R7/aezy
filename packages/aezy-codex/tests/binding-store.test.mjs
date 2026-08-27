@@ -28,3 +28,23 @@ test('binding store fails closed on malformed durable state', async () => {
   await writeFile(file, '{"version":1,"bindings":{"s":{"cwd":"/workspace"}}}')
   assert.throws(() => new CodexBindingStore(file), /has no threadId/u)
 })
+
+test('binding store rejects malformed persisted Session ids', async (t) => {
+  const malformedSessionIds = [
+    ['', 'empty'],
+    ['s'.repeat(257), 'longer than 256 characters'],
+    ['session\0id', 'containing NUL'],
+  ]
+
+  for (const [sessionId, description] of malformedSessionIds) {
+    await t.test(description, async () => {
+      const root = await mkdtemp(join('/tmp', 'aezy-codex-bindings-bad-session-'))
+      const file = join(root, 'codex-bindings.json')
+      await writeFile(file, JSON.stringify({
+        version: 1,
+        bindings: { [sessionId]: { threadId: 'thread-1', cwd: '/workspace' } },
+      }))
+      assert.throws(() => new CodexBindingStore(file), /DSH sessionId is invalid/u)
+    })
+  }
+})

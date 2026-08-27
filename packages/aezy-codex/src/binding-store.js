@@ -5,6 +5,12 @@ function emptyDocument() {
   return { version: 1, bindings: {} }
 }
 
+function validateSessionId(sessionId) {
+  const key = String(sessionId)
+  if (!key || key.length > 256 || key.includes('\0')) throw new Error('DSH sessionId is invalid')
+  return key
+}
+
 function validateRecord(sessionId, value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`Codex binding for ${sessionId} must be an object`)
@@ -37,7 +43,7 @@ function readDocument(file) {
   return {
     version: 1,
     bindings: Object.fromEntries(Object.entries(value.bindings).map(
-      ([sessionId, record]) => [sessionId, validateRecord(sessionId, record)],
+      ([sessionId, record]) => [validateSessionId(sessionId), validateRecord(sessionId, record)],
     )),
   }
 }
@@ -61,8 +67,7 @@ export class CodexBindingStore {
   }
 
   async set(sessionId, record) {
-    const key = String(sessionId)
-    if (!key || key.length > 256 || key.includes('\0')) throw new Error('DSH sessionId is invalid')
+    const key = validateSessionId(sessionId)
     const next = validateRecord(key, record)
     this.document.bindings[key] = next
     this.writeQueue = this.writeQueue.then(() => writeFileAtomic(
