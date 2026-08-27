@@ -1,6 +1,6 @@
 # Aezy 项目交接
 
-> 更新日期：2026-08-25<br>
+> 更新日期：2026-08-27<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`main`<br>
 > 功能基线：`f3b475e0a1 docs(terminal): record side panel verification`
@@ -33,7 +33,7 @@
 - 默认状态目录：`~/.aezy/dsh/`
 - 仓库 pnpm store：`.local/pnpm-store/`
 
-2026-08-25 最后复核的最新公开 tag 是 `dsh-v0.1.1-rc.2`
+2026-08-27 最后复核的最新公开 tag 是 `dsh-v0.1.1-rc.2`
 （`b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`）。rc.2 仍没有 Aezy 所需的 generic
 panel router、browser raw TTY/resize 或 Interactive Side Sessions/fork/merge-back 产品 seam；
 Aezy 继续运行已完整签收的 rc.1。新里程碑开始前必须重新检查 tag，不要用 npm `latest`
@@ -147,22 +147,38 @@ open/send/read、多 PTY、SIGINT、Session/cwd/request fence 和 `cd /tmp` live
 
 ## 6. 下一步与所有权
 
-下一切片固定为 **Activity / Status / Usage / Notifications**。
+近期目标已改为：让 Aezy 能用用户现有 ChatGPT Pro 计划完成真实 coding agent Turn，并能
+在 Aezy 仓库中开发、测试、重启和继续开发 Aezy，形成最小自迭代闭环。
 
-目标是薄投影现有 DSH/Aezy 的 Session、Job、Subagent、approval、trajectory、terminal 与
-provider usage 事实，形成统一 dashboard/status surface。开始前先检查最新 DSH tag 和公开
-client/layout/slot seam，明确每项数据的权威 owner。
+首选 owner/seam 是官方 Codex `app-server`，不是 Aezy 自写 OAuth 或立即复制 Codex agent
+loop。官方接口已提供 ChatGPT managed OAuth（浏览器与 device-code）、凭据持久化/刷新、
+`planType`、rate limits/usage、conversation history、approval 和 streamed agent events。Aezy
+只通过新的外置 runtime adapter 启动/连接该进程并投影协议事实；Codex 继续拥有 OAuth、
+credential 和 agent loop。当前本机 `codex-cli 0.149.0-alpha.4.1` 的 `app-server` 命令仍标为
+experimental，因此第一步必须是固定版本的兼容性 spike 和端到端 contract test，不能直接
+把不稳定协议散入现有 M0–M4/Terminal 包。
 
-禁止在该切片中：
+近期顺序：
 
-- 建立第二套 Task runtime、usage ledger、notification state machine 或持久 Session；
-- 泛化重构 M1–M4 的 ledger、reference hard limits、Historical truth 或 panel identity；
-- 扩展 Cloud/Remote/PR、Side Chat、merge-back；
+1. Codex `app-server` compatibility spike：stdio 初始化、account/login/read、thread/turn、
+   streaming、approval、cancel、resume 与 usage；证明 Pro plan 在 Aezy Host 中可用。
+2. 将 spike 收敛为可关闭的外置 Codex runtime adapter，并完成 Aezy 自身仓库的真实 dogfood。
+3. 达到自开发闭环后，再决定是否基于 DSH provider/Session/tool/approval seam 实现第二个
+   Codex-inspired backend；它必须通过同一 runtime contract，且不能复制 DSH 内核。
+4. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
+
+原 Activity dashboard 实验已全部废弃：原提交 `297f2525c5`、`38ff79419a`、`b31efd533f`
+分别由 `b153454f3c`、`b09c40b197`、`5faa1ba740` 的独立 revert 撤销。不要从这些旧提交继续
+开发。Browser integration 同样暂停；默认直接使用外部浏览器。只有当自动页面发现、CDP
+调试、截图/交互证据能明显增强 agent loop 时再单独复议，而且不预设嵌入狭小网页 viewport。
+
+禁止在近期切片中：
+
+- 读取、复制或自行刷新 Codex OAuth token；优先让 `app-server` 托管登录与凭据；
+- 建立第二套 Session/Subagent/Task/PTY/compaction/approval/usage 内核；
+- 泛化重构已签收的 M1–M4、Turn journal 或 Terminal；
+- 提前捆绑 Traffic/Task Board、Cloud/Remote/PR、Side Chat、merge-back 或 Browser；
 - 修改 `.local/deepseek-harness/` 绕开缺失 seam。
-
-其后顺序是 localhost Browser + browser interaction。真正 Side Chat、DAG branch merge 和
-统一 harness agent loop 需另做所有权设计，并等待/复用成熟的 DSH public seam，不应顺手
-捆入状态 dashboard。
 
 活动路线与上游/Aezy 所有权：`doc/roadmap/aezy-upstream-ownership-roadmap.md`。
 
@@ -193,8 +209,9 @@ client/layout/slot seam，明确每项数据的权威 owner。
 3. 当前 `details` 是 DSH single slot。Project 是长期 occupant；Terminal 只在打开期间以更高
    优先级动态占用并在关闭时释放。未来 generic panel router 出现后再统一，不要复制一个
    AppFrame/layout 内核。
-4. `authorization` package 已发布，但默认 Web composition/UI 尚未形成完整登录产品链路；
-   后续 Auth dashboard 只能薄挂载上游能力，不能另写 OAuth/token-refresh 内核。
+4. ChatGPT Pro 的可用入口是受支持的 Codex client/app-server 登录链路，不等价于把 Pro 计划
+   当作任意 OpenAI API key。Aezy 不读取 Codex credential 文件，也不实现 OAuth refresh；
+   `app-server` 不可用时必须明确降级为 API-key provider 或不可用，不能秘密复用 token。
 5. 当前 Codex Desktop 的 Windows computer-use helper 可能拒绝 WSL `file://` cwd；此前真实
    浏览器 QA 使用 `/tmp` 一次性 Playwright/NSS fallback。这不是 Aezy Web 故障。
 
@@ -206,11 +223,13 @@ doc/roadmap/aezy-upstream-ownership-roadmap.md，检查 git status、当前 DSH 
 以及 HANDOFF 中记录的功能基线。遵守 .local/deepseek-harness 只读、只用外置插件扩展、
 保留三个既有未跟踪 dogfood/test 项、每个大步骤独立且精确提交的边界。
 
-M0–M4.2、Turn File Change Journal 与 Integrated Terminal side panel 已完成；需要细节时再读
-对应 doc/milestones 文档，不要从头重跑或重构已签收切片。
+M0–M4.2、Turn File Change Journal 与 Integrated Terminal side panel 已完成；需要细节时再按
+doc/README.md 索引读取对应 milestone，不要递归读取整个 doc/，也不要重构已签收切片。
 
-接下来实施 Activity / Status / Usage / Notifications：先检查最新上游 seam 与权威 owner，
-只薄投影现有 Session、Job、Subagent、approval、trajectory、terminal 和 provider usage
-事实。不要修改 DSH 源码，不要实现第二套 Session/Subagent/Task/usage/notification/PTY/
-compaction 内核，也不要提前捆绑 Cloud/Remote/PR、Side Chat 或 merge-back。
+Activity dashboard 的三笔原提交已经独立 revert，Browser integration 已暂停；Traffic Board
+与 Task Board 暂缓。接下来先实施固定版本的 Codex app-server compatibility spike，通过官方
+managed ChatGPT OAuth 使用 Pro plan，覆盖 account、thread/turn streaming、approval、cancel、
+resume 与 usage，并以 Aezy 自身仓库的真实开发 Turn 验收。只用外置 runtime adapter，不读取
+或管理 OAuth token，不修改 DSH 源码，不实现第二套 Session/Subagent/Task/PTY/compaction/
+approval/usage 内核，也不要提前捆绑 Board、Cloud/Remote/PR、Side Chat 或 merge-back。
 ```

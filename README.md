@@ -120,9 +120,14 @@ Aezy 的构建和运行仍只消费 npm 发布包；恢复参考树不会改变 
 
 - 当前接手状态：[`HANDOFF.md`](HANDOFF.md)
 - 文档阅读顺序：[`doc/README.md`](doc/README.md)
-- 活动所有权路线：[`doc/roadmap/aezy-upstream-ownership-roadmap.md`](doc/roadmap/aezy-upstream-ownership-roadmap.md)
+- 当前所有权与实施路线：[`doc/roadmap/aezy-upstream-ownership-roadmap.md`](doc/roadmap/aezy-upstream-ownership-roadmap.md)
 
-下一切片是 **Activity / Status / Usage / Notifications**：只薄投影现有 Session、Job、
-Subagent、approval、trajectory、terminal 和 provider usage 事实，不建立第二套 Task runtime、
-usage ledger 或通知状态机。其后才是 localhost Browser + browser interaction；真正 Side Chat
-等待 DSH Interactive Side Sessions/fork/merge-back 公开 seam。
+下一主线是 **Codex-backed self-development loop**：先通过外置 runtime adapter 集成官方
+Codex `app-server`，由 Codex 托管 ChatGPT OAuth/credential/refresh 和 agent loop，使 Aezy
+可以使用用户现有 Pro plan；Aezy 负责 account、thread/turn、streaming、approval、cancel、
+resume 与 usage 的产品投影。第一验收目标是在 Aezy 中对 Aezy 仓库完成真实开发 Turn。
+
+已实现的 Activity dashboard 实验已经通过三笔独立 revert 全部撤销，不再作为后续基础。
+Traffic Board 与 Task Board 暂缓；Browser integration 暂停并默认使用外部浏览器。后续若实现
+DSH-native Codex-inspired loop，必须作为同一 runtime contract 的可替换 backend，不能复制
+DSH 的 Session/Subagent/Task/PTY/compaction/approval 内核。
