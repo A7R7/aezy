@@ -165,11 +165,10 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 近期顺序：
 
 1. 已完成：独立 rc.2 runtime compatibility gate，发布包/lock/profile/3090 均已签收。
-2. 在隔离 DSH profile 中验证固定版本 `relay-dsh-plugin-codex@0.1.2`：stdio 初始化、
-   account/login/read、thread/turn、
-   streaming、approval、cancel、resume 与 usage；证明 Pro plan 在 Aezy Host 中可用。
-3. 若 companion 满足硬约束，将它薄接入 Aezy profile；只有硬约束失败时才自写最小外置
-   Codex runtime adapter。随后完成 Aezy 自身仓库的真实 dogfood。
+2. 已完成：隔离验证 `relay-dsh-plugin-codex@0.1.2`。auth/account/usage、对话、resume、cancel
+   通过，但真实工具/approval 事实与安全切模型失败；不要安装到 Aezy profile。
+3. 硬约束失败已成立：实现最小外置官方 App Server adapter，先签收 structured tool/file-change、
+   approval、managed login 与 usage，再完成 Aezy 自身仓库的真实 dogfood。
 4. 达到自开发闭环后，再决定是否基于 DSH provider/Session/tool/approval seam 实现第二个
    Codex-inspired backend；它必须通过同一 runtime contract，且不能复制 DSH 内核。
 5. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
@@ -234,8 +233,8 @@ M0–M4.2、Turn File Change Journal 与 Integrated Terminal side panel 已完�
 doc/README.md 索引读取对应 milestone，不要递归读取整个 doc/，也不要重构已签收切片。
 
 Activity dashboard 的三笔原提交已经独立 revert，Browser integration 已暂停；Traffic Board
-与 Task Board 暂缓。reference 与 runtime 已对齐 rc.2；下一步先在隔离 profile 验证固定版本
-`relay-dsh-plugin-codex@0.1.2`，通过官方 managed ChatGPT OAuth
+与 Task Board 暂缓。reference 与 runtime 已对齐 rc.2；Relay 0.1.2 companion 门禁已因真实
+tool/approval 硬约束失败，下一步实现最小外置官方 App Server adapter，通过 managed ChatGPT OAuth
 使用 Pro plan，覆盖 account、thread/turn streaming、approval、cancel、resume 与 usage，并以
 Aezy 自身仓库的真实开发 Turn 验收。只用外置 runtime adapter，不读取或管理 OAuth token，
 不修改 DSH 源码，不实现第二套 Session/Subagent/Task/PTY/compaction/approval/usage 内核，也

@@ -111,7 +111,16 @@ M0 profile smoke 及 M1/M2/M3/Terminal 真实 HTTP/PTY 回归通过。没有新�
 已签收能力或 patch DSH 源码。门禁发现 `dsh-authorization` 必须显式精确锁定 rc.2，避免
 `dsh-llm-pi-ai` 带来的混合 peer graph。
 
-### 1. Codex app-server compatibility spike
+### 1. Relay Codex companion gate（Complete：硬约束失败）
+
+已在隔离 profile 验证 `relay-dsh-plugin-codex@0.1.2`。ChatGPT managed auth 复用、account/
+rate/usage、streamed Turn、连续对话、重启 resume 和 cancel 通过；但真实 Luna/Sol Turn 都没有
+形成结构化 DSH tool/call/result 或 approval round-trip，Sol 还在跨模型 continuation 上出现
+`invalid_encrypted_content`。Relay 也没有 Aezy 内 managed login/logout 产品入口，binding store
+默认逃逸 `DSH_HOME`。因此不安装到主 profile。完整证据见
+[`relay-dsh-plugin-codex-0.1.2-compatibility.md`](../reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)。
+
+### 2. 最小官方 app-server adapter spike
 
 这是当前唯一最高优先级切片。以固定 Codex 版本启动本地 `app-server`，在独立外置 adapter
 中验证：
@@ -130,7 +139,7 @@ Workspace/Session 关联到 opaque Codex thread id 所需的最小 binding，不
 [Codex Authentication](https://developers.openai.com/codex/auth/) 和
 [Using Codex with your ChatGPT plan](https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan)。
 
-### 2. Codex-backed Aezy 产品闭环
+### 3. Codex-backed Aezy 产品闭环
 
 spike 通过后再做产品化：模型/推理设置、登录状态、composer、streaming transcript、diff/tool
 卡片、approval、stop/resume、错误恢复与 usage。必须复用当前 Project/Review/Terminal/Security
@@ -140,13 +149,13 @@ spike 通过后再做产品化：模型/推理设置、登录状态、composer�
 代码、运行相关测试、审阅 diff、重启 Host，并在同一开发任务上继续工作。达到该门槛才可称为
 “可自迭代”的最小替代品。
 
-### 3. 可替换 DSH-native agent backend
+### 4. 可替换 DSH-native agent backend
 
 Codex-backed 闭环稳定后，再决定是否以同一 runtime contract 接入 DSH provider/Session/tool/
 approval seam，形成 Codex-inspired backend。先写 parity contract 与端到端测试，再实现 adapter；
 不得以“自主可控”为理由建立第二套 Session/Subagent/Task/usage/PTY/compaction 内核。
 
-### 4. 暂缓产品面
+### 5. 暂缓产品面
 
 - Traffic Board：未来按统一 provider proxy/control plane 立项，覆盖 provider/model/account pool、
   routing、request logs、quota/usage 与控制；

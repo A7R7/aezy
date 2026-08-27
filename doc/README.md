@@ -37,9 +37,12 @@ Milestone 是已完成切片的签收事实。不要把其中的历史 Session I
   基线升级到 rc.1 时的影响与签收。
 - [`reference/dsh-0.1.1-rc2-impact.md`](reference/dsh-0.1.1-rc2-impact.md)：rc.2 只读
   参考更新、multimodal/attachment 变化、可替代范围与 runtime upgrade gate。
+- [`reference/relay-dsh-plugin-codex-0.1.2-compatibility.md`](reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)：
+  固定 Relay companion 的 OAuth/account、Thread/Turn、tool/approval、usage 与 Aezy 兼容门禁。
 
 DSH revision 的机器可读真相源位于根目录 `reference/dsh.lock.json` 与
-`compatibility/dsh.json`，不是这些叙述文档。
+`compatibility/dsh.json`；Relay companion 的机器结论位于 `compatibility/relay-codex.json`，
+不是这些叙述文档。
 
 ## Archive
 

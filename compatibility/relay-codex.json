@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-08-28",
+  "package": {
+    "name": "relay-dsh-plugin-codex",
+    "version": "0.1.2",
+    "integrity": "sha512-UD3Ud3zTsxRY/0ZlLsAqbAopXb7fPY5zXjefMRWsAqG+wBaZMNSrYd5XpI453xBe8M/KdNFdae+Ha3HNI+aQ4w==",
+    "repository": "https://github.com/yangbobo2021/relay-dsh-plugin-codex",
+    "codexPackage": "@openai/codex@0.149.0"
+  },
+  "environment": {
+    "dsh": "0.1.1-rc.2",
+    "node": "22.22.1",
+    "pnpm": "11.7.0",
+    "platform": "linux-x64",
+    "profile": "isolated-temporary-profile"
+  },
+  "account": {
+    "type": "chatgpt",
+    "planType": "prolite",
+    "rateLimitsReadable": true,
+    "usageReadable": true
+  },
+  "result": "hard-constraints-failed",
+  "passed": [
+    "bundled-app-server-startup",
+    "managed-chatgpt-auth-reuse",
+    "model-discovery",
+    "streamed-assistant-turn",
+    "multi-turn-thread-continuity",
+    "host-restart-resume",
+    "user-cancel-to-aborted-terminal-state",
+    "rate-limit-read",
+    "account-usage-read"
+  ],
+  "failed": [
+    "in-app-managed-login-control",
+    "structured-tool-call-and-result",
+    "dsh-approval-round-trip",
+    "security-policy-proof",
+    "turn-journal-file-change-proof",
+    "safe-mid-thread-model-switch"
+  ],
+  "operationalFindings": [
+    "The default binding store is ~/.relay/codex-dsh-links.json and does not follow DSH_HOME; isolated runs must set RELAY_CODEX_LINK_PATH.",
+    "The bundled launcher enables Codex analytics by default.",
+    "The plugin assumes an existing Codex login and does not expose account login/logout controls through its DSH product surface.",
+    "The observed App Server catalog default was deepseek/deepseek-v4-flash, so Pro-backed validation must select an explicit Codex model.",
+    "gpt-5.6-luna emitted raw DSML tool markup as assistant text instead of a structured tool call.",
+    "A fresh gpt-5.6-sol Session claimed command execution results without emitting DSH tool/call or tool/result events.",
+    "Switching an existing Thread from gpt-5.6-luna to gpt-5.6-sol failed with invalid_encrypted_content."
+  ],
+  "decision": "do-not-install-in-aezy-profile; implement a minimal out-of-tree official-app-server adapter behind the same DSH Session/provider/tool/approval seams"
+}

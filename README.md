@@ -126,10 +126,14 @@ Aezy 的构建和运行仍只消费 npm 发布包；恢复参考树不会改变 
 - 文档阅读顺序：[`doc/README.md`](doc/README.md)
 - 当前所有权与实施路线：[`doc/roadmap/aezy-upstream-ownership-roadmap.md`](doc/roadmap/aezy-upstream-ownership-roadmap.md)
 
-下一主线是 **Codex-backed self-development loop**：先通过外置 runtime adapter 集成官方
+下一主线是 **Codex-backed self-development loop**：固定 Relay 0.1.2 companion 已完成隔离
+门禁，但因真实 structured tool/approval 硬约束失败而不进入 Aezy profile。现在通过最小外置
+runtime adapter 集成官方
 Codex `app-server`，由 Codex 托管 ChatGPT OAuth/credential/refresh 和 agent loop，使 Aezy
 可以使用用户现有 Pro plan；Aezy 负责 account、thread/turn、streaming、approval、cancel、
-resume 与 usage 的产品投影。第一验收目标是在 Aezy 中对 Aezy 仓库完成真实开发 Turn。
+resume 与 usage 的产品投影。兼容性证据见
+[`relay-dsh-plugin-codex-0.1.2-compatibility.md`](doc/reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)。
+第一验收目标是在 Aezy 中对 Aezy 仓库完成真实开发 Turn。
 
 已实现的 Activity dashboard 实验已经通过三笔独立 revert 全部撤销，不再作为后续基础。
 Traffic Board 与 Task Board 暂缓；Browser integration 暂停并默认使用外部浏览器。后续若实现
