@@ -77,18 +77,25 @@ dsh plugin --profile <name> add <package-or-git-spec>
 | M3 Worktree/Handoff | Complete | [`m3.md`](../milestones/m3.md) |
 | M4 Review/Files/Context | Complete | [`m4.md`](../milestones/m4.md) |
 | Integrated Terminal | Complete | [`terminal.md`](../milestones/terminal.md) |
-| Activity / Status / Usage / Notifications | Complete | [`activity.md`](../milestones/activity.md) |
 
 ## 接下来
 
-### 1. Localhost Browser + browser interaction
+### 1. Activity / Status / Usage / Notifications
+
+先做最小纵向切片：从现有事实源投影当前 Session 的运行状态、后台 Job、Subagent、approval、
+trajectory、Terminal 和 provider usage；提供清楚的来源、时间范围和 unavailable 状态。
+
+验收重点：不新增长期 truth store；Session/Workspace 切换不串状态；有界输出；真实 rc.1
+Host、浏览器宽/窄屏和 Aezy 自身 dogfood 通过。
+
+### 2. Localhost Browser + browser interaction
 
 在本地前端任务中提供页面启动/发现、截图、click/type/scroll 和可审计证据。先服务 Aezy
 coding loop，不捆绑远程桌面、通用 Computer Use 或 Cloud browser fleet。
 
-### 2. 后续特色产品面
+### 3. 后续特色产品面
 
-以下方向分别立项，不与 Browser 切片捆绑：
+以下方向分别立项，不与前两项捆绑：
 
 - Auth / provider / agent / log / usage 综合 dashboard；
 - 基于 DSH provider/agent-loop seam 的 Codex、Claude、OpenCode harness adapter；
