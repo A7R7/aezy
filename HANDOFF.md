@@ -28,16 +28,18 @@
 
 - 运行版本：`@deepseek-ai/dsh@0.1.1-rc.1`
 - 对应 tag/commit：`dsh-v0.1.1-rc.1` / `528c682e061696f5a160f363f236ecbf53cbd006`
-- 锁定文件：`reference/dsh.lock.json`
+- 只读参考版本：`dsh-v0.1.1-rc.2` / `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`
+- 参考锁定文件：`reference/dsh.lock.json`
 - 兼容性声明：`compatibility/dsh.json`
 - 默认状态目录：`~/.aezy/dsh/`
 - 仓库 pnpm store：`.local/pnpm-store/`
 
-2026-08-27 最后复核的最新公开 tag 是 `dsh-v0.1.1-rc.2`
-（`b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`）。rc.2 仍没有 Aezy 所需的 generic
-panel router、browser raw TTY/resize 或 Interactive Side Sessions/fork/merge-back 产品 seam；
-Aezy 继续运行已完整签收的 rc.1。新里程碑开始前必须重新检查 tag，不要用 npm `latest`
-推断版本；升级应作为独立、reviewed revision replacement。
+2026-08-27 复核确认 rc.2 是最新公开 tag，reference 已完成一次完整 revision replacement。
+rc.2 的实质增量集中在 normalized image attachment、deterministic request variant、DeepSeek
+Files/inline fallback 与 LLM `prepareCall`；它没有新增 generic panel router、raw TTY/resize、
+ChatGPT OAuth、Task Board 或 Interactive Side Sessions/merge-back。详细影响见
+`doc/reference/dsh-0.1.1-rc2-impact.md`。Aezy runtime 仍运行已签收的 rc.1；下一步先做独立
+rc.2 runtime compatibility gate，不要用 npm `latest` 推断版本或形成混合 peer graph。
 
 当前外置包：
 
@@ -160,12 +162,14 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 
 近期顺序：
 
-1. Codex `app-server` compatibility spike：stdio 初始化、account/login/read、thread/turn、
+1. 独立 rc.2 runtime compatibility gate：精确升级发布包/lock/profile，跑全量自动测试和真实
+   3090 smoke；不新增产品功能，失败则记录 compatibility issue 并保留 rc.1 runtime。
+2. Codex `app-server` compatibility spike：stdio 初始化、account/login/read、thread/turn、
    streaming、approval、cancel、resume 与 usage；证明 Pro plan 在 Aezy Host 中可用。
-2. 将 spike 收敛为可关闭的外置 Codex runtime adapter，并完成 Aezy 自身仓库的真实 dogfood。
-3. 达到自开发闭环后，再决定是否基于 DSH provider/Session/tool/approval seam 实现第二个
+3. 将 spike 收敛为可关闭的外置 Codex runtime adapter，并完成 Aezy 自身仓库的真实 dogfood。
+4. 达到自开发闭环后，再决定是否基于 DSH provider/Session/tool/approval seam 实现第二个
    Codex-inspired backend；它必须通过同一 runtime contract，且不能复制 DSH 内核。
-4. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
+5. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
 
 原 Activity dashboard 实验已全部废弃：原提交 `297f2525c5`、`38ff79419a`、`b31efd533f`
 分别由 `b153454f3c`、`b09c40b197`、`5faa1ba740` 的独立 revert 撤销。不要从这些旧提交继续
@@ -227,9 +231,10 @@ M0–M4.2、Turn File Change Journal 与 Integrated Terminal side panel 已完�
 doc/README.md 索引读取对应 milestone，不要递归读取整个 doc/，也不要重构已签收切片。
 
 Activity dashboard 的三笔原提交已经独立 revert，Browser integration 已暂停；Traffic Board
-与 Task Board 暂缓。接下来先实施固定版本的 Codex app-server compatibility spike，通过官方
-managed ChatGPT OAuth 使用 Pro plan，覆盖 account、thread/turn streaming、approval、cancel、
-resume 与 usage，并以 Aezy 自身仓库的真实开发 Turn 验收。只用外置 runtime adapter，不读取
-或管理 OAuth token，不修改 DSH 源码，不实现第二套 Session/Subagent/Task/PTY/compaction/
-approval/usage 内核，也不要提前捆绑 Board、Cloud/Remote/PR、Side Chat 或 merge-back。
+与 Task Board 暂缓。reference 已更新到 rc.2，runtime 仍为 rc.1；先做独立 rc.2 runtime
+compatibility gate，再实施固定版本的 Codex app-server spike，通过官方 managed ChatGPT OAuth
+使用 Pro plan，覆盖 account、thread/turn streaming、approval、cancel、resume 与 usage，并以
+Aezy 自身仓库的真实开发 Turn 验收。只用外置 runtime adapter，不读取或管理 OAuth token，
+不修改 DSH 源码，不实现第二套 Session/Subagent/Task/PTY/compaction/approval/usage 内核，也
+不要提前捆绑 Board、Cloud/Remote/PR、Side Chat 或 merge-back。
 ```

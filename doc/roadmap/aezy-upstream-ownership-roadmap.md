@@ -18,11 +18,16 @@ Aezy 是基于 DSH 公开扩展机制的完整编程 Agent 发行版，不是 DS
 
 ## 当前上游信号
 
-- Aezy 运行并签收于 `dsh-v0.1.1-rc.1`；2026-08-25 最后检查的最新 tag 是 rc.2。
+- Aezy runtime 运行并签收于 `dsh-v0.1.1-rc.1`；只读 reference 已于 2026-08-27 更新到
+  最新公开 tag `dsh-v0.1.1-rc.2`。
 - rc.1/rc.2 已有 credentials/authorization、Session projection、Subagent lineage、PTY、
   Job、MCP/ACP、compaction 和 Web layout 等基础 seam，但不等于完整 Aezy 产品面。
 - rc.2 仍没有 generic panel router、browser raw TTY/resize 或 Interactive Side Sessions
   merge-back 产品实现。
+- rc.2 的实质增量集中于统一图片/附件请求管线：provider-independent normalized attachment、
+  route-owned deterministic request variant、text-only fallback、历史图片 offload、DeepSeek Files
+  lifecycle/inline fallback，以及绑定 model metadata 与 dispatch 世代的 `prepareCall` seam。它
+  可以接管未来 DSH-native backend 的 multimodal request layer，但不替代现有 Aezy 产品切片。
 - 官方 Codex `app-server` 是自定义 rich client 的公开集成面，覆盖 authentication、
   conversation history、approvals 与 streamed agent events；ChatGPT managed 模式由 Codex
   持有并刷新 OAuth credentials，并公开 plan、rate limits 与 usage。当前本机
@@ -33,7 +38,9 @@ Aezy 是基于 DSH 公开扩展机制的完整编程 Agent 发行版，不是 DS
   - [Interactive Side Sessions](../../.local/deepseek-harness/.agents/notes/proposed/feature/2026-07-08-interactive-side-sessions.md)
   - [Recallable Compaction](../../.local/deepseek-harness/.agents/notes/proposed/feature/2026-07-06-recallable-compaction.md)
 
-版本变化与签收见 [`dsh-0.1.1-rc1-impact.md`](../reference/dsh-0.1.1-rc1-impact.md)。
+版本变化与签收见 [`dsh-0.1.1-rc1-impact.md`](../reference/dsh-0.1.1-rc1-impact.md)；最新
+reference 差异与路线影响见
+[`dsh-0.1.1-rc2-impact.md`](../reference/dsh-0.1.1-rc2-impact.md)。
 
 ## 能力所有权矩阵
 
@@ -46,6 +53,7 @@ Aezy 是基于 DSH 公开扩展机制的完整编程 Agent 发行版，不是 DS
 | Worktree / Handoff | Aezy | 受管路径、Session binding、可审计 handoff/cleanup | Cloud/PR/任意远程 worktree 泛化 |
 | Review、Files、Contextual Ask | Aezy Web 产品面 | 复用 ledger、`details`、reference codec、DSH renderer | editor/stage/hunk apply；复制 layout/file index/composer |
 | Integrated Terminal | Aezy UI + DSH PTY owner | Session/cwd fence、line UI、动态 details/overlay、状态投影 | fork PTY/job/process；伪装 raw TTY/resize/ConPTY |
+| Multimodal attachment / request projection | DSH owner | 消费 normalized attachment、request variant、route offload 与 provider transport | 自建 image encoder/cache、provider Files index 或 text-only history rewrite |
 | Activity / Status / Usage / Notifications | 原实验废弃；未来拆入 Traffic/Task Board | 需要时投影各 runtime 的权威事件与 usage | 继续旧 Activity 提交；用小状态页代替完整 Board |
 | ChatGPT Auth / Codex runtime | Codex `app-server` owner + Aezy 外置 adapter | 发起 managed browser/device login；投影 account/plan/rate/usage；映射 thread/turn/approval stream | 读取 OAuth token；自写 refresh/credential store；假定 Pro 是通用 API key |
 | Codex-inspired DSH backend | DSH Session/provider/tool/approval owner + Aezy adapter | 在同一 runtime contract 后增加可替换 backend，并复用 DSH 事实 | 为追求 Codex 外观复制 Session/Subagent/Task/PTY/compaction 内核 |
@@ -96,6 +104,13 @@ CDP 调试、截图或交互证据对 agent loop 有经过验证的价值时才�
 必须把网页 viewport 嵌进 Aezy panel。
 
 ## 接下来
+
+### 0. rc.2 runtime compatibility gate
+
+在新 Codex adapter 开工前，先用独立提交把所有 DSH 发布包从 rc.1 精确升级到 rc.2，重建
+lock/profile，并运行现有全量自动测试与真实 3090 HTTP smoke。该 gate 只消除 reference/runtime
+版本差，不新增图片产品 UI，也不重构已签收能力。失败时保留 rc.2 reference、回退 runtime，并
+记录 compatibility issue；不得 patch DSH 源码。
 
 ### 1. Codex app-server compatibility spike
 
