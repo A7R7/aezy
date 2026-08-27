@@ -1,6 +1,6 @@
 # Aezy 项目交接
 
-> 更新日期：2026-08-27<br>
+> 更新日期：2026-08-28<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`main`<br>
 > 功能基线：`f3b475e0a1 docs(terminal): record side panel verification`
@@ -26,8 +26,8 @@
 
 ## 2. 上游与运行时基线
 
-- 运行版本：`@deepseek-ai/dsh@0.1.1-rc.1`
-- 对应 tag/commit：`dsh-v0.1.1-rc.1` / `528c682e061696f5a160f363f236ecbf53cbd006`
+- 运行版本：`@deepseek-ai/dsh@0.1.1-rc.2`
+- 对应 tag/commit：`dsh-v0.1.1-rc.2` / `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`
 - 只读参考版本：`dsh-v0.1.1-rc.2` / `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`
 - 参考锁定文件：`reference/dsh.lock.json`
 - 兼容性声明：`compatibility/dsh.json`
@@ -38,8 +38,9 @@
 rc.2 的实质增量集中在 normalized image attachment、deterministic request variant、DeepSeek
 Files/inline fallback 与 LLM `prepareCall`；它没有新增 generic panel router、raw TTY/resize、
 ChatGPT OAuth、Task Board 或 Interactive Side Sessions/merge-back。详细影响见
-`doc/reference/dsh-0.1.1-rc2-impact.md`。Aezy runtime 仍运行已签收的 rc.1；下一步先做独立
-rc.2 runtime compatibility gate，不要用 npm `latest` 推断版本或形成混合 peer graph。
+`doc/reference/dsh-0.1.1-rc2-impact.md`。2026-08-28 已完成独立 runtime compatibility gate：
+发布包、lock、profile 和 3090 Host 均对齐 rc.2；所有自动测试与真实 HTTP/PTY smoke 通过。
+升级时必须显式锁定 `dsh-authorization@0.1.1-rc.2`，否则会形成 rc.1/rc.2 混合 peer graph。
 
 当前外置包：
 
@@ -141,8 +142,9 @@ AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:m3:http
 AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:terminal:http
 ```
 
-当前签收结果摘要：Terminal 自动测试 7/7；真实 rc.1 M0 composition smoke；3090 的
-open/send/read、多 PTY、SIGINT、Session/cwd/request fence 和 `cd /tmp` live cwd 均通过。
+当前签收结果摘要：Terminal 自动测试 7/7；真实 rc.2 M0 composition smoke；3090 的
+Worktree/Journal/Security HTTP 回归，以及 open/send/read、多 PTY、SIGINT、Session/cwd/request
+fence 和 `cd /tmp` live cwd 均通过。
 浏览器验证确认 1440px 下 Terminal 是 359px 原生 details 列且 Chat 保持选中；680px 下
 只显示无溢出的 overlay；reopen、scrollback、双 Session 隔离与 `pageerror=[]` 通过。
 其他里程碑的完整测试矩阵只在对应 milestone 中维护。
@@ -162,11 +164,12 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 
 近期顺序：
 
-1. 独立 rc.2 runtime compatibility gate：精确升级发布包/lock/profile，跑全量自动测试和真实
-   3090 smoke；不新增产品功能，失败则记录 compatibility issue 并保留 rc.1 runtime。
-2. Codex `app-server` compatibility spike：stdio 初始化、account/login/read、thread/turn、
+1. 已完成：独立 rc.2 runtime compatibility gate，发布包/lock/profile/3090 均已签收。
+2. 在隔离 DSH profile 中验证固定版本 `relay-dsh-plugin-codex@0.1.2`：stdio 初始化、
+   account/login/read、thread/turn、
    streaming、approval、cancel、resume 与 usage；证明 Pro plan 在 Aezy Host 中可用。
-3. 将 spike 收敛为可关闭的外置 Codex runtime adapter，并完成 Aezy 自身仓库的真实 dogfood。
+3. 若 companion 满足硬约束，将它薄接入 Aezy profile；只有硬约束失败时才自写最小外置
+   Codex runtime adapter。随后完成 Aezy 自身仓库的真实 dogfood。
 4. 达到自开发闭环后，再决定是否基于 DSH provider/Session/tool/approval seam 实现第二个
    Codex-inspired backend；它必须通过同一 runtime contract，且不能复制 DSH 内核。
 5. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
@@ -231,8 +234,8 @@ M0–M4.2、Turn File Change Journal 与 Integrated Terminal side panel 已完�
 doc/README.md 索引读取对应 milestone，不要递归读取整个 doc/，也不要重构已签收切片。
 
 Activity dashboard 的三笔原提交已经独立 revert，Browser integration 已暂停；Traffic Board
-与 Task Board 暂缓。reference 已更新到 rc.2，runtime 仍为 rc.1；先做独立 rc.2 runtime
-compatibility gate，再实施固定版本的 Codex app-server spike，通过官方 managed ChatGPT OAuth
+与 Task Board 暂缓。reference 与 runtime 已对齐 rc.2；下一步先在隔离 profile 验证固定版本
+`relay-dsh-plugin-codex@0.1.2`，通过官方 managed ChatGPT OAuth
 使用 Pro plan，覆盖 account、thread/turn streaming、approval、cancel、resume 与 usage，并以
 Aezy 自身仓库的真实开发 Turn 验收。只用外置 runtime adapter，不读取或管理 OAuth token，
 不修改 DSH 源码，不实现第二套 Session/Subagent/Task/PTY/compaction/approval/usage 内核，也

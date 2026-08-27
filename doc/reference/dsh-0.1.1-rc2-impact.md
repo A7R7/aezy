@@ -1,8 +1,8 @@
 # DSH v0.1.1-rc.2 更新与 Aezy 影响报告
 
-> 调查日期：2026-08-27<br>
+> 调查日期：2026-08-27；runtime gate：2026-08-28<br>
 > 上游范围：`dsh-v0.1.1-rc.1`（`528c682e`）→ `dsh-v0.1.1-rc.2`（`b150a551`）<br>
-> 结论：参考快照升级；建议在 Codex adapter 开工前单独验证 runtime 升级，但 rc.2 不替代任何
+> 结论：参考快照与 runtime 均已升级并通过独立兼容性门禁；rc.2 不替代任何
 > 已完成的 Aezy 产品切片，也不改变 Codex `app-server` 主路线。
 
 ## 结论摘要
@@ -42,8 +42,8 @@ agent adapter，所以近期仍应走官方 Codex `app-server`。
 | 新增/删除 package | — | 无 |
 
 `@deepseek-ai/dsh@0.1.1-rc.2`、`dsh-attachment@0.1.1-rc.2` 和
-`dsh-llm@0.1.1-rc.2` 均已在 npm registry 发布，并能解析到带 integrity 的官方仓库产物。
-这证明 runtime upgrade 可执行，但不等于已经通过 Aezy compatibility gate。
+`dsh-llm@0.1.1-rc.2` 均已在 npm registry 发布，并能解析到带 integrity 的官方仓库产物；
+Aezy runtime compatibility gate 已在 2026-08-28 通过。
 
 ## 新增与变更
 
@@ -158,19 +158,18 @@ DSH-native backend 的 multimodal request layer 都从 Aezy scope 中移除。
 
 ### 立即路线
 
-建议在 Codex adapter 开工前插入一个**独立、限界的 rc.2 runtime compatibility gate**：只更新
-发布包、lockfile、profile 与 compatibility runtime revision，运行现有全量自动测试和真实 3090
-HTTP smoke。该步骤不增加图片 UI、不重构 M0–M4、不实现 OAuth，也不改变产品优先级。
-
-理由不是 rc.2 替代了 Aezy，而是新 runtime adapter 不应刚写在 rc.1 client/LLM 类型上就立即
-再次迁移。若 gate 暴露真实破坏，可保留 reference rc.2、runtime 回到 rc.1，并把失败记录为
-compatibility issue；不允许通过修改 DSH 源码绕开。
+独立、限界的 rc.2 runtime compatibility gate 已完成：只更新发布包、lockfile、profile 与
+compatibility runtime revision，并运行全量自动测试和真实 3090 HTTP/PTY smoke。该步骤没有
+增加图片 UI、重构 M0–M4、实现 OAuth 或修改 DSH 源码。门禁证明现有切片可直接兼容 rc.2，
+新 runtime adapter 不再建立在旧版 client/LLM 类型上。
 
 ### Codex-backed self-development loop
 
 路线不变。rc.2 没有 ChatGPT managed OAuth 或 Codex thread/turn protocol；Codex
 `app-server` 仍是 Pro plan、credential、conversation、approval 和 agent loop 的权威 owner。
-compatibility gate 完成后继续原定 spike，不把 DSH multimodal 工作捆入其中。
+compatibility gate 完成后，先在隔离 DSH profile 中验证固定版本
+`relay-dsh-plugin-codex@0.1.2`；满足硬约束则优先作为 companion 薄接入，不把 DSH multimodal
+工作捆入其中。只有 companion 硬约束失败时才自写最小外置 adapter。
 
 ### DSH-native backend
 
@@ -188,6 +187,8 @@ rc.2 提前。统一图片管线能为将来的 screenshot evidence 提供模型
 
 - `.local/deepseek-harness` 已 detached checkout 到 rc.2，保持 clean/read-only；
 - `reference/dsh.lock.json` 已记录 rc.2 commit/tree；
-- `compatibility/dsh.json` 明确区分 rc.2 reference 与 rc.1 runtime；
-- Aezy npm runtime、profile 和 3090 Host 仍为已签收的 rc.1；
+- `compatibility/dsh.json` 记录 rc.2 reference/runtime 同版决策；
+- Aezy npm runtime、profile 和 3090 Host 已升级并签收于 rc.2；
+- `pnpm peers check`、全量静态测试、M0 profile smoke 以及 M1/M2/M3/Terminal 真实 HTTP/PTY
+  回归全部通过；升级额外要求显式精确锁定 `dsh-authorization@0.1.1-rc.2`；
 - 本轮未修改任何 DSH 源码，也未删除或重构任何 Aezy 产品能力。

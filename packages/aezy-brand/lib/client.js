@@ -41,7 +41,7 @@ window.__ModuleLoader__.load({
 			});
 		}
 		const inject = ["slots"];
-		/** Fill the three generic rc.8 brand slots without replacing their hosts. */
+		/** Fill the three generic rc.2 brand slots without replacing their hosts. */
 		function apply(ctx) {
 			ctx.slots.inject("sidebar.brand.mark", () => ctx.slots.inject("sidebar.brand.name", () => ctx.slots.inject("conversation.hero.brand.mark", function* () {
 				yield ctx.slots.register({ name: "sidebar.brand.mark" }, AezyBrandMark);

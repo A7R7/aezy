@@ -127,7 +127,7 @@ try {
   assert.equal((await stat(policyFile)).mode & 0o777, 0o600)
   const stored = JSON.parse(await readFile(policyFile, 'utf8'))
   assert.equal(stored.version, 1)
-  process.stdout.write('M2 real rc.1 HTTP policy, precedence, request fence, and restart persistence passed.\n')
+  process.stdout.write('M2 real rc.2 HTTP policy, precedence, request fence, and restart persistence passed.\n')
 } finally {
   if (child !== undefined) await stop(child)
   await rm(dshHome, { recursive: true, force: true })

@@ -38,7 +38,7 @@ export function AezyBrandName(_props: SidebarBrandNameOwnerProps) {
 
 export const inject = ['slots']
 
-/** Fill the three generic rc.1 brand slots without replacing their hosts. */
+/** Fill the three generic rc.2 brand slots without replacing their hosts. */
 export function apply(ctx: ClientContext): void {
   ctx.slots.inject('sidebar.brand.mark', () =>
     ctx.slots.inject('sidebar.brand.name', () =>

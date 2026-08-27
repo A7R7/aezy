@@ -48,7 +48,7 @@
   disabled: true
 
 # The official package remains installed through dsh-web-app, but Aezy owns
-# the visible product identity through the generic rc.1 brand slots.
+# the visible product identity through the generic rc.2 brand slots.
 - id: ui-brand-official
   disabled: true
 

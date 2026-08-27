@@ -12,14 +12,13 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
   或 merge-back 内核。
 - 非必要 DSH 组件通过 Aezy profile patch 禁用，不删除或修改上游 package。
 
-当前运行基线是 DSH `0.1.1-rc.1`，tag/commit 为
-`dsh-v0.1.1-rc.1` / `528c682e061696f5a160f363f236ecbf53cbd006`。默认运行状态位于
+当前运行基线是 DSH `0.1.1-rc.2`，tag/commit 为
+`dsh-v0.1.1-rc.2` / `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`。默认运行状态位于
 `~/.aezy/dsh/`，仓库依赖缓存位于已忽略的 `.local/pnpm-store/`。
 
-只读上游参考快照已更新到 `dsh-v0.1.1-rc.2` /
-`b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`；这只更新审计基准，不会隐式改变上述 rc.1
-发布包 runtime。参考 revision 由 `reference/dsh.lock.json` 记录，runtime 兼容声明由
-`compatibility/dsh.json` 记录。
+只读上游参考快照与 npm runtime 已对齐到同一 rc.2 revision。参考 revision 由
+`reference/dsh.lock.json` 记录，runtime 兼容声明由 `compatibility/dsh.json` 记录；升级门禁已
+覆盖完整静态测试、真实 profile composition 与 3090 HTTP/PTY 回归。
 
 ## 仓库布局
 

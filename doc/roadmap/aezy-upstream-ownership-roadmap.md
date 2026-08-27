@@ -1,6 +1,6 @@
 # Aezy 上游边界与实施路线图
 
-> 活动路线文档，更新于 2026-08-27。已完成切片的详细实现和验证只在
+> 活动路线文档，更新于 2026-08-28。已完成切片的详细实现和验证只在
 > `doc/milestones/` 维护。
 
 ## 决策原则
@@ -18,8 +18,7 @@ Aezy 是基于 DSH 公开扩展机制的完整编程 Agent 发行版，不是 DS
 
 ## 当前上游信号
 
-- Aezy runtime 运行并签收于 `dsh-v0.1.1-rc.1`；只读 reference 已于 2026-08-27 更新到
-  最新公开 tag `dsh-v0.1.1-rc.2`。
+- Aezy runtime 与只读 reference 均已运行并签收于最新公开 tag `dsh-v0.1.1-rc.2`。
 - rc.1/rc.2 已有 credentials/authorization、Session projection、Subagent lineage、PTY、
   Job、MCP/ACP、compaction 和 Web layout 等基础 seam，但不等于完整 Aezy 产品面。
 - rc.2 仍没有 generic panel router、browser raw TTY/resize 或 Interactive Side Sessions
@@ -105,12 +104,12 @@ CDP 调试、截图或交互证据对 agent loop 有经过验证的价值时才�
 
 ## 接下来
 
-### 0. rc.2 runtime compatibility gate
+### 0. rc.2 runtime compatibility gate（Complete）
 
-在新 Codex adapter 开工前，先用独立提交把所有 DSH 发布包从 rc.1 精确升级到 rc.2，重建
-lock/profile，并运行现有全量自动测试与真实 3090 HTTP smoke。该 gate 只消除 reference/runtime
-版本差，不新增图片产品 UI，也不重构已签收能力。失败时保留 rc.2 reference、回退 runtime，并
-记录 compatibility issue；不得 patch DSH 源码。
+所有 DSH 发布包已从 rc.1 精确升级到 rc.2，lock/profile 与 3090 Host 已重建；全量自动测试、
+M0 profile smoke 及 M1/M2/M3/Terminal 真实 HTTP/PTY 回归通过。没有新增图片产品 UI、重构
+已签收能力或 patch DSH 源码。门禁发现 `dsh-authorization` 必须显式精确锁定 rc.2，避免
+`dsh-llm-pi-ai` 带来的混合 peer graph。
 
 ### 1. Codex app-server compatibility spike
 
