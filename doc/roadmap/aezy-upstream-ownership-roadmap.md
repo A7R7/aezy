@@ -91,6 +91,7 @@ dsh plugin --profile <name> add <package-or-git-spec>
 | M3 Worktree/Handoff | Complete | [`m3.md`](../milestones/m3.md) |
 | M4 Review/Files/Context | Complete | [`m4.md`](../milestones/m4.md) |
 | Integrated Terminal | Complete | [`terminal.md`](../milestones/terminal.md) |
+| Codex-backed self-development loop | Complete | [`codex.md`](../milestones/codex.md) |
 
 ## 路线纠偏记录
 
@@ -120,19 +121,16 @@ rate/usage、streamed Turn、连续对话、重启 resume 和 cancel 通过；�
 默认逃逸 `DSH_HOME`。因此不安装到主 profile。完整证据见
 [`relay-dsh-plugin-codex-0.1.2-compatibility.md`](../reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)。
 
-### 2. 最小官方 app-server adapter spike
+### 2. 最小官方 app-server adapter spike（Complete）
 
-这是当前唯一最高优先级切片。以固定 Codex 版本启动本地 `app-server`，在独立外置 adapter
-中验证：
-
-当前进度：`@aezy/codex` process/protocol client、Host account API 与 Settings 产品面已经进入
+`@aezy/codex` process/protocol client、Host account API 与 Settings 产品面已经进入
 Aezy profile；真实 `gpt-5.6-sol` structured `commandExecution` 已通过，managed ChatGPT
 browser/device login、logout、account/plan/rate limits/usage/model discovery 均由官方 App Server
 托管并在 3090 验证，analytics 默认关闭，Aezy 不接收或返回 token。`aezy-codex` provider 的
 DSH Session↔Codex Thread/Turn、stream、cancel、restart-resume 已完成；官方 dynamic tool seam
 把所有可变操作送回 DSH tools/Security/approval，Codex 原生权限固定 read-only 且提权
 fail-closed。真实 command projection、write→Journal、Security deny/audit 与 approval
-`allowed-once` 均已通过。剩余门槛是 Aezy 自身仓库的完整 self-development dogfood。
+`allowed-once` 均已通过。Aezy 自身仓库的完整 self-development dogfood 也已签收。
 
 - protocol initialize 与能力协商；
 - `account/read`、managed ChatGPT browser/device login、logout、Pro `planType`；
@@ -148,21 +146,23 @@ Workspace/Session 关联到 opaque Codex thread id 所需的最小 binding，不
 [Codex Authentication](https://developers.openai.com/codex/auth/) 和
 [Using Codex with your ChatGPT plan](https://help.openai.com/en/articles/11369540-using-codex-with-your-chatgpt-plan)。
 
-### 3. Codex-backed Aezy 产品闭环
+### 3. Codex-backed Aezy 产品闭环（Complete）
 
 模型/推理选择、登录状态、composer、streaming transcript、tool/diff 事实、approval、stop/resume
-与 usage 已通过现有 DSH/Aezy 产品面连接。当前不增加平行 UI；下一步直接以受管 Worktree 对
-Aezy 自身执行真实改动、测试、Review、Host restart 与 continuation。必须继续复用当前
-Project/Review/Terminal/Security 能力，不从头重构已签收切片。
+与 usage 已通过现有 DSH/Aezy 产品面连接。受管 Worktree 已对 Aezy 自身执行真实改动、失败
+恢复、18/18 测试、Journal/Review、Handoff、Host restart 与同一 Thread continuation；首笔
+自开发提交为 `45cc4e5463`。完整证据见 [`codex.md`](../milestones/codex.md)。这一闭环继续复用
+当前 Project/Review/Terminal/Security 能力，没有增加平行 UI 或重构已签收切片。
 
-完成门槛不是静态 UI，而是 Aezy 能打开本仓库、通过 Pro 登录执行真实 Turn、修改外置 Aezy
+完成门槛不是静态 UI，而是 Aezy 能打开本仓库、通过 managed ChatGPT 登录执行真实 Turn、修改外置 Aezy
 代码、运行相关测试、审阅 diff、重启 Host，并在同一开发任务上继续工作。达到该门槛才可称为
-“可自迭代”的最小替代品。
+“可自迭代”的最小替代品；该门槛现已达到。
 
-### 4. 可替换 DSH-native agent backend
+### 4. 可选 hardening 与可替换 DSH-native agent backend
 
-Codex-backed 闭环稳定后，再决定是否以同一 runtime contract 接入 DSH provider/Session/tool/
-approval seam，形成 Codex-inspired backend。先写 parity contract 与端到端测试，再实现 adapter；
+近期只按真实故障补强 Worktree dependency bootstrap 和固定版本 App Server contract。之后再决定
+是否以同一 runtime contract 接入 DSH provider/Session/tool/approval seam，形成第二个
+Codex-inspired backend。先写 parity contract 与端到端测试，再实现 adapter；
 不得以“自主可控”为理由建立第二套 Session/Subagent/Task/usage/PTY/compaction 内核。
 
 ### 5. 暂缓产品面
@@ -173,8 +173,8 @@ approval seam，形成 Codex-inspired backend。先写 parity contract 与端到
 - Browser integration：Paused；
 - Cloud/Remote/PR、Side Chat、Workspace DAG/merge-back：继续等待独立 owner/seam 决策。
 
-这些能力都不阻塞近期的 Codex-backed self-development loop，也不得顺手捆入 compatibility
-spike。
+这些能力都不是已完成 Codex-backed self-development loop 的组成部分，也不得顺手捆入
+compatibility hardening。
 
 ## 上游同步与防分叉
 

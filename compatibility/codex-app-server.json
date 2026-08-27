@@ -61,10 +61,18 @@
       "approvalAllowedOnce": true
     }
   },
+  "selfDevelopmentDogfood": {
+    "status": "complete",
+    "managedWorktree": true,
+    "sameThreadContinuationAfterHostRestart": true,
+    "structuredHandoff": true,
+    "journalReview": true,
+    "testsPassed": 18,
+    "firstAezyAuthoredCommit": "45cc4e5463ee0adeae3c50818c8590145a4d403b",
+    "worktreeDependencyBootstrap": "pnpm install --offline"
+  },
   "productIntegration": {
-    "status": "in-progress",
-    "required": [
-      "aezy-self-development-dogfood"
-    ]
+    "status": "complete",
+    "required": []
   }
 }

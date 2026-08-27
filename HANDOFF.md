@@ -3,7 +3,7 @@
 > 更新日期：2026-08-28<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`main`<br>
-> 功能基线：Codex-backed DSH Session/Thread/Turn adapter（本次独立切片）
+> 功能基线：Codex-backed Aezy self-development loop（Complete）
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
@@ -70,6 +70,7 @@ ChatGPT OAuth、Task Board 或 Interactive Side Sessions/merge-back。详细影�
 | M4.1B | File tree + code/Markdown/image preview、自动目录刷新 | `doc/milestones/m4.md` |
 | M4.2 | `@directory` / Working+Historical `@diff` 与 Contextual Ask | `doc/milestones/m4.md` |
 | Terminal | DSH line PTY 的多标签 Integrated Terminal side panel | `doc/milestones/terminal.md` |
+| Codex loop | Managed ChatGPT、DSH dynamic tools、真实 Aezy 自开发闭环 | `doc/milestones/codex.md` |
 
 接手时最容易误解的语义：
 
@@ -106,7 +107,8 @@ test.md
 http://127.0.0.1:3090
 ```
 
-它已在 Codex Session/Thread adapter 完成后正常 SIGTERM/restart，真实页面包含
+它已在 Codex self-development dogfood 完成并 fast-forward 回 `main` 后正常 SIGTERM/restart，
+真实页面包含
 `@aezy/codex` client bundle，account endpoint 返回 connected ChatGPT plan/rate/usage 且不含
 email/token；真实 DSH Codex dynamic tool、write/Journal、Security deny/audit、approval
 allowed-once、cancel 与跨重启 resume 均通过。当前 checkout 的
@@ -150,7 +152,7 @@ AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:m3:http
 AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:terminal:http
 ```
 
-当前签收结果摘要：Codex 自动测试 14/14、官方 App Server 实机 structured command gate，
+当前签收结果摘要：Codex 自动测试 18/18、官方 App Server 实机 structured command gate，
 以及上述真实 DSH Codex gates；真实 rc.2 M0 composition smoke；3090 的
 Worktree/Journal/Security HTTP 回归，以及 open/send/read、多 PTY、SIGINT、Session/cwd/request
 fence 和 `cd /tmp` live cwd 均通过。
@@ -160,7 +162,7 @@ fence 和 `cd /tmp` live cwd 均通过。
 
 ## 6. 下一步与所有权
 
-近期目标已改为：让 Aezy 能用用户现有 ChatGPT Pro 计划完成真实 coding agent Turn，并能
+近期目标已达成：让 Aezy 能用官方 managed ChatGPT 账户完成真实 coding agent Turn，并能
 在 Aezy 仓库中开发、测试、重启和继续开发 Aezy，形成最小自迭代闭环。
 
 首选 owner/seam 是官方 Codex `app-server`，不是 Aezy 自写 OAuth 或立即复制 Codex agent
@@ -182,9 +184,11 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
    的 Session↔Thread、dynamic DSH tools、activity、approval、Security、Journal、cancel 与
    restart-resume 门禁均通过。Codex 原生权限固定 read-only，提权一律拒绝；所有可变操作回到
    DSH tools/Security/approval。
-4. 进行中：在 Aezy 自身仓库的受管 Worktree 完成真实开发 Turn、测试、Review、Host restart
-   与同一 Thread continuation，签收最小自迭代闭环。
-5. 达到自开发闭环后，再决定是否基于 DSH provider/Session/tool/approval seam 实现第二个
+4. 已完成：在 Aezy 自身仓库的受管 Worktree 执行真实开发 Turn、失败后恢复、18/18 测试、
+   Journal/Review、结构化 Handoff、Host restart 与同一 Thread continuation；首笔 Aezy 自开发
+   提交为 `45cc4e5463`。完整证据见 `doc/milestones/codex.md`。
+5. 先对已完成闭环做必要的 Worktree dependency bootstrap 与 App Server contract hardening，
+   再决定是否基于 DSH provider/Session/tool/approval seam 实现第二个
    Codex-inspired backend；它必须通过同一 runtime contract，且不能复制 DSH 内核。
 6. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
 
@@ -213,7 +217,7 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 | Project、Turn、Worktree、Handoff、M4 client | `packages/aezy-project/` |
 | Security policy/store/client | `packages/aezy-security/` |
 | Integrated Terminal Host/client | `packages/aezy-terminal/` |
-| Codex App Server、managed account Host/client | `packages/aezy-codex/` |
+| Codex App Server、managed account Host/client 与完成证据 | `packages/aezy-codex/`、`doc/milestones/codex.md` |
 | Profile 同步与启动 | `scripts/sync-profile.mjs`、`scripts/run-profile.mjs` |
 | 文档入口与阅读分层 | `doc/README.md` |
 | 当前 milestone 证据 | `doc/milestones/` |
@@ -231,11 +235,14 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 3. 当前 `details` 是 DSH single slot。Project 是长期 occupant；Terminal 只在打开期间以更高
    优先级动态占用并在关闭时释放。未来 generic panel router 出现后再统一，不要复制一个
    AppFrame/layout 内核。
-4. ChatGPT Pro 的可用入口是受支持的 Codex client/app-server 登录链路，不等价于把 Pro 计划
+4. ChatGPT 计划的可用入口是受支持的 Codex client/app-server 登录链路，不等价于把订阅计划
    当作任意 OpenAI API key。Aezy 不读取 Codex credential 文件，也不实现 OAuth refresh；
    `app-server` 不可用时必须明确降级为 API-key provider 或不可用，不能秘密复用 token。
 5. 当前 Codex Desktop 的 Windows computer-use helper 可能拒绝 WSL `file://` cwd；此前真实
    浏览器 QA 使用 `/tmp` 一次性 Playwright/NSS fallback。这不是 Aezy Web 故障。
+6. 新建 Git Worktree 不包含 ignored `node_modules`。真实自开发 Turn 首次测试因此失败，随后
+   在同一 Session/Thread 中经审批执行 `pnpm install --offline` 后恢复；不要把依赖缺失误判为
+   Codex continuation 或 DSH tool 故障。
 
 ## 9. 新会话首条指令
 
@@ -252,9 +259,11 @@ Activity dashboard 的三笔原提交已经独立 revert，Browser integration �
 与 Task Board 暂缓。reference 与 runtime 已对齐 rc.2；Relay 0.1.2 companion 门禁已因真实
 tool/approval 硬约束失败；最小外置官方 App Server adapter 已完成 managed ChatGPT account、
 DSH Session↔Codex Thread/Turn、stream/activity、dynamic DSH tools、approval、Security、Journal、
-cancel 与 restart-resume。Codex 原生权限固定 read-only 且提权 fail-closed。下一步只在 Aezy
-自身仓库的受管 Worktree 完成真实开发 Turn、测试、Review、Host restart 与 continuation，签收
-自迭代闭环。不要读取或管理 OAuth token，不修改 DSH 源码，不实现第二套 Session/Subagent/
+cancel 与 restart-resume。Codex 原生权限固定 read-only 且提权 fail-closed。Aezy 自身仓库的
+真实受管 Worktree 开发 Turn、失败恢复、测试、Journal/Review、Handoff、Host restart 与同一
+Thread continuation 已签收，完成证据见 doc/milestones/codex.md。下一步只做必要的 dependency
+bootstrap/contract hardening，并评估同一 runtime contract 下的可选 DSH-native backend。不要读取
+或管理 OAuth token，不修改 DSH 源码，不实现第二套 Session/Subagent/
 Task/PTY/compaction/approval/usage 内核，也不要提前捆绑 Board、Cloud/Remote/PR、Side Chat
 或 merge-back。
 ```

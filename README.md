@@ -68,6 +68,7 @@ CLI 和真实 profile/Web/Workspace/Session/preset 链路，不使用替代 runt
 | M4.1 | Structured Review、自动刷新 file tree、code/Markdown/image preview | [`m4.md`](doc/milestones/m4.md) |
 | M4.2 | `@directory`、Working/Historical `@diff` 与 Contextual Ask | [`m4.md`](doc/milestones/m4.md) |
 | Terminal | 多标签、Session-scoped DSH line PTY side panel | [`terminal.md`](doc/milestones/terminal.md) |
+| Codex loop | Managed ChatGPT、DSH dynamic tools 与 Aezy 自开发闭环 | [`codex.md`](doc/milestones/codex.md) |
 
 关键语义：
 
@@ -149,15 +150,19 @@ Aezy 的构建和运行仍只消费 npm 发布包；恢复参考树不会改变 
 - 文档阅读顺序：[`doc/README.md`](doc/README.md)
 - 当前所有权与实施路线：[`doc/roadmap/aezy-upstream-ownership-roadmap.md`](doc/roadmap/aezy-upstream-ownership-roadmap.md)
 
-下一主线是 **Codex-backed self-development loop**：固定 Relay 0.1.2 companion 已完成隔离
+**Codex-backed self-development loop 已完成**：固定 Relay 0.1.2 companion 已完成隔离
 门禁，但因真实 structured tool/approval 硬约束失败而不进入 Aezy profile。最小外置 runtime
 adapter 已接入官方 Codex `app-server`，并在 Aezy Settings 中提供 managed browser/device login、
 logout、plan/rate/usage 与 model discovery。`aezy-codex` provider 已完成 DSH Session↔Codex
 Thread binding、stream/cancel/restart-resume，以及 `dsh.*` dynamic tool 到既有 Security、approval、
-tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原生提权 fail-closed。下一验收只剩
-Aezy 自身仓库的真实开发 Turn。兼容性证据见
+tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原生提权 fail-closed。Aezy 已在
+受管 Worktree 中通过同一链路修改、测试、Review、Handoff、重启并继续开发自身。完成证据见
+[`codex.md`](doc/milestones/codex.md)，Relay 兼容性证据见
 [`relay-dsh-plugin-codex-0.1.2-compatibility.md`](doc/reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)。
-第一验收目标是在 Aezy 中对 Aezy 仓库完成真实开发 Turn。
+
+后续可选路线是先围绕已完成闭环做 Worktree dependency bootstrap 和 App Server contract
+hardening，再决定是否需要同一 runtime contract 下的 DSH-native backend；不以重写 agent loop
+作为默认下一步。
 
 已实现的 Activity dashboard 实验已经通过三笔独立 revert 全部撤销，不再作为后续基础。
 Traffic Board 与 Task Board 暂缓；Browser integration 暂停并默认使用外部浏览器。后续若实现
