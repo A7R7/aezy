@@ -18,10 +18,21 @@
     "usageReadable": true,
     "approvalPolicy": "decline-all-in-probe"
   },
+  "managedAccountSurface": {
+    "status": "complete",
+    "hostApi": true,
+    "settingsClient": true,
+    "loginModes": [
+      "browser",
+      "device"
+    ],
+    "externalBrowser": true,
+    "tokenBoundary": "never-accept-or-return",
+    "realProfileVerified": true
+  },
   "productIntegration": {
-    "status": "pending",
+    "status": "in-progress",
     "required": [
-      "managed-login-control",
       "dsh-session-thread-binding",
       "structured-item-projection",
       "dsh-approval-round-trip",

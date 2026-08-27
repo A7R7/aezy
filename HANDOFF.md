@@ -3,7 +3,7 @@
 > 更新日期：2026-08-28<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`main`<br>
-> 功能基线：`f3b475e0a1 docs(terminal): record side panel verification`
+> 功能基线：Codex managed account surface（本次独立切片）
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
@@ -51,7 +51,8 @@ ChatGPT OAuth、Task Board 或 Interactive Side Sessions/merge-back。详细影�
   Review/Files panel 与 Contextual References。
 - `packages/aezy-security`：Approval Rules、Network Policy 与审计。
 - `packages/aezy-terminal`：DSH PTY 的 Session-scoped Host bridge 与右侧 Terminal panel。
-- `packages/aezy-codex`：官方 App Server process/protocol client；尚未接入 Aezy profile/UI。
+- `packages/aezy-codex`：官方 App Server process/protocol client、Aezy profile Host bridge 与
+  Settings managed ChatGPT browser/device login、logout、plan/rate/usage/model 产品面。
 
 ## 3. 当前产品基线
 
@@ -104,8 +105,10 @@ test.md
 http://127.0.0.1:3090
 ```
 
-它已在 Terminal side panel 完成后正常 SIGTERM/restart，并通过真实 PTY HTTP smoke。当前
-checkout 的 `packages/aezy-terminal/lib/client.js` SHA-256：
+它已在 Codex managed account surface 完成后正常 SIGTERM/restart，真实页面包含
+`@aezy/codex` client bundle，account endpoint 返回 connected ChatGPT plan/rate/usage 且不含
+email/token，并通过 M1/M2/M3/Terminal HTTP/PTY smoke。当前 checkout 的
+`packages/aezy-terminal/lib/client.js` SHA-256：
 
 ```text
 9ee61ac87995cfdbf35c0915e8a59ec19e4e5671a41f13d83e343412d47136f4
@@ -144,7 +147,8 @@ AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:m3:http
 AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:terminal:http
 ```
 
-当前签收结果摘要：Terminal 自动测试 7/7；真实 rc.2 M0 composition smoke；3090 的
+当前签收结果摘要：Codex 自动测试 8/8、官方 App Server 实机 structured command gate；真实
+rc.2 M0 composition smoke；3090 的
 Worktree/Journal/Security HTTP 回归，以及 open/send/read、多 PTY、SIGINT、Session/cwd/request
 fence 和 `cd /tmp` live cwd 均通过。
 浏览器验证确认 1440px 下 Terminal 是 359px 原生 details 列且 Chat 保持选中；680px 下
@@ -169,9 +173,10 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 1. 已完成：独立 rc.2 runtime compatibility gate，发布包/lock/profile/3090 均已签收。
 2. 已完成：隔离验证 `relay-dsh-plugin-codex@0.1.2`。auth/account/usage、对话、resume、cancel
    通过，但真实工具/approval 事实与安全切模型失败；不要安装到 Aezy profile。
-3. 进行中：最小外置官方 App Server adapter。process/protocol client 与真实
-   `gpt-5.6-sol` structured `commandExecution`、account/rate/usage gate 已通过；下一步接 DSH
-   Session binding、approval、file-change/Journal 与 managed login 产品入口。
+3. 进行中：最小外置官方 App Server adapter。process/protocol client、真实
+   `gpt-5.6-sol` structured `commandExecution`、account/rate/usage gate，以及 Aezy Settings
+   managed browser/device login/logout 产品入口均已完成并在 3090 验证。下一步只接 DSH
+   Session↔Codex Thread/Turn binding、structured item、approval 与 file-change/Journal 投影。
 4. 达到自开发闭环后，再决定是否基于 DSH provider/Session/tool/approval seam 实现第二个
    Codex-inspired backend；它必须通过同一 runtime contract，且不能复制 DSH 内核。
 5. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
@@ -201,6 +206,7 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 | Project、Turn、Worktree、Handoff、M4 client | `packages/aezy-project/` |
 | Security policy/store/client | `packages/aezy-security/` |
 | Integrated Terminal Host/client | `packages/aezy-terminal/` |
+| Codex App Server、managed account Host/client | `packages/aezy-codex/` |
 | Profile 同步与启动 | `scripts/sync-profile.mjs`、`scripts/run-profile.mjs` |
 | 文档入口与阅读分层 | `doc/README.md` |
 | 当前 milestone 证据 | `doc/milestones/` |

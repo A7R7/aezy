@@ -86,7 +86,7 @@ export class CodexAppServerClient extends EventEmitter {
       this.setState('connected')
     } catch (error) {
       this.setState('connection-failed')
-      await this.close()
+      await this.close({ state: 'connection-failed' })
       throw error
     }
   }
@@ -116,13 +116,13 @@ export class CodexAppServerClient extends EventEmitter {
     this.write({ id, error: { code, message } })
   }
 
-  async close() {
+  async close({ state = 'not-started' } = {}) {
     this.closed = true
     const child = this.child
     this.child = null
     this.rejectPending(new Error('Codex App Server client closed'))
     if (!child) {
-      this.setState('not-started')
+      this.setState(state)
       return
     }
     child.kill('SIGTERM')
@@ -133,7 +133,7 @@ export class CodexAppServerClient extends EventEmitter {
         resolve()
       })
     })
-    this.setState('not-started')
+    this.setState(state)
   }
 
   handleLine(line) {

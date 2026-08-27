@@ -62,6 +62,12 @@
     - id: aezy-security
       name: '@aezy/security'
 
+# Official Codex App Server process/account projection. Conversation binding is
+# a later slice; this row owns no DSH Session, tool, approval or usage kernel.
+- insert:
+    - id: aezy-codex
+      name: '@aezy/codex'
+
 # Aezy-owned M1 vertical slice. Its Node half exposes a bounded same-origin
 # repository read API; its browser half contributes the Changes view through
 # the existing DSH client-module and conversation-slot seams.

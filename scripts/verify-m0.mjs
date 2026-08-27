@@ -43,6 +43,7 @@ invariant(dump.includes('@aezy/web'), 'Composed config does not include @aezy/we
 invariant(dump.includes('@aezy/brand'), 'Composed config does not include @aezy/brand')
 invariant(dump.includes('@aezy/security'), 'Composed config does not include @aezy/security')
 invariant(dump.includes('@aezy/terminal'), 'Composed config does not include @aezy/terminal')
+invariant(dump.includes('@aezy/codex'), 'Composed config does not include @aezy/codex')
 invariant(dump.indexOf('@aezy/base') < dump.indexOf('@aezy/web'), 'Aezy bundle order is invalid')
 
 for (const id of [
@@ -68,6 +69,8 @@ const securityRow = row(dump, 'aezy-security')
 invariant(securityRow.includes("name: '@aezy/security'"), 'Aezy security boundary is not composed')
 const terminalRow = row(dump, 'aezy-terminal')
 invariant(terminalRow.includes("name: '@aezy/terminal'"), 'Aezy terminal bridge is not composed')
+const codexRow = row(dump, 'aezy-codex')
+invariant(codexRow.includes("name: '@aezy/codex'"), 'Aezy Codex account bridge is not composed')
 invariant(row(dump, 'terminal').includes("name: '@deepseek-ai/dsh-terminal'"), 'DSH terminal registry is not composed')
 invariant(row(dump, 'terminal-shell').includes("name: '@deepseek-ai/dsh-terminal-bash'"), 'DSH platform terminal backend is not composed')
 
@@ -158,6 +161,7 @@ try {
   invariant(html.includes('"id":"@aezy/security"'), 'Aezy Web did not load the Aezy Security view')
   invariant(html.includes('"id":"@aezy/project"'), 'Aezy Web did not load the Aezy Project views')
   invariant(html.includes('"id":"@aezy/terminal"'), 'Aezy Web did not load the Aezy Integrated Terminal view')
+  invariant(html.includes('"id":"@aezy/codex"'), 'Aezy Web did not load the Aezy Codex account view')
   invariant(
     !html.includes('"id":"@deepseek-ai/dsh-client-ui-brand-official"'),
     'Aezy Web still loads the disabled official DSH brand occupant',
