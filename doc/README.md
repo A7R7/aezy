@@ -21,7 +21,6 @@
 | Review、Files/Preview、Contextual Ask | [`milestones/m4.md`](milestones/m4.md) |
 | Git-independent Turn journal | [`milestones/turn-journal.md`](milestones/turn-journal.md) |
 | Integrated Terminal | [`milestones/terminal.md`](milestones/terminal.md) |
-| Activity、Status、Usage、Notifications | [`milestones/activity.md`](milestones/activity.md) |
 
 Milestone 是已完成切片的签收事实。不要把其中的历史 Session ID、浏览器坐标或旧测试
 流水账复制回 HANDOFF/README；需要追溯时在原 milestone 阅读。
