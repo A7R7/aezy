@@ -29,6 +29,8 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
 - `packages/aezy-security/`：Approval Rules、Network Policy、解释与审计。
 - `packages/aezy-terminal/`：复用 DSH PTY registry/platform shell 的 Integrated Terminal
   Host bridge 与右侧 panel。
+- `packages/aezy-codex/`：固定官方 Codex App Server runtime 的外置 process/protocol client；
+  不读取 OAuth token，也不默认启用 analytics。
 - `doc/`：按 milestone、roadmap、reference 和 archive 分层的项目文档；入口见
   [`doc/README.md`](doc/README.md)。
 
@@ -93,6 +95,7 @@ pnpm run test:m1
 pnpm run test:m2
 pnpm run test:m3
 pnpm run test:terminal
+pnpm run test:codex
 pnpm peers check
 ```
 
@@ -103,6 +106,12 @@ AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:m1:http
 AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:m2:http
 AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:m3:http
 AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:terminal:http
+```
+
+需要已有 managed ChatGPT 登录时，官方 App Server 实机 contract gate 为：
+
+```bash
+pnpm run test:codex:real
 ```
 
 需要真实模型时再按对应 milestone 运行 `dogfood:*` 命令，不把一次性 dogfood 过程记录复制

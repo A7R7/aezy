@@ -25,6 +25,8 @@
     "test:m3": "node --test packages/aezy-project/tests/worktree.test.mjs packages/aezy-project/tests/client-bundle.test.mjs",
     "test:m3:http": "node scripts/verify-m3-http.mjs",
     "test:terminal": "node --test packages/aezy-terminal/tests/*.test.mjs",
+    "test:codex": "node --test packages/aezy-codex/tests/*.test.mjs",
+    "test:codex:real": "node scripts/verify-codex-app-server.mjs",
     "test:terminal:http": "node scripts/verify-terminal-http.mjs",
     "dogfood:m2": "node scripts/dogfood-m2.mjs",
     "dogfood:m3": "node scripts/dogfood-m3.mjs",

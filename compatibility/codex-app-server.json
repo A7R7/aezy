@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-08-28",
+  "runtime": {
+    "package": "@openai/codex",
+    "version": "0.149.0",
+    "analyticsDefaultEnabled": false
+  },
+  "account": {
+    "type": "chatgpt",
+    "planType": "prolite"
+  },
+  "contractClient": {
+    "status": "complete",
+    "unitTests": 3,
+    "realStructuredCommandExecution": true,
+    "rateLimitsReadable": true,
+    "usageReadable": true,
+    "approvalPolicy": "decline-all-in-probe"
+  },
+  "productIntegration": {
+    "status": "pending",
+    "required": [
+      "managed-login-control",
+      "dsh-session-thread-binding",
+      "structured-item-projection",
+      "dsh-approval-round-trip",
+      "security-policy-proof",
+      "turn-journal-file-change-proof",
+      "aezy-self-development-dogfood"
+    ]
+  }
+}

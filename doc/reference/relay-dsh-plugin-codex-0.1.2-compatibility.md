@@ -169,3 +169,15 @@ Aezy 不应复制 Relay 的完整 implementation，也不应修补该包或 DSH 
 4. 先在临时 repo/worktree 做真实文件修改，证明 Turn Journal、Security 与 Review；
 5. 再组合 Aezy Terminal，运行现有 M0–M4/Terminal 回归；
 6. 最后才用 Aezy 修改 Aezy 自身并重启 3090，签收 self-development loop。
+
+## Relay 后的直接官方协议复核
+
+同日新增 `@aezy/codex` 最小 process/protocol client，直接启动同一个固定
+`@openai/codex@0.149.0`，且不传 `features.code_mode_host=true` 或
+`--analytics-default-enabled`。真实 `gpt-5.6-sol` `pwd` Turn 成功产生官方
+`item/started`/`item/completed: commandExecution`，并正常收到 token usage、rate-limit 与
+`turn/completed` 通知。
+
+这把故障边界进一步缩小到 Relay 的 DSH/code-mode 映射，而不是账户或官方 App Server
+本身。直接协议通过仍不等于 Aezy 产品闭环通过；DSH Session binding、approval round-trip、
+Security、Journal/file-change 与 managed login UI 继续保持 Pending。

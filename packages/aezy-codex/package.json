@@ -1,0 +1,23 @@
+{
+  "name": "@aezy/codex",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Aezy out-of-tree Codex App Server runtime adapter",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./app-server-client": "./src/app-server-client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src/*.js",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@openai/codex": "0.149.0"
+  }
+}

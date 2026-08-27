@@ -125,6 +125,10 @@ rate/usage、streamed Turn、连续对话、重启 resume 和 cancel 通过；�
 这是当前唯一最高优先级切片。以固定 Codex 版本启动本地 `app-server`，在独立外置 adapter
 中验证：
 
+当前进度：`@aezy/codex` process/protocol client、3 项单测及真实 `gpt-5.6-sol`
+structured `commandExecution` 已通过；account/rate limits/usage 可读，analytics 默认关闭。
+DSH Session/tool/approval 产品接入尚未完成。
+
 - protocol initialize 与能力协商；
 - `account/read`、managed ChatGPT browser/device login、logout、Pro `planType`；
 - thread create/read/resume 与 turn start/stream/cancel；

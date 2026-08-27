@@ -51,6 +51,7 @@ ChatGPT OAuth、Task Board 或 Interactive Side Sessions/merge-back。详细影�
   Review/Files panel 与 Contextual References。
 - `packages/aezy-security`：Approval Rules、Network Policy 与审计。
 - `packages/aezy-terminal`：DSH PTY 的 Session-scoped Host bridge 与右侧 Terminal panel。
+- `packages/aezy-codex`：官方 App Server process/protocol client；尚未接入 Aezy profile/UI。
 
 ## 3. 当前产品基线
 
@@ -130,6 +131,7 @@ pnpm run test:m1
 pnpm run test:m2
 pnpm run test:m3
 pnpm run test:terminal
+pnpm run test:codex
 git diff --check
 ```
 
@@ -167,8 +169,9 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 1. 已完成：独立 rc.2 runtime compatibility gate，发布包/lock/profile/3090 均已签收。
 2. 已完成：隔离验证 `relay-dsh-plugin-codex@0.1.2`。auth/account/usage、对话、resume、cancel
    通过，但真实工具/approval 事实与安全切模型失败；不要安装到 Aezy profile。
-3. 硬约束失败已成立：实现最小外置官方 App Server adapter，先签收 structured tool/file-change、
-   approval、managed login 与 usage，再完成 Aezy 自身仓库的真实 dogfood。
+3. 进行中：最小外置官方 App Server adapter。process/protocol client 与真实
+   `gpt-5.6-sol` structured `commandExecution`、account/rate/usage gate 已通过；下一步接 DSH
+   Session binding、approval、file-change/Journal 与 managed login 产品入口。
 4. 达到自开发闭环后，再决定是否基于 DSH provider/Session/tool/approval seam 实现第二个
    Codex-inspired backend；它必须通过同一 runtime contract，且不能复制 DSH 内核。
 5. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
