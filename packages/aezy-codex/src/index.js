@@ -5,13 +5,20 @@ export {
   bundledCodexSpawnSpec,
 } from './app-server-client.js'
 
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { CodexAppServerClient } from './app-server-client.js'
+import { CodexBindingStore } from './binding-store.js'
+import { AezyCodexAdapter, CODEX_PROVIDER } from './dsh-adapter.js'
+
+export { CodexBindingStore } from './binding-store.js'
+export { AezyCodexAdapter, CODEX_PROVIDER } from './dsh-adapter.js'
 
 const ROUTE = '/aezy/api/codex'
 const MAX_BODY_BYTES = 8 * 1024
 
 export const name = '@aezy/codex'
-export const inject = ['webServer']
+export const inject = ['agents', 'approval', 'aezySecurity', 'llm', 'webServer']
 
 function json(res, status, value) {
   const body = JSON.stringify(value)
@@ -192,6 +199,10 @@ export function apply(ctx, config = {}) {
     ...(Array.isArray(config.appServerArgs) ? { appServerArgs: config.appServerArgs } : {}),
   })
   const bridge = new CodexAccountBridge(client)
+  const home = process.env.DSH_HOME ?? join(homedir(), '.aezy', 'dsh')
+  const bindings = new CodexBindingStore(config.bindingFile ?? join(home, 'aezy', 'codex-bindings.json'))
+  const ready = client.start()
+  const adapter = new AezyCodexAdapter({ client, ready, bindings, ctx, logger: ctx.logger })
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',
     path: ROUTE,
@@ -199,7 +210,7 @@ export function apply(ctx, config = {}) {
   }), 'aezy-codex: account API')
   ctx.effect(() => {
     let disposed = false
-    void client.start().catch((error) => {
+    void ready.catch((error) => {
       bridge.recordStartError(error)
       if (!disposed) ctx.logger.warn(error instanceof Error ? error : new Error(String(error)))
     })
@@ -208,5 +219,18 @@ export function apply(ctx, config = {}) {
       await client.close()
     }
   }, 'aezy-codex: official app-server lifecycle')
-  ctx.provide('aezyCodex', { client, account: bridge })
+  ctx.effect(() => {
+    let unregister
+    try {
+      unregister = ctx.llm.registerAdapter([CODEX_PROVIDER], adapter)
+    } catch (error) {
+      adapter.dispose()
+      throw error
+    }
+    return () => {
+      unregister()
+      adapter.dispose()
+    }
+  }, 'aezy-codex: DSH Session to official Thread adapter')
+  ctx.provide('aezyCodex', { client, account: bridge, adapter, bindings })
 }

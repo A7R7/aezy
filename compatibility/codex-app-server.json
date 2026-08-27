@@ -30,14 +30,40 @@
     "tokenBoundary": "never-accept-or-return",
     "realProfileVerified": true
   },
+  "dshAdapter": {
+    "status": "complete",
+    "provider": "aezy-codex",
+    "bindingStore": "DSH_HOME/aezy/codex-bindings.json",
+    "codexTruth": [
+      "oauth",
+      "credential",
+      "thread",
+      "agent-loop"
+    ],
+    "dshTruth": [
+      "session",
+      "turn-events",
+      "tool-execution",
+      "approval",
+      "security-policy",
+      "turn-journal"
+    ],
+    "nativeCodexPermissions": "read-only",
+    "nativeEscalation": "decline",
+    "mutableTools": "dsh-dynamic-tools",
+    "realGates": {
+      "structuredCommandProjection": true,
+      "restartResume": true,
+      "cancel": true,
+      "governedWrite": true,
+      "turnJournal": true,
+      "securityDenyAudit": true,
+      "approvalAllowedOnce": true
+    }
+  },
   "productIntegration": {
     "status": "in-progress",
     "required": [
-      "dsh-session-thread-binding",
-      "structured-item-projection",
-      "dsh-approval-round-trip",
-      "security-policy-proof",
-      "turn-journal-file-change-proof",
       "aezy-self-development-dogfood"
     ]
   }

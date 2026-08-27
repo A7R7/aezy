@@ -128,8 +128,11 @@ rate/usage、streamed Turn、连续对话、重启 resume 和 cancel 通过；�
 当前进度：`@aezy/codex` process/protocol client、Host account API 与 Settings 产品面已经进入
 Aezy profile；真实 `gpt-5.6-sol` structured `commandExecution` 已通过，managed ChatGPT
 browser/device login、logout、account/plan/rate limits/usage/model discovery 均由官方 App Server
-托管并在 3090 验证，analytics 默认关闭，Aezy 不接收或返回 token。DSH Session↔Codex
-Thread/Turn、structured item、approval 与 Journal/Security 投影尚未完成。
+托管并在 3090 验证，analytics 默认关闭，Aezy 不接收或返回 token。`aezy-codex` provider 的
+DSH Session↔Codex Thread/Turn、stream、cancel、restart-resume 已完成；官方 dynamic tool seam
+把所有可变操作送回 DSH tools/Security/approval，Codex 原生权限固定 read-only 且提权
+fail-closed。真实 command projection、write→Journal、Security deny/audit 与 approval
+`allowed-once` 均已通过。剩余门槛是 Aezy 自身仓库的完整 self-development dogfood。
 
 - protocol initialize 与能力协商；
 - `account/read`、managed ChatGPT browser/device login、logout、Pro `planType`；
@@ -147,9 +150,10 @@ Workspace/Session 关联到 opaque Codex thread id 所需的最小 binding，不
 
 ### 3. Codex-backed Aezy 产品闭环
 
-spike 通过后再做产品化：模型/推理设置、登录状态、composer、streaming transcript、diff/tool
-卡片、approval、stop/resume、错误恢复与 usage。必须复用当前 Project/Review/Terminal/Security
-能力，不从头重构已签收切片。
+模型/推理选择、登录状态、composer、streaming transcript、tool/diff 事实、approval、stop/resume
+与 usage 已通过现有 DSH/Aezy 产品面连接。当前不增加平行 UI；下一步直接以受管 Worktree 对
+Aezy 自身执行真实改动、测试、Review、Host restart 与 continuation。必须继续复用当前
+Project/Review/Terminal/Security 能力，不从头重构已签收切片。
 
 完成门槛不是静态 UI，而是 Aezy 能打开本仓库、通过 Pro 登录执行真实 Turn、修改外置 Aezy
 代码、运行相关测试、审阅 diff、重启 Host，并在同一开发任务上继续工作。达到该门槛才可称为

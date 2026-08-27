@@ -62,8 +62,8 @@
     - id: aezy-security
       name: '@aezy/security'
 
-# Official Codex App Server process/account projection. Conversation binding is
-# a later slice; this row owns no DSH Session, tool, approval or usage kernel.
+# Official Codex App Server process/account projection plus a DSH LLM adapter.
+# DSH retains Session/Turn/approval truth; Codex retains its Thread and agent loop.
 - insert:
     - id: aezy-codex
       name: '@aezy/codex'

@@ -98,6 +98,7 @@ pnpm run test:m2
 pnpm run test:m3
 pnpm run test:terminal
 pnpm run test:codex
+pnpm run test:codex:dsh
 pnpm peers check
 ```
 
@@ -114,6 +115,17 @@ AEZY_TEST_URL=http://127.0.0.1:3090 pnpm run test:terminal:http
 
 ```bash
 pnpm run test:codex:real
+```
+
+已有 3090 Host 时，`test:codex:dsh` 通过普通 DSH Session/model-selection/prompt/history 链路
+验证 `aezy-codex` provider、Session↔Thread binding、`dsh.bash` structured projection 与 Turn
+完成。设置 `AEZY_CODEX_CANCEL=1` 验证 cancel；用同一 Session id 配合
+`AEZY_CODEX_RESUME=1` 可在 Host 重启后验证 Thread resume。对 disposable Git fixture 还可运行：
+
+```bash
+AEZY_CODEX_WRITE=1 AEZY_CODEX_TEST_CWD=/tmp/example pnpm run test:codex:dsh
+AEZY_CODEX_TEST_CWD=/tmp/example pnpm run test:codex:dsh:security
+AEZY_CODEX_TEST_CWD=/tmp/example pnpm run test:codex:dsh:approval
 ```
 
 需要真实模型时再按对应 milestone 运行 `dogfood:*` 命令，不把一次性 dogfood 过程记录复制
@@ -140,9 +152,10 @@ Aezy 的构建和运行仍只消费 npm 发布包；恢复参考树不会改变 
 下一主线是 **Codex-backed self-development loop**：固定 Relay 0.1.2 companion 已完成隔离
 门禁，但因真实 structured tool/approval 硬约束失败而不进入 Aezy profile。最小外置 runtime
 adapter 已接入官方 Codex `app-server`，并在 Aezy Settings 中提供 managed browser/device login、
-logout、plan/rate/usage 与 model discovery；Codex 继续托管 ChatGPT OAuth/credential/refresh 和
-agent loop。下一切片只做 DSH Session↔Codex Thread/Turn、streaming item、approval、cancel/resume
-与既有 Journal/Security 的薄投影。兼容性证据见
+logout、plan/rate/usage 与 model discovery。`aezy-codex` provider 已完成 DSH Session↔Codex
+Thread binding、stream/cancel/restart-resume，以及 `dsh.*` dynamic tool 到既有 Security、approval、
+tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原生提权 fail-closed。下一验收只剩
+Aezy 自身仓库的真实开发 Turn。兼容性证据见
 [`relay-dsh-plugin-codex-0.1.2-compatibility.md`](doc/reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)。
 第一验收目标是在 Aezy 中对 Aezy 仓库完成真实开发 Turn。
 
