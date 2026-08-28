@@ -1,5 +1,4 @@
 import {
-  CallId,
   LlmAdapter,
   createAssistantMessage,
   createToolResultMessage,
@@ -499,7 +498,7 @@ export class AezyCodexAdapter extends LlmAdapter {
     const descriptor = activityDescriptor(item, fallbackId)
     const existing = active.activities.get(descriptor.id)
     if (existing !== undefined) return existing
-    const callId = CallId(requestedCallId ?? `codex:${active.turnId ?? 'pending'}:${descriptor.id}`)
+    const callId = requestedCallId ?? `codex:${active.turnId ?? 'pending'}:${descriptor.id}`
     const assistant = createAssistantMessage({
       content: [{ type: 'tool-call', id: callId, name: descriptor.toolName, arguments: descriptor.arguments }],
       source: { provider: CODEX_PROVIDER, model: active.model },

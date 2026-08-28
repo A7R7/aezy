@@ -40,8 +40,9 @@
 一次完整 revision replacement；官方 npm registry 仍无 `@deepseek-ai/dsh@0.1.2-alpha.1`。
 经明确授权，固定官方 commit 已在仓库外完成完整 official build、241 个 DSH + 9 个 vendor +
 1 个 Landlock entry tarball、逐文件 SHA-256 与官方 packed-install verification。默认 runtime、lock、
-profile 和 3090 Host 仍停留在已签收 rc.2；alpha 只能使用独立 `~/.aezy-alpha/dsh`、`aezy-alpha`
-profile 与 3091，不能从 reference 源码运行。完整证据见
+profile 和 3090 Host 仍停留在已签收 rc.2；alpha 使用独立 `~/.aezy-alpha/dsh`、`aezy-alpha`
+profile 与 3091，不能从 reference 源码运行。隔离 selector、checksum-pinned consumer、composition、
+Web、Workspace、Session 与 5 个 Aezy Client bundle 已实机通过；完整证据见
 `doc/reference/dsh-alpha1-source-runtime.md`。alpha.1
 移除了 ApiProxy/client-runtime，新增 Remote controllers、package-owned shipped presets、PTC rename、
 provider-card slots、exact Turn usage、subagent model routing 与 experimental Agent Team；详细影响和
@@ -110,6 +111,13 @@ test.md
 
 ```text
 http://127.0.0.1:3090
+```
+
+隔离 alpha Host 也已在本次验证监听 `http://127.0.0.1:3091`，但它仍是 candidate，进程状态必须
+重新检查。其 DSH_HOME/profile 与 3090 完全分离，启动命令为：
+
+```bash
+pnpm run alpha:web -- --host 127.0.0.1 --port 3091 --no-open
 ```
 
 它已在 Codex self-development dogfood 完成并 fast-forward 回 `main` 后正常 SIGTERM/restart，
@@ -181,8 +189,9 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 近期顺序：
 
 1. 已完成：独立 rc.2 runtime compatibility gate，发布包/lock/profile/3090 均已签收。
-2. 已完成：alpha.1 reference replacement、影响审计与仓库外 official source release pack；
-   packed-install 已验证，下一步在独立 3091 迁移 Remote/controllers 和 client package split。
+2. 已完成：alpha.1 reference replacement、影响审计、仓库外 official source release pack、
+   packed-install，以及独立 3091 的 Remote/controllers、client split、Web/Workspace/Session/Aezy
+   外置插件实机门禁；rc.2 仍是默认。
 3. 已完成：隔离验证 `relay-dsh-plugin-codex@0.1.2`。auth/account/usage、对话、resume、cancel
    通过，但真实工具/approval 事实与安全切模型失败；不要安装到 Aezy profile。
 4. 已完成：最小外置官方 App Server adapter。process/protocol client、真实
@@ -194,7 +203,7 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 5. 已完成：在 Aezy 自身仓库的受管 Worktree 执行真实开发 Turn、失败后恢复、18/18 测试、
    Journal/Review、结构化 Handoff、Host restart 与同一 Thread continuation；首笔 Aezy 自开发
    提交为 `36871adfe5`。完整证据见 `doc/milestones/codex.md`。
-6. alpha.1 runtime gate 通过后，恢复上游 `ui-agent-preset`，保留 standard/ptc/minimal/cordis，
+6. 下一步恢复上游 `ui-agent-preset`，保留 standard/ptc/minimal/cordis，
    增加 `codex-app-server` system preset；旧 `aezy` 仅保历史恢复，`codex-inspired` 不可点击。
 7. 先对已完成闭环做必要的 Worktree dependency bootstrap 与 App Server contract hardening，
    再决定是否基于 DSH provider/Session/tool/approval seam 实现第二个
@@ -266,14 +275,14 @@ doc/README.md 索引读取对应 milestone，不要递归读取整个 doc/，也
 
 Activity dashboard 的三笔原提交已经独立 revert，Browser integration 已暂停；Traffic Board
 与 Task Board 暂缓。runtime/3090 仍签收于 rc.2，reference 已更新到 alpha.1；官方 alpha.1 npm
-family 尚未发布，所以先完成 Remote/controller 与 client split 影响审计，不得从 reference 源码
-运行。Relay 0.1.2 companion 门禁已因真实
+family 尚未发布。固定官方 release artifacts 的隔离 3091 Remote/controller/client split runtime
+gate 已完成，不得从 reference 源码运行。Relay 0.1.2 companion 门禁已因真实
 tool/approval 硬约束失败；最小外置官方 App Server adapter 已完成 managed ChatGPT account、
 DSH Session↔Codex Thread/Turn、stream/activity、dynamic DSH tools、approval、Security、Journal、
 cancel 与 restart-resume。Codex 原生权限固定 read-only 且提权 fail-closed。Aezy 自身仓库的
 真实受管 Worktree 开发 Turn、失败恢复、测试、Journal/Review、Handoff、Host restart 与同一
-Thread continuation 已签收，完成证据见 doc/milestones/codex.md。alpha.1 runtime gate 通过后，
-恢复上游 ui-agent-preset，保留 standard/ptc/minimal/cordis，新增 codex-app-server system preset，
+Thread continuation 已签收，完成证据见 doc/milestones/codex.md。下一步恢复上游
+ui-agent-preset，保留 standard/ptc/minimal/cordis，新增 codex-app-server system preset，
 旧 aezy 仅保历史恢复，codex-inspired 暂不提供选项。然后再做必要的 dependency bootstrap/contract
 hardening，并评估同一 runtime contract 下的可选 DSH-native backend。不要读取
 或管理 OAuth token，不修改 DSH 源码，不实现第二套 Session/Subagent/

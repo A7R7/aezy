@@ -27,8 +27,8 @@
     "latestObservedTag": "dsh-v0.1.2-alpha.1",
     "latestObservedCommit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
     "latestObservedTree": "a712eec535b48badc4fefb4df5176a7002e4280b",
-    "runtimeDecision": "stable runtime remains rc.2; a source-built alpha.1 release artifact passed the official family build, pack, and packed-install gates and may proceed only in an isolated 3091 runtime",
-    "ownershipImpact": "alpha.1 moves shipped Agent presets into the preset package with includeShippedRoot, renames code mode to ptc, adds durable preset/tool-change and model-selection projections, replaces ApiProxy with Remote gateway/controllers, splits the client runtime, adds Models provider-card slots, exact per-turn usage, configurable subagent models, experimental Agent Teams, packed Session transport, Web auth, SSRF-safe public WebFetch, and terminal/process fixes. It directly improves the codex-app-server system-preset route and can replace the standalone Codex account-card placement, but it does not provide per-preset model catalog filtering or a main-session Codex App Server backend. Aezy client packages and RPC tests require a deliberate Remote/controller migration before runtime adoption."
+    "runtimeDecision": "stable runtime remains rc.2; the source-built alpha.1 release artifacts now pass an isolated 3091 composition/Web/Workspace/Session/Aezy-plugin gate, but preset and full parity gates still block promotion",
+    "ownershipImpact": "alpha.1 moves shipped Agent presets into the preset package with includeShippedRoot, renames code mode to ptc, adds durable preset/tool-change and model-selection projections, replaces ApiProxy with Remote gateway/controllers, splits the client runtime, adds Models provider-card slots, exact per-turn usage, configurable subagent models, experimental Agent Teams, packed Session transport, Web auth, SSRF-safe public WebFetch, and terminal/process fixes. Aezy now composes through the Remote/controller and split-client seams in the isolated runtime. The next owned gap is a real codex-app-server system preset with per-preset catalog filtering, Host execution gating, and persistent mode display; alpha.1 still does not provide those policies or a main-session Codex App Server backend."
   },
   "releaseAvailability": {
     "githubRelease": "https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.2-alpha.1",
@@ -36,8 +36,9 @@
     "npmPackageVersion": "0.1.2-alpha.1",
     "npmPublishedAtCheck": false,
     "checkedAt": "2026-08-28",
-    "runtimeBlockedReason": "The official npm registry still has no @deepseek-ai/dsh@0.1.2-alpha.1. The verified local release artifacts are an isolated candidate only; alpha composition and parity gates are not complete.",
+    "runtimeBlockedReason": "The official npm registry still has no @deepseek-ai/dsh@0.1.2-alpha.1. The isolated alpha composition gate is complete, but the preset slice and full M0-M4.2/Terminal/Security/Codex/self-development parity gates are not complete.",
     "sourceReleaseArtifactVerified": true,
+    "alphaCompositionVerified": true,
     "sourceReleaseArtifactMetadata": "compatibility/dsh-alpha-runtime.json"
   },
   "policy": {

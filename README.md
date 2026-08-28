@@ -26,6 +26,11 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
 source release 证据见
 [`dsh-alpha1-source-runtime.md`](doc/reference/dsh-alpha1-source-runtime.md)。
 
+alpha.1 candidate 已通过独立 3091 的 composition、Web、Workspace、Session 与 Aezy 外置插件
+实机门禁，但尚未成为默认 runtime。它使用 `~/.aezy-alpha/dsh`、`aezy-alpha` profile、隔离
+Node 24/CMake/pnpm store 和 checksum-pinned 本地 release tarball closure；不会迁移或共享
+`~/.aezy/dsh` 的 Session、credentials 与 profile。
+
 ## 仓库布局
 
 - `packages/aezy-base/`、`packages/aezy-web/`：最小 Host/Web composition 与 Aezy preset。
@@ -61,6 +66,18 @@ pnpm run aezy:web -- --host 127.0.0.1 --port 3080 --no-open
 
 首次真实 Agent Turn 需要在 Web Models 设置中配置可用 provider。`test:m0` 使用发布版 DSH
 CLI 和真实 profile/Web/Workspace/Session/preset 链路，不使用替代 runtime。
+
+需要继续 alpha candidate 开发时，先同步并检查独立 composition，再启动 3091：
+
+```bash
+pnpm run alpha:profile:sync
+pnpm run alpha:profile:dump
+pnpm run alpha:web -- --host 127.0.0.1 --port 3091 --no-open
+```
+
+selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打包 7 个 Aezy 外置包，再用
+全量本地 override 安装 workspace closure。只有依赖安装、受审 native scripts 和 alpha CLI
+版本验证全部成功才写 completion marker；默认 `profile:sync`/`aezy:web` 仍指向 rc.2。
 
 ## 已完成能力
 
@@ -150,7 +167,8 @@ git -C .local/deepseek-harness checkout --detach cd5ef8148158c3a752a658978873241
 Aezy 默认构建和运行仍优先消费 npm 发布包；恢复 alpha.1 参考树不会把 rc.2 runtime 升级。
 npm 版本缺失期间，只允许使用从上述固定官方 commit、在仓库外通过官方完整 release path 构建并
 通过 packed-install verification 的 package artifacts。它必须使用独立 DSH_HOME/profile/3091，
-完成 Remote/controller 迁移与 parity gates 后才可更新默认 runtime 声明。
+当前 Remote/controller/client split 的隔离 3091 门禁已完成；preset 与完整 parity gates 通过后
+才可更新默认 runtime 声明。
 
 ## 文档与下一步
 
@@ -168,9 +186,9 @@ tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原�
 [`codex.md`](doc/milestones/codex.md)，Relay 兼容性证据见
 [`relay-dsh-plugin-codex-0.1.2-compatibility.md`](doc/reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)。
 
-下一步使用已验证的隔离 alpha.1 release artifacts，在独立 DSH_HOME/profile/3091 完成
-Remote/controller/client split 迁移与 runtime gate；随后恢复上游 Agent preset UI，并把 Codex
-App Server 收口为独立 system preset。之后再围绕已完成
+下一步在已验证的隔离 alpha.1 runtime 中恢复上游 Agent preset UI，并把 Codex App Server 收口为
+独立 system preset，同时实施 per-preset catalog UI 过滤、Host 执行门禁与 Session header 模式
+显示。之后再围绕已完成
 闭环做 Worktree dependency bootstrap 和 App Server contract hardening，并决定是否需要同一
 runtime contract 下的 DSH-native backend；不以重写 agent loop 作为默认路线。
 

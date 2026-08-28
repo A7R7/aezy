@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "dsh-v0.1.2-alpha.1-cd5ef814",
-  "status": "verified-isolated-source-release-artifacts",
+  "status": "verified-isolated-alpha-runtime",
   "defaultRuntime": false,
   "source": {
     "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
@@ -71,7 +71,18 @@
     "releaseFamily": "241 members at 0.1.2-alpha.1; publish order resolved",
     "officialClientBuildRecord": "218 client artifacts with 4 public values",
     "packedInstall": "installed @deepseek-ai/dsh reports 0.1.2-alpha.1",
+    "isolatedConsumer": "pnpm 11.7.0 installed 251 checksum-pinned DSH/vendor/Landlock tarballs and 7 packed Aezy plugins through local overrides; Node 24.20.0 rebuilt koffi and loaded the Linux optional closure",
+    "compositionDump": "DSH alpha Base/Web plus all 7 Aezy out-of-tree packages composed successfully",
+    "host": "127.0.0.1:3091 served an authenticated 21183-byte Web index with all 5 Aezy Client bundles",
+    "remoteControllers": "workspace/create and session/create/list/modelCatalog succeeded through the alpha /api Remote controller transport",
+    "stableBaseline": "127.0.0.1:3090 remained HTTP 200 and the stable CLI/profile remained 0.1.1-rc.2",
     "verifiedAt": "2026-08-28"
+  },
+  "selector": {
+    "sync": "pnpm alpha:profile:sync",
+    "dump": "pnpm alpha:profile:dump",
+    "launch": "pnpm alpha:web -- --host 127.0.0.1 --port 3091 --no-open",
+    "completionMarker": "~/.aezy-alpha/dsh/profiles/aezy-alpha/.aezy-alpha-install.json"
   },
   "isolation": {
     "stableRuntime": "0.1.1-rc.2",
@@ -81,7 +92,7 @@
     "alphaDshHome": "~/.aezy-alpha/dsh",
     "alphaProfile": "aezy-alpha",
     "alphaPort": 3091,
-    "alphaCompositionVerified": false,
+    "alphaCompositionVerified": true,
     "promoted": false
   },
   "policy": {
