@@ -1,0 +1,8 @@
+# This overlay is prepended to the immutable alpha runtime's shipped standard
+# preset by the external runtime selector. The installed DSH package remains
+# the authority for the coding surface and its version-specific invariants.
+
+- id: codex-app-server-mode
+  name: '@aezy/mode'
+  config:
+    enforceCodex: true

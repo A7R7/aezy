@@ -1,6 +1,6 @@
 # DSH alpha.1 隔离源码 release runtime
 
-> 状态：**Source build / release pack + isolated 3091 runtime gate complete；仍非默认 runtime**
+> 状态：**Source build / release pack + isolated 3091 runtime gate complete；`alpha` 分支唯一开发 runtime**
 > 日期：2026-08-28  
 > 来源：`dsh-v0.1.2-alpha.1` / `cd5ef8148158c3a752a658978873241fdf8e2bbc`
 
@@ -8,8 +8,8 @@
 
 官方 npm 尚未发布 `0.1.2-alpha.1`，但 Aezy 已明确允许一条窄的临时 runtime 路径：只从固定
 官方 immutable commit，在仓库与只读 reference 之外的可清理缓存 checkout 中，完整复用官方
-release workflow 构建 package artifacts。默认 runtime、`~/.aezy/dsh` 与 3090 仍保持 rc.2；
-alpha 只有通过独立 `DSH_HOME`、profile、3091 和后续 parity gates 才能被提升。
+release workflow 构建 package artifacts。`alpha` 分支只运行独立 `DSH_HOME`、profile 与 3091；
+rc.2 留在主线历史，不作为该分支需要维持的兼容 runtime。后续 parity gates 决定是否合回主线。
 
 这不是从源码直接运行，也不是只 pack `apps/cli`。运行输入必须是完整 DSH family、vendor
 family 与官方 packed-install 所需的 Landlock entry tarball；Aezy 仍只消费 package/extension
@@ -92,14 +92,14 @@ release verify-packed-install: installed @deepseek-ai/dsh reports 0.1.2-alpha.1
 
 source release artifacts 已通过以下隔离 runtime gate：
 
-- selector 每次同步先验证 tracked SHA manifest 与全部 251 个官方 tarball，再重建并 pack 7 个
+- selector 每次同步先验证 tracked SHA manifest 与全部 251 个官方 tarball，再重建并 pack 8 个
   Aezy 外置 package；
 - 独立 consumer 用 pnpm `overrides` 把所有传递 workspace edge 固定到本地 release tarball，
   仅允许 `esbuild`、`node-pty`、`koffi` 与官方 `dsh-subprocess-local` 的受审构建脚本；
 - Node `24.20.0`、pnpm `11.7.0`、隔离 CMake `4.2.3` 完成 743-package Linux optional closure；
   `koffi`、`node-pty`、`sharp` 均可在 3091 Host 加载；
 - completion marker 只在 install/scripts/CLI version 全部成功后写入，中断或失败的半安装不能复用；
-- `alpha:profile:dump` 成功组成 DSH Base/Web 与全部 7 个 Aezy package；
+- `alpha:profile:dump` 成功组成 DSH Base/Web 与全部 8 个 Aezy package；
 - 3091 authenticated Web index 为 21,183 bytes，包含 `@aezy/brand`、`codex`、`project`、
   `security`、`terminal` 以及 Remote/Connection/Modules/UI Session/UI Workspace；
 - 真实 `/api` Remote transport 完成 `workspace/create`、`session/modelCatalog`、
@@ -116,10 +116,11 @@ pnpm run alpha:profile:dump
 pnpm run alpha:web -- --host 127.0.0.1 --port 3091 --no-open
 ```
 
-alpha 已是可继续开发的隔离 candidate，但还不是默认 Aezy runtime。下一步只能：
+alpha 已是本分支唯一开发 runtime；mode/preset gate 也已完成：
 
-1. 实现 `codex-app-server` system preset、catalog UI 过滤、Host 执行门禁和 header 模式显示；
-2. 保留 legacy `aezy` 历史恢复语义，`codex-inspired` 只保留路线定义且不可点击；
-3. 跑相称的 M0–M4.2、Terminal、Security、Codex、自开发 loop 与
+1. 原生 roster 保留 `standard/ptc/minimal/cordis`，新增 system `codex-app-server`；
+2. catalog UI 过滤、Host 执行门禁、header projection 与 legacy `aezy` 恢复通过真实 3091；
+   `codex-inspired` 只保留路线定义且不可点击；
+3. 下一步跑相称的 M0–M4.2、Terminal、Security、Codex、自开发 loop 与
    Session/tool/approval/Journal parity gates；
-4. parity gates 全部通过前，README/compatibility 的默认 `packageVersion` 继续是 rc.2。
+4. parity gates 全部通过前不把 `alpha` 分支合回主线；本分支机器元数据固定为 alpha.1。

@@ -3,6 +3,7 @@ packages:
 
 storeDir: .local/pnpm-store
 saveExact: true
+autoInstallPeers: false
 
 allowBuilds:
   '@deepseek-ai/dsh-subprocess-local': true

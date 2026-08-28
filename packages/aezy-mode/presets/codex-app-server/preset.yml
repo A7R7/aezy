@@ -1,0 +1,3 @@
+name: Codex App Server
+description: 使用官方 Codex App Server、ChatGPT 登录与 Codex agent loop，并由 DSH 保留 Session、工具、审批和 Journal 真相。
+order: 5

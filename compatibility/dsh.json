@@ -1,34 +1,37 @@
 {
   "schemaVersion": 1,
-  "packageVersion": "0.1.1-rc.2",
-  "tag": "dsh-v0.1.1-rc.2",
-  "commit": "b150a551b8d465e31e418e1b2eaf5e79bbb7d28e",
-  "tree": "53915efe4e2126cc7779b73dfc8a3bcec5318c44",
+  "packageVersion": "0.1.2-alpha.1",
+  "tag": "dsh-v0.1.2-alpha.1",
+  "commit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
+  "tree": "a712eec535b48badc4fefb4df5176a7002e4280b",
   "reference": {
     "tag": "dsh-v0.1.2-alpha.1",
     "commit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
     "tree": "a712eec535b48badc4fefb4df5176a7002e4280b"
   },
-  "profile": "aezy",
+  "profile": "aezy-alpha",
   "bundles": [
     "@deepseek-ai/dsh-base",
     "@aezy/base",
     "@deepseek-ai/dsh-web-app",
-    "@aezy/web"
+    "@aezy/web",
+    "@aezy/mode"
   ],
   "plugins": [
     "@aezy/brand",
     "@aezy/security",
     "@aezy/project",
-    "@aezy/terminal"
+    "@aezy/terminal",
+    "@aezy/codex",
+    "@aezy/mode"
   ],
   "upstreamReview": {
     "checkedAt": "2026-08-28",
     "latestObservedTag": "dsh-v0.1.2-alpha.1",
     "latestObservedCommit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
     "latestObservedTree": "a712eec535b48badc4fefb4df5176a7002e4280b",
-    "runtimeDecision": "stable runtime remains rc.2; the source-built alpha.1 release artifacts now pass an isolated 3091 composition/Web/Workspace/Session/Aezy-plugin gate, but preset and full parity gates still block promotion",
-    "ownershipImpact": "alpha.1 moves shipped Agent presets into the preset package with includeShippedRoot, renames code mode to ptc, adds durable preset/tool-change and model-selection projections, replaces ApiProxy with Remote gateway/controllers, splits the client runtime, adds Models provider-card slots, exact per-turn usage, configurable subagent models, experimental Agent Teams, packed Session transport, Web auth, SSRF-safe public WebFetch, and terminal/process fixes. Aezy now composes through the Remote/controller and split-client seams in the isolated runtime. The next owned gap is a real codex-app-server system preset with per-preset catalog filtering, Host execution gating, and persistent mode display; alpha.1 still does not provide those policies or a main-session Codex App Server backend."
+    "runtimeDecision": "the alpha branch targets only the source-built 0.1.2-alpha.1 runtime; isolated 3091 composition/Web/Workspace/Session/Aezy-plugin and mode/preset gates pass, while full parity gates still block merging the branch to main",
+    "ownershipImpact": "alpha.1 moves shipped Agent presets into the preset package with includeShippedRoot, renames code mode to ptc, adds durable preset/tool-change and model-selection projections, replaces ApiProxy with Remote gateway/controllers, splits the client runtime, adds Models provider-card slots, exact per-turn usage, configurable subagent models, experimental Agent Teams, packed Session transport, Web auth, SSRF-safe public WebFetch, and terminal/process fixes. Aezy now consumes the shipped standard preset as authority, adds only an external codex-app-server overlay, filters the Host-wide catalog in the current Session UI, and enforces the provider at preset and adapter execution boundaries. The remaining adoption gap is full M0-M4.2/Terminal/Security/Codex/self-development parity, not another Session, tool, preset, or agent-loop kernel."
   },
   "releaseAvailability": {
     "githubRelease": "https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.2-alpha.1",
@@ -36,9 +39,10 @@
     "npmPackageVersion": "0.1.2-alpha.1",
     "npmPublishedAtCheck": false,
     "checkedAt": "2026-08-28",
-    "runtimeBlockedReason": "The official npm registry still has no @deepseek-ai/dsh@0.1.2-alpha.1. The isolated alpha composition gate is complete, but the preset slice and full M0-M4.2/Terminal/Security/Codex/self-development parity gates are not complete.",
+    "runtimeBlockedReason": "The official npm registry still has no @deepseek-ai/dsh@0.1.2-alpha.1. The isolated alpha composition and mode/preset gates are complete, but the full M0-M4.2/Terminal/Security/Codex/self-development parity gates are not complete.",
     "sourceReleaseArtifactVerified": true,
     "alphaCompositionVerified": true,
+    "alphaModePresetVerified": true,
     "sourceReleaseArtifactMetadata": "compatibility/dsh-alpha-runtime.json"
   },
   "policy": {

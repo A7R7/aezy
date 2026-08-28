@@ -202,7 +202,15 @@ export function apply(ctx, config = {}) {
   const home = process.env.DSH_HOME ?? join(homedir(), '.aezy', 'dsh')
   const bindings = new CodexBindingStore(config.bindingFile ?? join(home, 'aezy', 'codex-bindings.json'))
   const ready = client.start()
-  const adapter = new AezyCodexAdapter({ client, ready, bindings, ctx, logger: ctx.logger })
+  const adapter = new AezyCodexAdapter({
+    client,
+    ready,
+    bindings,
+    ctx,
+    logger: ctx.logger,
+    allowedAgentPresets: Array.isArray(config.allowedAgentPresets) ? config.allowedAgentPresets : [],
+    legacyAgentPresets: Array.isArray(config.legacyAgentPresets) ? config.legacyAgentPresets : [],
+  })
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',
     path: ROUTE,

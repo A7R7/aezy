@@ -12,13 +12,13 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
   或 merge-back 内核。
 - 非必要 DSH 组件通过 Aezy profile patch 禁用，不删除或修改上游 package。
 
-当前运行基线仍是 DSH `0.1.1-rc.2`，tag/commit 为
-`dsh-v0.1.1-rc.2` / `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`。默认运行状态位于
-`~/.aezy/dsh/`，仓库依赖缓存位于已忽略的 `.local/pnpm-store/`。
+当前 `alpha` 分支只面向 DSH `0.1.2-alpha.1`，tag/commit 为
+`dsh-v0.1.2-alpha.1` / `cd5ef8148158c3a752a658978873241fdf8e2bbc`。开发运行状态位于
+`~/.aezy-alpha/dsh/`，profile 为 `aezy-alpha`；该分支不承诺兼容 rc.2 runtime。
 
 只读上游参考快照已更新到 immutable prerelease `dsh-v0.1.2-alpha.1`（commit
 `cd5ef8148158c3a752a658978873241fdf8e2bbc`），但官方 npm registry 尚未发布对应 DSH family。
-默认 runtime 继续使用 rc.2；经明确授权，alpha.1 已在仓库外从固定官方 commit 完整执行
+由于 npm 尚未发布 alpha.1，经明确授权，本分支在仓库外从固定官方 commit 完整执行
 `build:official`、DSH/vendor/Landlock release pack 与官方 packed-install verification，产物只允许
 进入独立 3091 candidate，不从 reference 源码运行。参考 revision 由
 `reference/dsh.lock.json` 记录，reference/runtime 分离状态由 `compatibility/dsh.json` 记录；
@@ -26,8 +26,9 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
 source release 证据见
 [`dsh-alpha1-source-runtime.md`](doc/reference/dsh-alpha1-source-runtime.md)。
 
-alpha.1 candidate 已通过独立 3091 的 composition、Web、Workspace、Session 与 Aezy 外置插件
-实机门禁，但尚未成为默认 runtime。它使用 `~/.aezy-alpha/dsh`、`aezy-alpha` profile、隔离
+alpha.1 已通过独立 3091 的 composition、Web、Workspace、Session 与 Aezy 外置插件
+实机门禁，并完成原生 Agent mode UI、`codex-app-server` system preset、catalog UI/Host 双门禁；
+并作为本分支唯一开发 runtime。它使用 `~/.aezy-alpha/dsh`、`aezy-alpha` profile、隔离
 Node 24/CMake/pnpm store 和 checksum-pinned 本地 release tarball closure；不会迁移或共享
 `~/.aezy/dsh` 的 Session、credentials 与 profile。
 
@@ -43,6 +44,8 @@ Node 24/CMake/pnpm store 和 checksum-pinned 本地 release tarball closure；�
 - `packages/aezy-codex/`：固定官方 Codex App Server runtime 的外置 process/protocol client，
   以及 managed ChatGPT browser/device login、plan/rate/usage 的 Settings 产品面；不读取或返回
   OAuth token，也不默认启用 analytics。
+- `packages/aezy-mode/`：alpha-only 的原生 preset 装配、Codex system preset overlay、
+  per-preset model directory 与 Host provider fence；不拥有 Agent/Session/tool loop。
 - `doc/`：按 milestone、roadmap、reference 和 archive 分层的项目文档；入口见
   [`doc/README.md`](doc/README.md)。
 
@@ -75,9 +78,10 @@ pnpm run alpha:profile:dump
 pnpm run alpha:web -- --host 127.0.0.1 --port 3091 --no-open
 ```
 
-selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打包 7 个 Aezy 外置包，再用
+selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打包 8 个 Aezy 外置包，再用
 全量本地 override 安装 workspace closure。只有依赖安装、受审 native scripts 和 alpha CLI
-版本验证全部成功才写 completion marker；默认 `profile:sync`/`aezy:web` 仍指向 rc.2。
+版本验证全部成功才写 completion marker；本分支的 `profile:sync`/`profile:dump`/`aezy:web`
+直接指向该 alpha profile，`alpha:*` 只是等价的显式别名。
 
 ## 已完成能力
 
@@ -92,6 +96,7 @@ selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打�
 | M4.2 | `@directory`、Working/Historical `@diff` 与 Contextual Ask | [`m4.md`](doc/milestones/m4.md) |
 | Terminal | 多标签、Session-scoped DSH line PTY side panel | [`terminal.md`](doc/milestones/terminal.md) |
 | Codex loop | Managed ChatGPT、DSH dynamic tools 与 Aezy 自开发闭环 | [`codex.md`](doc/milestones/codex.md) |
+| Agent modes | 原生四模式、legacy `aezy`、Codex App Server preset 与双门禁 | [`mode-presets.md`](doc/milestones/mode-presets.md) |
 
 关键语义：
 
@@ -110,6 +115,7 @@ selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打�
 ```bash
 pnpm run build:brand
 pnpm run build:codex
+pnpm run build:mode
 pnpm run build:m1
 pnpm run build:m2
 pnpm run build:m3
@@ -122,6 +128,7 @@ pnpm run test:m2
 pnpm run test:m3
 pnpm run test:terminal
 pnpm run test:codex
+pnpm run test:mode
 pnpm run test:codex:dsh
 pnpm peers check
 ```
@@ -164,11 +171,11 @@ git clone https://github.com/deepseek-ai/deepseek-harness.git .local/deepseek-ha
 git -C .local/deepseek-harness checkout --detach cd5ef8148158c3a752a658978873241fdf8e2bbc
 ```
 
-Aezy 默认构建和运行仍优先消费 npm 发布包；恢复 alpha.1 参考树不会把 rc.2 runtime 升级。
-npm 版本缺失期间，只允许使用从上述固定官方 commit、在仓库外通过官方完整 release path 构建并
+正式发布后仍优先消费 npm 包；npm 版本缺失期间，本分支只允许使用从上述固定官方 commit、
+在仓库外通过官方完整 release path 构建并
 通过 packed-install verification 的 package artifacts。它必须使用独立 DSH_HOME/profile/3091，
-当前 Remote/controller/client split 的隔离 3091 门禁已完成；preset 与完整 parity gates 通过后
-才可更新默认 runtime 声明。
+当前 Remote/controller/client split 与 mode/preset 的隔离 3091 门禁已完成；完整 parity gates
+决定何时把 `alpha` 分支合回主线，不再通过同分支双 runtime 兼容来过渡。
 
 ## 文档与下一步
 
@@ -186,9 +193,9 @@ tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原�
 [`codex.md`](doc/milestones/codex.md)，Relay 兼容性证据见
 [`relay-dsh-plugin-codex-0.1.2-compatibility.md`](doc/reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)。
 
-下一步在已验证的隔离 alpha.1 runtime 中恢复上游 Agent preset UI，并把 Codex App Server 收口为
-独立 system preset，同时实施 per-preset catalog UI 过滤、Host 执行门禁与 Session header 模式
-显示。之后再围绕已完成
+隔离 alpha.1 已恢复上游 Agent preset UI，并把 Codex App Server 收口为独立 system preset，
+完成 per-preset catalog UI 过滤、Host 执行门禁与 Session header 模式显示；证据见
+[`mode-presets.md`](doc/milestones/mode-presets.md)。下一步先跑完整 alpha parity gates，再围绕已完成
 闭环做 Worktree dependency bootstrap 和 App Server contract hardening，并决定是否需要同一
 runtime contract 下的 DSH-native backend；不以重写 agent loop 作为默认路线。
 

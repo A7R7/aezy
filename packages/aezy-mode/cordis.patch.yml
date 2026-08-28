@@ -1,0 +1,31 @@
+# Alpha-only policy overlay. The stable rc.2 profile does not compose this bundle.
+
+- id: agent-presets
+  config:
+    default: standard
+    includeShippedRoot: true
+    includeUserRoot: true
+    roots:
+      - path: !!js process.env.AEZY_SYSTEM_PRESET_ROOT
+        trust: system
+
+- id: ui-agent-preset
+  disabled: false
+
+# The upstream catalog is Host-global. Aezy replaces only its browser selector
+# projection so provider rows can be filtered by the current Session preset.
+- id: ui-model-selection
+  disabled: true
+
+- id: aezy-codex
+  config:
+    allowedAgentPresets:
+      - codex-app-server
+    legacyAgentPresets:
+      - aezy
+
+- insert:
+    - id: aezy-mode
+      name: '@aezy/mode'
+      config:
+        surfaceOnly: true

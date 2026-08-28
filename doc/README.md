@@ -42,6 +42,8 @@ Milestone 是已完成切片的签收事实。不要把其中的历史 Session I
   reference replacement、Remote/controller 迁移、preset/catalog seam 与 npm publication gate。
 - [`reference/dsh-alpha1-source-runtime.md`](reference/dsh-alpha1-source-runtime.md)：固定 alpha.1
   官方 commit 的隔离 source build、完整 release artifacts、SHA-256 与 packed-install gate。
+- [`milestones/mode-presets.md`](milestones/mode-presets.md)：原生 Agent preset UI、
+  `codex-app-server` system preset、per-preset catalog UI 与 Host 执行门禁的 3091 签收。
 - [`reference/relay-dsh-plugin-codex-0.1.2-compatibility.md`](reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)：
   固定 Relay companion 的 OAuth/account、Thread/Turn、tool/approval、usage 与 Aezy 兼容门禁。
 

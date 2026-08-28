@@ -33,6 +33,7 @@ export const alphaDshHome = resolve(expandHome(
 ))
 export const alphaProfileName = alphaMetadata.isolation.alphaProfile
 export const alphaProfileDir = join(alphaDshHome, 'profiles', alphaProfileName)
+export const alphaSystemPresetRoot = join(alphaDshHome, '.system-agent-presets')
 export const alphaNodeBin = resolve(expandHome(
   process.env.AEZY_ALPHA_NODE_BIN || '~/.cache/aezy/toolchains/node24/bin/node',
 ))
@@ -46,6 +47,7 @@ const aezyPackages = [
   ['@aezy/base', 'packages/aezy-base', false],
   ['@aezy/brand', 'packages/aezy-brand', true],
   ['@aezy/codex', 'packages/aezy-codex', true],
+  ['@aezy/mode', 'packages/aezy-mode', true],
   ['@aezy/project', 'packages/aezy-project', true],
   ['@aezy/security', 'packages/aezy-security', true],
   ['@aezy/terminal', 'packages/aezy-terminal', true],
@@ -202,6 +204,7 @@ export function alphaRuntimeEnv(extra = {}) {
     TMP: '/tmp',
     TEMP: '/tmp',
     npm_config_cache: join(homedir(), '.cache', 'aezy', 'npm-alpha'),
+    AEZY_SYSTEM_PRESET_ROOT: alphaSystemPresetRoot,
     ...extra,
   }
 }
@@ -235,6 +238,7 @@ export function profileManifest(dshPackages, aezyPacked) {
           '@aezy/base',
           '@deepseek-ai/dsh-web-app',
           '@aezy/web',
+          '@aezy/mode',
         ],
       },
     },
@@ -259,6 +263,46 @@ export function workspaceSettings(dependencies) {
     overrides: dependencies,
     allowBuilds,
   }
+}
+
+function syncSystemPresets() {
+  const staging = mkdtempSync(join(alphaDshHome, '.system-presets-'))
+  try {
+    cpSync(
+      join(alphaProfileDir, 'node_modules', '@aezy', 'base', 'presets', 'aezy'),
+      join(staging, 'aezy'),
+      { recursive: true },
+    )
+    cpSync(
+      join(alphaProfileDir, 'node_modules', '@aezy', 'mode', 'presets', 'codex-app-server'),
+      join(staging, 'codex-app-server'),
+      { recursive: true },
+    )
+    const shippedStandard = readFileSync(join(
+      alphaProfileDir,
+      'node_modules',
+      '@deepseek-ai',
+      'dsh-agent-presets',
+      'presets',
+      'standard',
+      'agent.cordis.yml',
+    ), 'utf8')
+    const codexOverlay = readFileSync(join(staging, 'codex-app-server', 'overlay.cordis.yml'), 'utf8')
+    if (!shippedStandard.includes("name: '@deepseek-ai/dsh-plan-mode'")
+      || !shippedStandard.includes("name: '@deepseek-ai/dsh-tool-subagent'")) {
+      throw new Error('Installed DSH standard preset is missing its authoritative plan/subagent surface')
+    }
+    writeFileSync(
+      join(staging, 'codex-app-server', 'agent.cordis.yml'),
+      `${codexOverlay.trimEnd()}\n\n${shippedStandard}`,
+    )
+    rmSync(alphaSystemPresetRoot, { recursive: true, force: true })
+    renameSync(staging, alphaSystemPresetRoot)
+  } catch (error) {
+    rmSync(staging, { recursive: true, force: true })
+    throw error
+  }
+  return alphaSystemPresetRoot
 }
 
 export function syncAlphaProfile() {
@@ -303,10 +347,7 @@ export function syncAlphaProfile() {
     version,
   }, null, 2)}\n`)
 
-  const presetSource = join(repoRoot, 'packages', 'aezy-base', 'presets', 'aezy')
-  const presetTarget = join(alphaDshHome, '.agent-presets', 'aezy')
-  mkdirSync(presetTarget, { recursive: true })
-  for (const file of ['agent.cordis.yml', 'preset.yml']) cpSync(join(presetSource, file), join(presetTarget, file))
+  const presetTarget = syncSystemPresets()
 
   return { install, version, manifestPath, presetTarget, signature: next.aezyAlpha.signature }
 }

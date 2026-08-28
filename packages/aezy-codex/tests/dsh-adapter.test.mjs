@@ -91,9 +91,9 @@ class FakeClient extends EventEmitter {
 }
 
 class FakeSession {
-  constructor() {
+  constructor(agentPreset = undefined) {
     this.id = 'session-1'
-    this.header = { cwd: '/workspace' }
+    this.header = { cwd: '/workspace', ...(agentPreset === undefined ? {} : { agentPreset }) }
     this.events = [
       { type: 'turn/start', data: { turn: 1 }, seq: 0 },
       { type: 'step/start', data: { turn: 1, step: 1 }, seq: 1 },
@@ -107,10 +107,16 @@ class FakeSession {
   }
 }
 
-async function setup({ nativeApproval = false, dynamic = false } = {}) {
+async function setup({
+  nativeApproval = false,
+  dynamic = false,
+  agentPreset = undefined,
+  allowedAgentPresets = [],
+  legacyAgentPresets = [],
+} = {}) {
   const root = await mkdtemp(join('/tmp', 'aezy-codex-adapter-'))
   const client = new FakeClient({ nativeApproval, dynamic })
-  const session = new FakeSession()
+  const session = new FakeSession(agentPreset)
   const agent = { id: session.id, session }
   const approvals = []
   const audits = []
@@ -128,7 +134,14 @@ async function setup({ nativeApproval = false, dynamic = false } = {}) {
     },
   }
   const bindings = new CodexBindingStore(join(root, 'codex-bindings.json'))
-  const adapter = new AezyCodexAdapter({ client, ready: Promise.resolve(), bindings, ctx })
+  const adapter = new AezyCodexAdapter({
+    client,
+    ready: Promise.resolve(),
+    bindings,
+    ctx,
+    allowedAgentPresets,
+    legacyAgentPresets,
+  })
   return { adapter, bindings, client, session, approvals, audits, executions }
 }
 
@@ -201,4 +214,30 @@ test('native Codex escalation fails closed instead of bypassing DSH tools and Se
   assert.equal(executions.length, 0)
   assert.deepEqual(client.responses, [{ id: 91, result: { decision: 'decline' } }])
   adapter.dispose()
+})
+
+test('configured provider fence rejects Codex outside its owning Agent mode before App Server I/O', async () => {
+  const { adapter, client } = await setup({
+    agentPreset: 'standard',
+    allowedAgentPresets: ['codex-app-server'],
+    legacyAgentPresets: ['aezy'],
+  })
+  await assert.rejects(async () => {
+    for await (const _chunk of adapter.stream(options())) { /* drain */ }
+  }, /unavailable in Agent mode standard/)
+  assert.deepEqual(client.calls, [])
+  adapter.dispose()
+})
+
+test('configured provider fence allows codex-app-server and legacy aezy Sessions', async () => {
+  for (const agentPreset of ['codex-app-server', 'aezy']) {
+    const { adapter, client } = await setup({
+      agentPreset,
+      allowedAgentPresets: ['codex-app-server'],
+      legacyAgentPresets: ['aezy'],
+    })
+    for await (const _chunk of adapter.stream(options())) { /* drain */ }
+    assert.equal(client.calls.some(call => call.method === 'thread/start'), true)
+    adapter.dispose()
+  }
 })

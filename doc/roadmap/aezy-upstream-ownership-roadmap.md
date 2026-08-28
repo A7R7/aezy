@@ -18,10 +18,10 @@ Aezy 是基于 DSH 公开扩展机制的完整编程 Agent 发行版，不是 DS
 
 ## 当前上游信号
 
-- Aezy 默认 runtime/3090 仍签收于 `dsh-v0.1.1-rc.2`；只读 reference 已更新到最新 immutable
-  prerelease `dsh-v0.1.2-alpha.1`。官方 npm family 仍未发布，但固定 commit 的仓库外 official
+- 主线历史签收于 `dsh-v0.1.1-rc.2`；当前 `alpha` 分支只面向最新 immutable prerelease
+  `dsh-v0.1.2-alpha.1`，不承诺双 runtime 兼容。官方 npm family 仍未发布，但固定 commit 的仓库外 official
   build、完整 DSH/vendor/Landlock release pack、逐 tarball SHA-256 与 packed-install 已通过；
-  alpha candidate 现在进入独立 DSH_HOME/profile/3091 迁移门禁，不影响 rc.2 默认。
+  alpha 分支使用独立 DSH_HOME/profile/3091；完整 parity gates 决定何时合回主线。
 - alpha.1 让 shipped presets 由 `dsh-agent-presets` 自己持有并默认优先，正式将 `code` id 改为
   `ptc`，增加 durable preset/tool-change 与 model-selection projection；这为 Aezy 增加
   `codex-app-server` system preset 提供了更直接的公开 seam。
@@ -105,6 +105,7 @@ dsh plugin --profile <name> add <package-or-git-spec>
 | M4 Review/Files/Context | Complete | [`m4.md`](../milestones/m4.md) |
 | Integrated Terminal | Complete | [`terminal.md`](../milestones/terminal.md) |
 | Codex-backed self-development loop | Complete | [`codex.md`](../milestones/codex.md) |
+| Agent modes / Codex App Server preset | Complete on alpha candidate | [`mode-presets.md`](../milestones/mode-presets.md) |
 
 ## 路线纠偏记录
 

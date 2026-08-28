@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "id": "dsh-v0.1.2-alpha.1-cd5ef814",
-  "status": "verified-isolated-alpha-runtime",
-  "defaultRuntime": false,
+  "status": "verified-isolated-alpha-mode-runtime",
+  "defaultRuntime": true,
   "source": {
     "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
     "tag": "dsh-v0.1.2-alpha.1",
@@ -71,10 +71,11 @@
     "releaseFamily": "241 members at 0.1.2-alpha.1; publish order resolved",
     "officialClientBuildRecord": "218 client artifacts with 4 public values",
     "packedInstall": "installed @deepseek-ai/dsh reports 0.1.2-alpha.1",
-    "isolatedConsumer": "pnpm 11.7.0 installed 251 checksum-pinned DSH/vendor/Landlock tarballs and 7 packed Aezy plugins through local overrides; Node 24.20.0 rebuilt koffi and loaded the Linux optional closure",
-    "compositionDump": "DSH alpha Base/Web plus all 7 Aezy out-of-tree packages composed successfully",
-    "host": "127.0.0.1:3091 served an authenticated 21183-byte Web index with all 5 Aezy Client bundles",
+    "isolatedConsumer": "pnpm 11.7.0 installed 251 checksum-pinned DSH/vendor/Landlock tarballs and 8 packed Aezy plugins through local overrides; Node 24.20.0 rebuilt koffi and loaded the Linux optional closure",
+    "compositionDump": "DSH alpha Base/Web plus all 8 Aezy out-of-tree packages composed successfully; native ui-agent-preset is enabled and the Host-global ui-model-selection is replaced by the mode projection",
+    "host": "127.0.0.1:3091 served an authenticated 21691-byte Web index with all 6 Aezy Client bundles, including @aezy/mode and native ui-agent-preset",
     "remoteControllers": "workspace/create and session/create/list/modelCatalog succeeded through the alpha /api Remote controller transport",
+    "modePreset": "agentPresets/list returned standard, ptc, minimal, cordis, legacy aezy, and codex-app-server only; standard/codex-app-server/aezy Session creation and durable agentPreset projections succeeded; catalog UI and Host adapter fences are covered by 4/4 mode and 20/20 Codex tests",
     "stableBaseline": "127.0.0.1:3090 remained HTTP 200 and the stable CLI/profile remained 0.1.1-rc.2",
     "verifiedAt": "2026-08-28"
   },
@@ -93,7 +94,9 @@
     "alphaProfile": "aezy-alpha",
     "alphaPort": 3091,
     "alphaCompositionVerified": true,
-    "promoted": false
+    "alphaModePresetVerified": true,
+    "promoted": false,
+    "branchDefault": "alpha"
   },
   "policy": {
     "preferOfficialRegistryPackages": true,

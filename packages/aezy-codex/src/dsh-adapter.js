@@ -276,13 +276,23 @@ function completeText(state, item, type, text) {
 
 /** DSH provider adapter that projects the official App Server without owning a second Session or tool loop. */
 export class AezyCodexAdapter extends LlmAdapter {
-  constructor({ client, ready, bindings, ctx, logger = console }) {
+  constructor({
+    client,
+    ready,
+    bindings,
+    ctx,
+    logger = console,
+    allowedAgentPresets = [],
+    legacyAgentPresets = [],
+  }) {
     super()
     this.client = client
     this.ready = ready
     this.bindings = bindings
     this.ctx = ctx
     this.logger = logger
+    this.allowedAgentPresets = new Set(allowedAgentPresets.filter(value => typeof value === 'string' && value))
+    this.legacyAgentPresets = new Set(legacyAgentPresets.filter(value => typeof value === 'string' && value))
     this.pendingThreads = new Map()
     this.resumedThreads = new Set()
     this.toolSignatures = new Map()
@@ -330,6 +340,19 @@ export class AezyCodexAdapter extends LlmAdapter {
         defaultEffort: raw?.defaultReasoningEffort,
       },
     })
+  }
+
+  assertAllowedPreset(options) {
+    if (this.allowedAgentPresets.size === 0 && this.legacyAgentPresets.size === 0) return
+    const sessionId = String(options.sessionId ?? '')
+    if (!sessionId) throw new Error('Codex provider requires a DSH sessionId before checking its Agent mode')
+    const agent = this.ctx.agents.get(sessionId)
+    if (!agent) throw new Error(`Codex adapter could not find live DSH Session ${sessionId}`)
+    const preset = agent.session.header.agentPreset
+    if (this.allowedAgentPresets.has(preset) || this.legacyAgentPresets.has(preset)) return
+    throw new Error(
+      `provider ${CODEX_PROVIDER} is unavailable in Agent mode ${String(preset ?? '(none)')}; use codex-app-server`,
+    )
   }
 
   async ensureThread(sessionId, cwd, model, permissions, dynamicTools) {
@@ -389,6 +412,7 @@ export class AezyCodexAdapter extends LlmAdapter {
   }
 
   async *stream(options) {
+    this.assertAllowedPreset(options)
     if (options.purpose) {
       yield* this.streamAuxiliary(options)
       return
