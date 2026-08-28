@@ -17,11 +17,14 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
 `~/.aezy/dsh/`，仓库依赖缓存位于已忽略的 `.local/pnpm-store/`。
 
 只读上游参考快照已更新到 immutable prerelease `dsh-v0.1.2-alpha.1`（commit
-`cd5ef8148158c3a752a658978873241fdf8e2bbc`），但官方 npm registry 尚未发布对应 DSH family，
-因此 runtime 不从 reference 源码或自打 tarball 冒进。参考 revision 由
+`cd5ef8148158c3a752a658978873241fdf8e2bbc`），但官方 npm registry 尚未发布对应 DSH family。
+默认 runtime 继续使用 rc.2；经明确授权，alpha.1 已在仓库外从固定官方 commit 完整执行
+`build:official`、DSH/vendor/Landlock release pack 与官方 packed-install verification，产物只允许
+进入独立 3091 candidate，不从 reference 源码运行。参考 revision 由
 `reference/dsh.lock.json` 记录，reference/runtime 分离状态由 `compatibility/dsh.json` 记录；
-影响与 publication gate 见
-[`dsh-0.1.2-alpha1-impact.md`](doc/reference/dsh-0.1.2-alpha1-impact.md)。
+影响与 publication gate 见 [`dsh-0.1.2-alpha1-impact.md`](doc/reference/dsh-0.1.2-alpha1-impact.md)，
+source release 证据见
+[`dsh-alpha1-source-runtime.md`](doc/reference/dsh-alpha1-source-runtime.md)。
 
 ## 仓库布局
 
@@ -144,9 +147,10 @@ git clone https://github.com/deepseek-ai/deepseek-harness.git .local/deepseek-ha
 git -C .local/deepseek-harness checkout --detach cd5ef8148158c3a752a658978873241fdf8e2bbc
 ```
 
-Aezy 的构建和运行仍只消费 npm 发布包；恢复 alpha.1 参考树不会把 rc.2 runtime 升级。待
-`0.1.2-alpha.1` DSH npm family 正式发布后，必须核对 package integrity、完成 Remote/controller
-迁移并通过独立 compatibility gate，才可更新 runtime 声明。
+Aezy 默认构建和运行仍优先消费 npm 发布包；恢复 alpha.1 参考树不会把 rc.2 runtime 升级。
+npm 版本缺失期间，只允许使用从上述固定官方 commit、在仓库外通过官方完整 release path 构建并
+通过 packed-install verification 的 package artifacts。它必须使用独立 DSH_HOME/profile/3091，
+完成 Remote/controller 迁移与 parity gates 后才可更新默认 runtime 声明。
 
 ## 文档与下一步
 
@@ -164,8 +168,9 @@ tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原�
 [`codex.md`](doc/milestones/codex.md)，Relay 兼容性证据见
 [`relay-dsh-plugin-codex-0.1.2-compatibility.md`](doc/reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)。
 
-下一步先等待官方 alpha.1 npm family，完成 Remote/controller/client split 迁移与 runtime gate；
-随后恢复上游 Agent preset UI，并把 Codex App Server 收口为独立 system preset。之后再围绕已完成
+下一步使用已验证的隔离 alpha.1 release artifacts，在独立 DSH_HOME/profile/3091 完成
+Remote/controller/client split 迁移与 runtime gate；随后恢复上游 Agent preset UI，并把 Codex
+App Server 收口为独立 system preset。之后再围绕已完成
 闭环做 Worktree dependency bootstrap 和 App Server contract hardening，并决定是否需要同一
 runtime contract 下的 DSH-native backend；不以重写 agent loop 作为默认路线。
 

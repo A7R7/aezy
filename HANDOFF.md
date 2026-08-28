@@ -12,7 +12,9 @@
 
 1. `.local/deepseek-harness/` 是 ignored、read-only 的上游参考快照。不得编辑、格式化、
    生成、patch 或提交其中内容。
-2. Aezy 运行时只消费 npm 发布的 DSH packages；不得从参考树相对导入源码。
+2. Aezy 运行时只消费 package artifacts 与公开 extension interfaces，默认优先 npm 发布版本；
+   npm 缺版时仅允许从固定官方 immutable commit、在仓库外经官方 build/pack 与 packed-install
+   验证的 release artifacts。不得从参考树相对导入或直接运行源码。
 3. Aezy 能力只能通过参考树外的 Cordis plugin、bundle、profile patch、adapter 或应用实现。
 4. DSH 已拥有或已公开 seam 的状态机只做薄接入；不得复制 Session、Task、Subagent、PTY、
    compaction、approval 或 merge-back 内核。
@@ -35,9 +37,12 @@
 - 仓库 pnpm store：`.local/pnpm-store/`
 
 2026-08-28 复核确认最新 immutable GitHub Release/tag 是 `dsh-v0.1.2-alpha.1`，reference 已完成
-一次完整 revision replacement；但官方 npm registry 尚无 `@deepseek-ai/dsh@0.1.2-alpha.1`，
-上游 npm publish workflow 也没有该 tag 的运行，因此 runtime、lock、profile 和 3090 Host 必须
-继续停留在已签收 rc.2。不得从 reference 源码或自打 tarball 绕过 publication gate。alpha.1
+一次完整 revision replacement；官方 npm registry 仍无 `@deepseek-ai/dsh@0.1.2-alpha.1`。
+经明确授权，固定官方 commit 已在仓库外完成完整 official build、241 个 DSH + 9 个 vendor +
+1 个 Landlock entry tarball、逐文件 SHA-256 与官方 packed-install verification。默认 runtime、lock、
+profile 和 3090 Host 仍停留在已签收 rc.2；alpha 只能使用独立 `~/.aezy-alpha/dsh`、`aezy-alpha`
+profile 与 3091，不能从 reference 源码运行。完整证据见
+`doc/reference/dsh-alpha1-source-runtime.md`。alpha.1
 移除了 ApiProxy/client-runtime，新增 Remote controllers、package-owned shipped presets、PTC rename、
 provider-card slots、exact Turn usage、subagent model routing 与 experimental Agent Team；详细影响和
 迁移门禁见 `doc/reference/dsh-0.1.2-alpha1-impact.md`。
@@ -176,8 +181,8 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 近期顺序：
 
 1. 已完成：独立 rc.2 runtime compatibility gate，发布包/lock/profile/3090 均已签收。
-2. 已完成：alpha.1 reference replacement 与影响审计；runtime 等待官方 npm family 发布，随后
-   必须先迁移 Remote/controllers 和 client package split，再跑完整 compatibility gate。
+2. 已完成：alpha.1 reference replacement、影响审计与仓库外 official source release pack；
+   packed-install 已验证，下一步在独立 3091 迁移 Remote/controllers 和 client package split。
 3. 已完成：隔离验证 `relay-dsh-plugin-codex@0.1.2`。auth/account/usage、对话、resume、cancel
    通过，但真实工具/approval 事实与安全切模型失败；不要安装到 Aezy profile。
 4. 已完成：最小外置官方 App Server adapter。process/protocol client、真实

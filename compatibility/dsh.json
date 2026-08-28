@@ -27,7 +27,7 @@
     "latestObservedTag": "dsh-v0.1.2-alpha.1",
     "latestObservedCommit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
     "latestObservedTree": "a712eec535b48badc4fefb4df5176a7002e4280b",
-    "runtimeDecision": "reference-on-alpha.1; runtime-remains-rc.2-until-official-npm-family-is-published-and-gated",
+    "runtimeDecision": "stable runtime remains rc.2; a source-built alpha.1 release artifact passed the official family build, pack, and packed-install gates and may proceed only in an isolated 3091 runtime",
     "ownershipImpact": "alpha.1 moves shipped Agent presets into the preset package with includeShippedRoot, renames code mode to ptc, adds durable preset/tool-change and model-selection projections, replaces ApiProxy with Remote gateway/controllers, splits the client runtime, adds Models provider-card slots, exact per-turn usage, configurable subagent models, experimental Agent Teams, packed Session transport, Web auth, SSRF-safe public WebFetch, and terminal/process fixes. It directly improves the codex-app-server system-preset route and can replace the standalone Codex account-card placement, but it does not provide per-preset model catalog filtering or a main-session Codex App Server backend. Aezy client packages and RPC tests require a deliberate Remote/controller migration before runtime adoption."
   },
   "releaseAvailability": {
@@ -36,11 +36,14 @@
     "npmPackageVersion": "0.1.2-alpha.1",
     "npmPublishedAtCheck": false,
     "checkedAt": "2026-08-28",
-    "runtimeBlockedReason": "The official npm registry has no @deepseek-ai/dsh@0.1.2-alpha.1 and the upstream Release publish (dsh) workflow has no run for this tag."
+    "runtimeBlockedReason": "The official npm registry still has no @deepseek-ai/dsh@0.1.2-alpha.1. The verified local release artifacts are an isolated candidate only; alpha composition and parity gates are not complete.",
+    "sourceReleaseArtifactVerified": true,
+    "sourceReleaseArtifactMetadata": "compatibility/dsh-alpha-runtime.json"
   },
   "policy": {
     "referenceTree": "read-only",
-    "consumePublishedPackagesOnly": true,
+    "preferOfficialRegistryPackages": true,
+    "allowVerifiedSourceReleaseArtifacts": true,
     "outOfTreeExtensionsOnly": true
   }
 }

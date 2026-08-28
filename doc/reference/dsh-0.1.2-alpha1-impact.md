@@ -2,7 +2,8 @@
 
 > 调查日期：2026-08-28<br>
 > 上游范围：`dsh-v0.1.1-rc.2`（`b150a551`）→ `dsh-v0.1.2-alpha.1`（`cd5ef814`）<br>
-> 当前结论：**reference 已更新；runtime 暂留 rc.2，因为官方 npm family 尚未发布 alpha.1。**
+> 当前结论：**reference 已更新；默认 runtime 暂留 rc.2；固定官方 commit 的隔离 source release
+> artifacts 已通过官方 build/pack/packed-install，进入独立 3091 migration gate。**
 
 ## 结论摘要
 
@@ -169,6 +170,8 @@ Aezy pre-execute deny/audit 必须继续优先；不得把上游“公网默认�
 
 - `.local/deepseek-harness` 已 detached checkout 到 `dsh-v0.1.2-alpha.1`，保持 clean/read-only；
 - `reference/dsh.lock.json` 记录 alpha.1 commit/tree；
-- Aezy runtime、lock、profile 和当前 3090 Host 仍是已签收的 rc.2；
-- 没有从 reference 相对导入源码，也没有自行构建未发布 DSH runtime；
-- preset/backend-mode 实现暂停在只读设计阶段，待 runtime publication/migration gate 后继续。
+- Aezy 默认 runtime、lock、profile 和当前 3090 Host 仍是已签收的 rc.2；
+- 固定 alpha.1 官方 commit 已在仓库外按官方 workflow 构建 251 个 release tarball，并通过官方
+  packed-install；manifest 与工具链证据见 [`dsh-alpha1-source-runtime.md`](dsh-alpha1-source-runtime.md)；
+- 没有从 reference 相对导入或运行源码；alpha 只能进入独立 DSH_HOME/profile/3091；
+- preset/backend-mode 实现等待 3091 composition 与 Remote/controller migration gate 通过。

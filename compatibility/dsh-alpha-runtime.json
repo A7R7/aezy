@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "id": "dsh-v0.1.2-alpha.1-cd5ef814",
+  "status": "verified-isolated-source-release-artifacts",
+  "defaultRuntime": false,
+  "source": {
+    "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
+    "tag": "dsh-v0.1.2-alpha.1",
+    "commit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
+    "tree": "a712eec535b48badc4fefb4df5176a7002e4280b",
+    "immutable": true,
+    "checkoutPolicy": "external-cleanable-cache-only",
+    "checkoutCache": "~/.cache/aezy/runtime-sources/dsh-v0.1.2-alpha.1-cd5ef814"
+  },
+  "toolchain": {
+    "frozenInstall": {
+      "node": "22.22.1",
+      "pnpm": "11.7.0",
+      "note": "Engine-compatible install completed before the release workflow was rerun with its Node 24 primary toolchain."
+    },
+    "releaseBuildAndPack": {
+      "node": "24.20.0",
+      "pnpm": "11.7.0",
+      "tmpdir": "/tmp"
+    },
+    "packedInstallNativeFallback": {
+      "cmake": "4.2.3",
+      "reason": "koffi did not provide a matching Node 24 prebuild and rebuilt from source in the throwaway consumer."
+    }
+  },
+  "artifacts": {
+    "cacheRoot": "~/.cache/aezy/runtime-artifacts/dsh-v0.1.2-alpha.1-cd5ef814",
+    "families": {
+      "dsh": {
+        "tarballs": 241,
+        "approximateSize": "8.0 MiB"
+      },
+      "vendor": {
+        "tarballs": 9,
+        "approximateSize": "180 KiB"
+      },
+      "landlockEntry": {
+        "tarballs": 1,
+        "approximateSize": "16 KiB",
+        "platformPackages": "omitted-as-optional-by-official-workflow"
+      }
+    },
+    "totalTarballs": 251,
+    "sha256Manifest": "reference/dsh-alpha1-runtime.sha256",
+    "sha256ManifestDigest": "0a40b1b7a7ad17c3c7acd18d167321e544b2fb3db2635702f9a4032d40168706",
+    "cliTarball": {
+      "path": "dsh/deepseek-ai-dsh-0.1.2-alpha.1.tgz",
+      "sha256": "7d25b50db364d4f01c79a0ac7d5cef36f38bd27052aa14e98310646780f0e5ed"
+    },
+    "agentPresetsTarball": {
+      "path": "dsh/deepseek-ai-dsh-agent-presets-0.1.2-alpha.1.tgz",
+      "sha256": "410e470690a055b507dc13b7af943113e9861f8732c1ebd53255a94b4af2ba59"
+    }
+  },
+  "officialReleasePath": [
+    "pnpm install --frozen-lockfile",
+    "pnpm run release:verify --family dsh",
+    "pnpm run build:official",
+    "pnpm run release:pack --family dsh",
+    "pnpm run release:pack --family vendor",
+    "pnpm --dir native/landlock-run run build:ts",
+    "pnpm --dir native/landlock-run/packages/entry pack",
+    "pnpm run release:verify-packed-install --family dsh"
+  ],
+  "verification": {
+    "releaseFamily": "241 members at 0.1.2-alpha.1; publish order resolved",
+    "officialClientBuildRecord": "218 client artifacts with 4 public values",
+    "packedInstall": "installed @deepseek-ai/dsh reports 0.1.2-alpha.1",
+    "verifiedAt": "2026-08-28"
+  },
+  "isolation": {
+    "stableRuntime": "0.1.1-rc.2",
+    "stableDshHome": "~/.aezy/dsh",
+    "stableProfile": "aezy",
+    "stablePort": 3090,
+    "alphaDshHome": "~/.aezy-alpha/dsh",
+    "alphaProfile": "aezy-alpha",
+    "alphaPort": 3091,
+    "alphaCompositionVerified": false,
+    "promoted": false
+  },
+  "policy": {
+    "preferOfficialRegistryPackages": true,
+    "allowSourceReleaseArtifactsOnlyWhenRegistryVersionIsMissing": true,
+    "requireImmutableOfficialCommit": true,
+    "requireOfficialBuildPackAndPackedInstallVerification": true,
+    "forbidReferenceTreeBuilds": true,
+    "forbidSourceImports": true,
+    "outOfTreeExtensionsOnly": true
+  }
+}

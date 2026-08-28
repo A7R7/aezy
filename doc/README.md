@@ -40,6 +40,8 @@ Milestone 是已完成切片的签收事实。不要把其中的历史 Session I
   参考更新、multimodal/attachment 变化、可替代范围与 runtime upgrade gate。
 - [`reference/dsh-0.1.2-alpha1-impact.md`](reference/dsh-0.1.2-alpha1-impact.md)：alpha.1
   reference replacement、Remote/controller 迁移、preset/catalog seam 与 npm publication gate。
+- [`reference/dsh-alpha1-source-runtime.md`](reference/dsh-alpha1-source-runtime.md)：固定 alpha.1
+  官方 commit 的隔离 source build、完整 release artifacts、SHA-256 与 packed-install gate。
 - [`reference/relay-dsh-plugin-codex-0.1.2-compatibility.md`](reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)：
   固定 Relay companion 的 OAuth/account、Thread/Turn、tool/approval、usage 与 Aezy 兼容门禁。
 
