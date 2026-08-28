@@ -68,7 +68,7 @@
     "structuredHandoff": true,
     "journalReview": true,
     "testsPassed": 18,
-    "firstAezyAuthoredCommit": "45cc4e5463ee0adeae3c50818c8590145a4d403b",
+    "firstAezyAuthoredCommit": "36871adfe5fb88966dd1d8efd1aec40fad6e7cf8",
     "worktreeDependencyBootstrap": "pnpm install --offline"
   },
   "productIntegration": {

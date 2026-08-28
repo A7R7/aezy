@@ -106,8 +106,8 @@ dsh plugin --profile <name> add <package-or-git-spec>
 
 ## 路线纠偏记录
 
-Activity dashboard 的 `297f2525c5`、`38ff79419a`、`b31efd533f` 没有满足统一 Traffic Board
-或 Task Board 的产品目标，已分别由 `b153454f3c`、`b09c40b197`、`5faa1ba740` 独立 revert。
+Activity dashboard 的 `eae530ddcb`、`4d187252b0`、`d77430c012` 没有满足统一 Traffic Board
+或 Task Board 的产品目标，已分别由 `4428fc8037`、`2cb30ba1ab`、`b89422ddc0` 独立 revert。
 这些提交仅供历史追溯，不是后续实现基础。
 
 Browser integration 暂停。外部浏览器已经能提供更合适的页面空间；未来只有当页面自动发现、
@@ -162,7 +162,7 @@ Workspace/Session 关联到 opaque Codex thread id 所需的最小 binding，不
 模型/推理选择、登录状态、composer、streaming transcript、tool/diff 事实、approval、stop/resume
 与 usage 已通过现有 DSH/Aezy 产品面连接。受管 Worktree 已对 Aezy 自身执行真实改动、失败
 恢复、18/18 测试、Journal/Review、Handoff、Host restart 与同一 Thread continuation；首笔
-自开发提交为 `45cc4e5463`。完整证据见 [`codex.md`](../milestones/codex.md)。这一闭环继续复用
+自开发提交为 `36871adfe5`。完整证据见 [`codex.md`](../milestones/codex.md)。这一闭环继续复用
 当前 Project/Review/Terminal/Security 能力，没有增加平行 UI 或重构已签收切片。
 
 完成门槛不是静态 UI，而是 Aezy 能打开本仓库、通过 managed ChatGPT 登录执行真实 Turn、修改外置 Aezy

@@ -12,7 +12,7 @@ inside an Aezy-managed Worktree, execute mutable actions through existing DSH to
 review the resulting durable Turn journal, restart the Host, and continue the same opaque Codex
 Thread. This is the minimum Codex-backed Aezy self-development loop.
 
-The first Aezy-authored change produced through that loop is commit `45cc4e5463`: persisted Codex
+The first Aezy-authored change produced through that loop is commit `36871adfe5`: persisted Codex
 Session bindings now validate loaded Session IDs with the same constraints used when writing them.
 The change and its tests were generated in the managed Worktree, reviewed through Aezy, committed,
 handed off, and fast-forwarded onto `main` without a product-specific merge-back implementation.
@@ -81,7 +81,7 @@ not fork Codex or DSH internals.
    `pnpm install --offline` through an approved DSH tool call, and then passed all 18 Codex tests.
 4. Turn 1 produced a complete Git-backed journal containing exactly the two changed files. Historical
    Review loaded the stored binding-file hunks rather than recomputing them from the later checkout.
-5. The Worktree committed `45cc4e5463ee0adeae3c50818c8590145a4d403b`; structured Handoff
+5. The Worktree committed `36871adfe5fb88966dd1d8efd1aec40fad6e7cf8`; structured Handoff
    `9868261a-a66d-4816-93b3-d526f4e66369` reported a clean branch one commit ahead.
 6. `main` was fast-forwarded to the same commit. After the main Host restarted, continuation on the
    same Session/Thread correctly recalled the exact code change, initial missing-dependency failure

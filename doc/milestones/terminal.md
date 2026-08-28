@@ -5,12 +5,12 @@
 **Complete（2026-08-25）。** Aezy 已交付 Session-scoped Integrated Terminal UI，Host
 与 Client 均位于外置 `@aezy/terminal` package；`.local/deepseek-harness/` 未修改。实现提交：
 
-- `f22a7f0677 feat(terminal): bridge DSH PTY sessions to Aezy Web`
-- `bef5cb0ef8 feat(terminal): add Session-scoped integrated UI`
-- `7188e6298e fix(terminal): expose bounded read truncation`
-- `6cb1fae8e4 feat(terminal): project live shell cwd`
-- `3016aa4d01 fix(terminal): follow sandboxed shell cwd`
-- `d0a3c60c64 feat(terminal): move UI into side panel`
+- `3f9c6da230 feat(terminal): bridge DSH PTY sessions to Aezy Web`
+- `dfa1d8eb0b feat(terminal): add Session-scoped integrated UI`
+- `703a93fc38 fix(terminal): expose bounded read truncation`
+- `2d8729ea23 feat(terminal): project live shell cwd`
+- `c973692d6c fix(terminal): follow sandboxed shell cwd`
+- `dd75c23e4c feat(terminal): move UI into side panel`
 
 开工时重新查询公开 Git tags，最新仍为 `dsh-v0.1.1-rc.2`
 （`b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`）。rc.2 没有 browser terminal

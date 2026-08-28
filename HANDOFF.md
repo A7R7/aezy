@@ -188,7 +188,7 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
    DSH tools/Security/approval。
 5. 已完成：在 Aezy 自身仓库的受管 Worktree 执行真实开发 Turn、失败后恢复、18/18 测试、
    Journal/Review、结构化 Handoff、Host restart 与同一 Thread continuation；首笔 Aezy 自开发
-   提交为 `45cc4e5463`。完整证据见 `doc/milestones/codex.md`。
+   提交为 `36871adfe5`。完整证据见 `doc/milestones/codex.md`。
 6. alpha.1 runtime gate 通过后，恢复上游 `ui-agent-preset`，保留 standard/ptc/minimal/cordis，
    增加 `codex-app-server` system preset；旧 `aezy` 仅保历史恢复，`codex-inspired` 不可点击。
 7. 先对已完成闭环做必要的 Worktree dependency bootstrap 与 App Server contract hardening，
@@ -196,8 +196,8 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
    Codex-inspired backend；它必须通过同一 runtime contract，且不能复制 DSH 内核。
 8. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
 
-原 Activity dashboard 实验已全部废弃：原提交 `297f2525c5`、`38ff79419a`、`b31efd533f`
-分别由 `b153454f3c`、`b09c40b197`、`5faa1ba740` 的独立 revert 撤销。不要从这些旧提交继续
+原 Activity dashboard 实验已全部废弃：原提交 `eae530ddcb`、`4d187252b0`、`d77430c012`
+分别由 `4428fc8037`、`2cb30ba1ab`、`b89422ddc0` 的独立 revert 撤销。不要从这些旧提交继续
 开发。Browser integration 同样暂停；默认直接使用外部浏览器。只有当自动页面发现、CDP
 调试、截图/交互证据能明显增强 agent loop 时再单独复议，而且不预设嵌入狭小网页 viewport。
 
