@@ -18,7 +18,17 @@ Aezy 是基于 DSH 公开扩展机制的完整编程 Agent 发行版，不是 DS
 
 ## 当前上游信号
 
-- Aezy runtime 与只读 reference 均已运行并签收于最新公开 tag `dsh-v0.1.1-rc.2`。
+- Aezy runtime/3090 仍签收于 `dsh-v0.1.1-rc.2`；只读 reference 已更新到最新 immutable
+  prerelease `dsh-v0.1.2-alpha.1`，runtime 等待官方 npm family 发布与独立迁移门禁。
+- alpha.1 让 shipped presets 由 `dsh-agent-presets` 自己持有并默认优先，正式将 `code` id 改为
+  `ptc`，增加 durable preset/tool-change 与 model-selection projection；这为 Aezy 增加
+  `codex-app-server` system preset 提供了更直接的公开 seam。
+- alpha.1 同时移除 ApiProxy/client-runtime，改用 Remote gateway/controllers 和拆分 client
+  packages；这是 runtime adoption 前必须完成的破坏性迁移，不允许用 compatibility shim 复刻
+  旧 ApiProxy。
+- Models provider-card slots 可承载 Codex managed account UI，exact per-turn usage 可交还上游；
+  但 model catalog 仍是 Host-wide，没有 per-preset filter，experimental Agent Team 也不是 Task
+  Board。
 - rc.1/rc.2 已有 credentials/authorization、Session projection、Subagent lineage、PTY、
   Job、MCP/ACP、compaction 和 Web layout 等基础 seam，但不等于完整 Aezy 产品面。
 - rc.2 仍没有 generic panel router、browser raw TTY/resize 或 Interactive Side Sessions
@@ -37,9 +47,10 @@ Aezy 是基于 DSH 公开扩展机制的完整编程 Agent 发行版，不是 DS
   - [Interactive Side Sessions](../../.local/deepseek-harness/.agents/notes/proposed/feature/2026-07-08-interactive-side-sessions.md)
   - [Recallable Compaction](../../.local/deepseek-harness/.agents/notes/proposed/feature/2026-07-06-recallable-compaction.md)
 
-版本变化与签收见 [`dsh-0.1.1-rc1-impact.md`](../reference/dsh-0.1.1-rc1-impact.md)；最新
-reference 差异与路线影响见
-[`dsh-0.1.1-rc2-impact.md`](../reference/dsh-0.1.1-rc2-impact.md)。
+版本变化与签收见 [`dsh-0.1.1-rc1-impact.md`](../reference/dsh-0.1.1-rc1-impact.md) 与
+[`dsh-0.1.1-rc2-impact.md`](../reference/dsh-0.1.1-rc2-impact.md)；最新 reference 差异、
+publication gate 与路线影响见
+[`dsh-0.1.2-alpha1-impact.md`](../reference/dsh-0.1.2-alpha1-impact.md)。
 
 ## 能力所有权矩阵
 

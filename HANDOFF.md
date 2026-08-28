@@ -26,21 +26,21 @@
 
 ## 2. 上游与运行时基线
 
-- 运行版本：`@deepseek-ai/dsh@0.1.1-rc.2`
+- 运行版本：`@deepseek-ai/dsh@0.1.1-rc.2`（当前 3090 与 profile）
 - 对应 tag/commit：`dsh-v0.1.1-rc.2` / `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`
-- 只读参考版本：`dsh-v0.1.1-rc.2` / `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`
+- 只读参考版本：`dsh-v0.1.2-alpha.1` / `cd5ef8148158c3a752a658978873241fdf8e2bbc`
 - 参考锁定文件：`reference/dsh.lock.json`
 - 兼容性声明：`compatibility/dsh.json`
 - 默认状态目录：`~/.aezy/dsh/`
 - 仓库 pnpm store：`.local/pnpm-store/`
 
-2026-08-27 复核确认 rc.2 是最新公开 tag，reference 已完成一次完整 revision replacement。
-rc.2 的实质增量集中在 normalized image attachment、deterministic request variant、DeepSeek
-Files/inline fallback 与 LLM `prepareCall`；它没有新增 generic panel router、raw TTY/resize、
-ChatGPT OAuth、Task Board 或 Interactive Side Sessions/merge-back。详细影响见
-`doc/reference/dsh-0.1.1-rc2-impact.md`。2026-08-28 已完成独立 runtime compatibility gate：
-发布包、lock、profile 和 3090 Host 均对齐 rc.2；所有自动测试与真实 HTTP/PTY smoke 通过。
-升级时必须显式锁定 `dsh-authorization@0.1.1-rc.2`，否则会形成 rc.1/rc.2 混合 peer graph。
+2026-08-28 复核确认最新 immutable GitHub Release/tag 是 `dsh-v0.1.2-alpha.1`，reference 已完成
+一次完整 revision replacement；但官方 npm registry 尚无 `@deepseek-ai/dsh@0.1.2-alpha.1`，
+上游 npm publish workflow 也没有该 tag 的运行，因此 runtime、lock、profile 和 3090 Host 必须
+继续停留在已签收 rc.2。不得从 reference 源码或自打 tarball 绕过 publication gate。alpha.1
+移除了 ApiProxy/client-runtime，新增 Remote controllers、package-owned shipped presets、PTC rename、
+provider-card slots、exact Turn usage、subagent model routing 与 experimental Agent Team；详细影响和
+迁移门禁见 `doc/reference/dsh-0.1.2-alpha1-impact.md`。
 
 当前外置包：
 
@@ -176,21 +176,25 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 近期顺序：
 
 1. 已完成：独立 rc.2 runtime compatibility gate，发布包/lock/profile/3090 均已签收。
-2. 已完成：隔离验证 `relay-dsh-plugin-codex@0.1.2`。auth/account/usage、对话、resume、cancel
+2. 已完成：alpha.1 reference replacement 与影响审计；runtime 等待官方 npm family 发布，随后
+   必须先迁移 Remote/controllers 和 client package split，再跑完整 compatibility gate。
+3. 已完成：隔离验证 `relay-dsh-plugin-codex@0.1.2`。auth/account/usage、对话、resume、cancel
    通过，但真实工具/approval 事实与安全切模型失败；不要安装到 Aezy profile。
-3. 已完成：最小外置官方 App Server adapter。process/protocol client、真实
+4. 已完成：最小外置官方 App Server adapter。process/protocol client、真实
    `gpt-5.6-sol` structured `commandExecution`、account/rate/usage gate，以及 Aezy Settings
    managed browser/device login/logout 产品入口均已完成并在 3090 验证；`aezy-codex` provider
    的 Session↔Thread、dynamic DSH tools、activity、approval、Security、Journal、cancel 与
    restart-resume 门禁均通过。Codex 原生权限固定 read-only，提权一律拒绝；所有可变操作回到
    DSH tools/Security/approval。
-4. 已完成：在 Aezy 自身仓库的受管 Worktree 执行真实开发 Turn、失败后恢复、18/18 测试、
+5. 已完成：在 Aezy 自身仓库的受管 Worktree 执行真实开发 Turn、失败后恢复、18/18 测试、
    Journal/Review、结构化 Handoff、Host restart 与同一 Thread continuation；首笔 Aezy 自开发
    提交为 `45cc4e5463`。完整证据见 `doc/milestones/codex.md`。
-5. 先对已完成闭环做必要的 Worktree dependency bootstrap 与 App Server contract hardening，
+6. alpha.1 runtime gate 通过后，恢复上游 `ui-agent-preset`，保留 standard/ptc/minimal/cordis，
+   增加 `codex-app-server` system preset；旧 `aezy` 仅保历史恢复，`codex-inspired` 不可点击。
+7. 先对已完成闭环做必要的 Worktree dependency bootstrap 与 App Server contract hardening，
    再决定是否基于 DSH provider/Session/tool/approval seam 实现第二个
    Codex-inspired backend；它必须通过同一 runtime contract，且不能复制 DSH 内核。
-6. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
+8. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
 
 原 Activity dashboard 实验已全部废弃：原提交 `297f2525c5`、`38ff79419a`、`b31efd533f`
 分别由 `b153454f3c`、`b09c40b197`、`5faa1ba740` 的独立 revert 撤销。不要从这些旧提交继续
@@ -256,13 +260,17 @@ M0–M4.2、Turn File Change Journal 与 Integrated Terminal side panel 已完�
 doc/README.md 索引读取对应 milestone，不要递归读取整个 doc/，也不要重构已签收切片。
 
 Activity dashboard 的三笔原提交已经独立 revert，Browser integration 已暂停；Traffic Board
-与 Task Board 暂缓。reference 与 runtime 已对齐 rc.2；Relay 0.1.2 companion 门禁已因真实
+与 Task Board 暂缓。runtime/3090 仍签收于 rc.2，reference 已更新到 alpha.1；官方 alpha.1 npm
+family 尚未发布，所以先完成 Remote/controller 与 client split 影响审计，不得从 reference 源码
+运行。Relay 0.1.2 companion 门禁已因真实
 tool/approval 硬约束失败；最小外置官方 App Server adapter 已完成 managed ChatGPT account、
 DSH Session↔Codex Thread/Turn、stream/activity、dynamic DSH tools、approval、Security、Journal、
 cancel 与 restart-resume。Codex 原生权限固定 read-only 且提权 fail-closed。Aezy 自身仓库的
 真实受管 Worktree 开发 Turn、失败恢复、测试、Journal/Review、Handoff、Host restart 与同一
-Thread continuation 已签收，完成证据见 doc/milestones/codex.md。下一步只做必要的 dependency
-bootstrap/contract hardening，并评估同一 runtime contract 下的可选 DSH-native backend。不要读取
+Thread continuation 已签收，完成证据见 doc/milestones/codex.md。alpha.1 runtime gate 通过后，
+恢复上游 ui-agent-preset，保留 standard/ptc/minimal/cordis，新增 codex-app-server system preset，
+旧 aezy 仅保历史恢复，codex-inspired 暂不提供选项。然后再做必要的 dependency bootstrap/contract
+hardening，并评估同一 runtime contract 下的可选 DSH-native backend。不要读取
 或管理 OAuth token，不修改 DSH 源码，不实现第二套 Session/Subagent/
 Task/PTY/compaction/approval/usage 内核，也不要提前捆绑 Board、Cloud/Remote/PR、Side Chat
 或 merge-back。

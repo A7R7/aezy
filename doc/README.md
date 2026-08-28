@@ -38,6 +38,8 @@ Milestone 是已完成切片的签收事实。不要把其中的历史 Session I
   基线升级到 rc.1 时的影响与签收。
 - [`reference/dsh-0.1.1-rc2-impact.md`](reference/dsh-0.1.1-rc2-impact.md)：rc.2 只读
   参考更新、multimodal/attachment 变化、可替代范围与 runtime upgrade gate。
+- [`reference/dsh-0.1.2-alpha1-impact.md`](reference/dsh-0.1.2-alpha1-impact.md)：alpha.1
+  reference replacement、Remote/controller 迁移、preset/catalog seam 与 npm publication gate。
 - [`reference/relay-dsh-plugin-codex-0.1.2-compatibility.md`](reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)：
   固定 Relay companion 的 OAuth/account、Thread/Turn、tool/approval、usage 与 Aezy 兼容门禁。
 

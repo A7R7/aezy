@@ -12,13 +12,16 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
   或 merge-back 内核。
 - 非必要 DSH 组件通过 Aezy profile patch 禁用，不删除或修改上游 package。
 
-当前运行基线是 DSH `0.1.1-rc.2`，tag/commit 为
+当前运行基线仍是 DSH `0.1.1-rc.2`，tag/commit 为
 `dsh-v0.1.1-rc.2` / `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`。默认运行状态位于
 `~/.aezy/dsh/`，仓库依赖缓存位于已忽略的 `.local/pnpm-store/`。
 
-只读上游参考快照与 npm runtime 已对齐到同一 rc.2 revision。参考 revision 由
-`reference/dsh.lock.json` 记录，runtime 兼容声明由 `compatibility/dsh.json` 记录；升级门禁已
-覆盖完整静态测试、真实 profile composition 与 3090 HTTP/PTY 回归。
+只读上游参考快照已更新到 immutable prerelease `dsh-v0.1.2-alpha.1`（commit
+`cd5ef8148158c3a752a658978873241fdf8e2bbc`），但官方 npm registry 尚未发布对应 DSH family，
+因此 runtime 不从 reference 源码或自打 tarball 冒进。参考 revision 由
+`reference/dsh.lock.json` 记录，reference/runtime 分离状态由 `compatibility/dsh.json` 记录；
+影响与 publication gate 见
+[`dsh-0.1.2-alpha1-impact.md`](doc/reference/dsh-0.1.2-alpha1-impact.md)。
 
 ## 仓库布局
 
@@ -138,11 +141,12 @@ AEZY_CODEX_TEST_CWD=/tmp/example pnpm run test:codex:dsh:approval
 
 ```bash
 git clone https://github.com/deepseek-ai/deepseek-harness.git .local/deepseek-harness
-git -C .local/deepseek-harness checkout --detach b150a551b8d465e31e418e1b2eaf5e79bbb7d28e
+git -C .local/deepseek-harness checkout --detach cd5ef8148158c3a752a658978873241fdf8e2bbc
 ```
 
-Aezy 的构建和运行仍只消费 npm 发布包；恢复参考树不会改变 runtime composition。升级 DSH
-前必须核对不可变 Git tag/commit/tree，并作为独立 reviewed revision replacement 处理。
+Aezy 的构建和运行仍只消费 npm 发布包；恢复 alpha.1 参考树不会把 rc.2 runtime 升级。待
+`0.1.2-alpha.1` DSH npm family 正式发布后，必须核对 package integrity、完成 Remote/controller
+迁移并通过独立 compatibility gate，才可更新 runtime 声明。
 
 ## 文档与下一步
 
@@ -160,9 +164,10 @@ tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原�
 [`codex.md`](doc/milestones/codex.md)，Relay 兼容性证据见
 [`relay-dsh-plugin-codex-0.1.2-compatibility.md`](doc/reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)。
 
-后续可选路线是先围绕已完成闭环做 Worktree dependency bootstrap 和 App Server contract
-hardening，再决定是否需要同一 runtime contract 下的 DSH-native backend；不以重写 agent loop
-作为默认下一步。
+下一步先等待官方 alpha.1 npm family，完成 Remote/controller/client split 迁移与 runtime gate；
+随后恢复上游 Agent preset UI，并把 Codex App Server 收口为独立 system preset。之后再围绕已完成
+闭环做 Worktree dependency bootstrap 和 App Server contract hardening，并决定是否需要同一
+runtime contract 下的 DSH-native backend；不以重写 agent loop 作为默认路线。
 
 已实现的 Activity dashboard 实验已经通过三笔独立 revert 全部撤销，不再作为后续基础。
 Traffic Board 与 Task Board 暂缓；Browser integration 暂停并默认使用外部浏览器。后续若实现
