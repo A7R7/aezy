@@ -206,6 +206,10 @@ export function alphaRuntimeEnv(extra = {}) {
     npm_config_cache: join(homedir(), '.cache', 'aezy', 'npm-alpha'),
     AEZY_SYSTEM_PRESET_ROOT: alphaSystemPresetRoot,
     ...extra,
+    // Node 24 fetch ignores HTTP(S)_PROXY unless this is explicitly enabled.
+    // Keep every alpha DSH process on the repository-mandated proxy path,
+    // including provider catalog discovery, OAuth refresh and model Turns.
+    NODE_USE_ENV_PROXY: '1',
   }
 }
 

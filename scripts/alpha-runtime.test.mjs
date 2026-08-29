@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
+  alphaRuntimeEnv,
   composeCodexPreset,
   parseSha256Manifest,
   profileManifest,
@@ -56,6 +57,11 @@ test('alpha profile pins transitive workspace edges to local tarballs', () => {
     selector.startsWith('@deepseek-ai/dsh-subprocess-local@file:') && allowed === true
   )), true)
   assert.match(manifest.dependencies['@deepseek-ai/dsh'], /^file:\/\/\/tmp\/dsh\.tgz$/)
+})
+
+test('alpha runtime always enables Node env-proxy routing', () => {
+  assert.equal(alphaRuntimeEnv().NODE_USE_ENV_PROXY, '1')
+  assert.equal(alphaRuntimeEnv({ NODE_USE_ENV_PROXY: '0' }).NODE_USE_ENV_PROXY, '1')
 })
 
 test('codex preset mounts its route fence after the authoritative DSH composition', () => {
