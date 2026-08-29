@@ -107,14 +107,7 @@ Turn 尚未执行，因此不列入上面的 Complete 产品切片。
 
 ## 4. 当前 Git 与 Host 状态
 
-Tracked worktree 在本次交接整理前为 clean。用户已有以下未跟踪项，必须保留且不得纳入
-普通实现或 handoff 提交：
-
-```text
-doc/dogfood/codex-change-card-demo/
-doc/dogfood/turn-changes-demo/
-test.md
-```
+Tracked worktree clean；无需保留历史 dogfood fixture。
 
 交接时 Aezy Web 正在监听：
 
