@@ -1,6 +1,6 @@
 # Alpha native provider spike
 
-> 状态：Owner/catalog/Session selection spike complete；OAuth 与真实 native Turn pending
+> 状态：Complete
 >
 > Runtime：DSH `dsh-v0.1.2-alpha.1` / `cd5ef8148158c3a752a658978873241fdf8e2bbc`，
 > `~/.aezy-alpha/dsh`，profile `aezy-alpha`，Host `127.0.0.1:3091`
@@ -20,7 +20,7 @@
 - Aezy 只启用现有 owner、提供 profile composition 和验证 gate；
 - 既有 `aezy-codex` 仍只服务 `codex-app-server` system preset，Codex App Server 继续持有该
   preset 的 account/thread/turn/agent loop；
-- 本切片不读取 token、不迁移凭据、不发起 OAuth、不发送模型请求，也不实现
+- Aezy 不读取 token、不迁移或复制凭据，也不实现
   Session/tool/approval/usage/notification/PTY/compaction 内核。
 
 ## 实现
@@ -36,6 +36,16 @@ authorization `begin`，因此测试不会启动浏览器/device-code flow。
 `scripts/alpha-runtime.test.mjs` 另有静态 composition gate，防止 route、authorization seam 或
 credential 边界被后续 profile 调整意外移除。
 
+`scripts/authorize-alpha-native-provider.mjs` 是显式授权后才能运行的 alpha-only launcher。它
+要求 `AEZY_ALPHA_AUTHORIZE_NATIVE_PROVIDER=1`，固定重入 alpha Node 24，并通过
+`--use-env-proxy` 调用 DSH `ctx.authorization.begin()`；notice/prompt 可以显示 URL 或一次性
+device code，但脚本不读取或输出 credential payload。
+
+`scripts/verify-alpha-native-provider-turn.mjs` 通过真实 3091 Remote control plane 建立 disposable
+Git fixture 和 `standard` Session，在 alpha.1 `/api/remote.mux` 的 `$events` stream 回答
+`approval/request` waterfall，再检查 Security、Journal、Review 与 exact provider usage。launch
+token 只由运行时环境提供，不写入仓库或测试输出。
+
 ## 验证证据
 
 2026-08-29 重新同步 alpha profile 并重启 3091 后，authenticated Remote control plane 返回：
@@ -49,10 +59,10 @@ credential 边界被后续 profile 调整意外移除。
 - 既有 `codex-app-server` dogfood Session `aezy-alpha-mvp-mte8pbf4` 仍恢复为
   `aezy-codex/gpt-5.6-sol/low`，没有被 native provider 改写。
 
-自动门禁：
+首次 owner/catalog 门禁：
 
 ```text
-node --test scripts/alpha-runtime.test.mjs                 5/5 pass
+node --test scripts/alpha-runtime.test.mjs                 8/8 pass
 TMPDIR=/tmp TMP=/tmp TEMP=/tmp \
   node scripts/verify-alpha-native-provider.mjs            pass
 pnpm run test:mode                                         4/4 pass
@@ -64,16 +74,53 @@ isolated owner probe 返回 authorization key `llm-pi-ai/openai-codex`，唯一�
 为 `OpenAI (ChatGPT Plus/Pro)`；fresh store 显示 `credentialConfigured=false`、
 `inFlight=false`、`oauthStarted=false`。
 
-## 未通过的完成门槛
+## OAuth 与真实 Turn gate
 
-本切片尚不能称为“native provider 可日常使用”。下一步必须由用户明确授权后，通过 DSH
-authorization owner 完成一次 OAuth，随后在 `standard` preset 执行真实模型 Turn，并验证：
+用户明确授权后，DSH owner 已通过 device-code flow 完成 OAuth，并确认
+`credentialConfigured=true`；Aezy 没有读取 credential 内容。首次尝试暴露两个真实 runtime
+问题并分别修复：
 
-1. credential 持久化与 Host restart 后恢复由 DSH owner 完成；
-2. DSH Session/tool/approval/Security/Journal 事实保持原生链路；
-3. `codex-app-server` preset 的 catalog/Host fence 不回归；
-4. logout/revocation 与错误路径不泄漏 token；
-5. 真实 usage 只投影 provider/Session 已有事实。
+- developer shell Node 22 的 built-in `fetch` 未采用代理，device request/token exchange 被 OpenAI
+  以 `unsupported_country_region_territory` 拒绝；修复后 launcher 固定 alpha Node `v24.20.0`
+  与 `--use-env-proxy`，proxy trace 为 `US`；
+- alpha Node 路径是 symlink，直接比较 `process.execPath` 会重复 re-entry；改为 realpath 校验与
+  显式单次 re-entry marker。`alphaRuntimeEnv()` 同时强制 `NODE_USE_ENV_PROXY=1`，使 3091 的
+  catalog、refresh 和 Responses Turn 使用同一代理路径。
 
-只有这组 authenticated Turn gate 通过后，才把本 milestone 标为 Complete。Codex-inspired agent
-loop 仍是后续独立 backend milestone，不因 native model route 出现而被视为已经实现。
+真实只读 Turn 使用 Session `aezy-alpha-native-provider-spike`：
+
+- `standard` + `openai-codex/gpt-5.6-sol/low`；
+- 模型发出一个结构化 `read` call，DSH 返回 `package.json`；
+- 最终精确回答 `node scripts/verify-alpha-native-provider.mjs`；
+- Turn 1 完成；Session projection 为 9,072 uncached input、5,632 cache read、41 output，包含
+  title request 与两步 agent response。
+
+真实 governed write gate 使用 disposable Session `aezy-alpha-native-turn-mtehj6mz`，结果：
+
+```text
+provider/model       openai-codex / gpt-5.6-sol
+approval             allowed-once
+Security             ask → allowed-once，audit present
+tool                  structured DSH write
+Journal              Turn 1，source=git，native-provider-gate.txt
+Review                added
+usage                 6872 uncached input / 5632 cache read / 43 output
+Turn                  completed
+```
+
+fixture 与临时 Security rule 已在 gate 结束时删除。随后重启 Host，原 Session
+`aezy-alpha-native-provider-spike` 恢复为 Turn 1、相同 native route，并在同一 Session 完成 Turn 2，
+精确返回 `ALPHA_NATIVE_RESUME_OK`；DSH projection 更新为 2 Turns，证明 credential、Session、
+selection、Responses continuation 与 usage 均跨 restart 恢复。
+
+## 签收结论
+
+Alpha native provider 已可在 `standard` preset 日常使用，且通过 Session/tool/approval/Security/
+Journal/Review/usage/restart parity gate。`codex-app-server` 仍使用独立 `aezy-codex` route；默认
+DeepSeek model 未改变，mode tests 4/4 通过。
+
+本 spike 没有新增或签收 Aezy logout/revocation UI；credential 删除仍应通过 DSH owner 的未来
+authorization surface 完成，而不是由 Aezy 读取或改写 credential 文件。
+
+这不代表 `codex-inspired` agent loop 已实现。当前 native route 使用的是 DSH 原生 agent loop；
+Codex-inspired 仍是后续独立 backend milestone，必须通过相同 parity contract 后才可进入模式选择器。

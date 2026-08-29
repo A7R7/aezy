@@ -3,8 +3,8 @@
 > 更新日期：2026-08-29<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`alpha`<br>
-> 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha native provider
-> owner/catalog/selection spike（Complete，OAuth/真实 Turn pending）
+> 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
+> OpenAI/Codex provider（Complete）
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
@@ -82,10 +82,10 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
 | Terminal | DSH line PTY 的多标签 Integrated Terminal side panel | `doc/milestones/terminal.md` |
 | Codex loop | Managed ChatGPT、DSH dynamic tools、真实 Aezy 自开发闭环 | `doc/milestones/codex.md` |
 | Agent modes | standard/PTC/minimal/creative、legacy aezy、Codex App Server preset | `doc/milestones/mode-presets.md` |
+| Native provider | DSH-owned OAuth、OpenAI/Codex model、原生 tool/approval/Security/Journal/restart | `doc/milestones/native-provider.md` |
 
-当前进行中的下一 milestone 是 native provider authenticated Turn。owner/catalog/空白 Session
-selection spike 已通过，证据见 `doc/milestones/native-provider.md`；OAuth 尚未启动，真实 native
-Turn 尚未执行，因此不列入上面的 Complete 产品切片。
+`openai-codex` 是 standard/PTC/minimal/creative 可用的 DSH-native provider；
+`codex-app-server` 仍只使用 `aezy-codex`。两者的模型可能同名，但 agent loop owner 不同。
 
 接手时最容易误解的语义：
 
@@ -208,14 +208,13 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 6. 已完成：alpha 恢复上游 `ui-agent-preset`，保留 standard/ptc/minimal/cordis，
    增加 `codex-app-server` system preset、catalog UI/Host 双门禁与原生持久 header；旧 `aezy`
    仅保历史恢复，`codex-inspired` 不可点击。证据见 `doc/milestones/mode-presets.md`。
-7. 已完成：alpha native provider owner/catalog/selection spike。只通过 `@aezy/base` 启用
-   DSH alpha.1 已有 `llm-pi-ai/openai-codex` 与 authorization owner；默认 DeepSeek model、
-   `codex-app-server`/`aezy-codex` 路由和既有 Session 均未改变。OAuth 未启动、真实 native Turn
-   未执行，证据见 `doc/milestones/native-provider.md`。
-8. 下一步经用户明确授权，完成 DSH-owned OAuth、真实 standard preset native Turn、restart、
-   tool/approval/Security/Journal/usage gate；之后再跑完整 alpha parity gates。通过前不把
-   `alpha` 分支合回主线。
-9. 再对已完成 App Server 闭环做必要 hardening，并决定是否实现第二个 Codex-inspired backend；
+7. 已完成：alpha DSH-native provider。通过 `@aezy/base` 薄启用 alpha.1 已有
+   `llm-pi-ai/openai-codex` 与 authorization owner；DSH-owned OAuth、真实 standard Turn、
+   structured tool、approval、Security、Journal/Review、usage 与 restart-resume 均通过。默认
+   DeepSeek model 与 `codex-app-server`/`aezy-codex` 隔离未改变。证据见
+   `doc/milestones/native-provider.md`。
+8. 下一步跑完整 alpha parity gates；通过前不把 `alpha` 分支合回主线。
+9. 再按真实 dogfood 故障 harden 已完成的两条 backend，并决定是否实现 Codex-inspired backend；
    它必须通过同一 runtime contract，且不能复制 DSH 内核。
 10. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
 

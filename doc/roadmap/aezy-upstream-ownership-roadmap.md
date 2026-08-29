@@ -106,7 +106,7 @@ dsh plugin --profile <name> add <package-or-git-spec>
 | Integrated Terminal | Complete | [`terminal.md`](../milestones/terminal.md) |
 | Codex-backed self-development loop | Complete | [`codex.md`](../milestones/codex.md) |
 | Agent modes / Codex App Server preset | Complete on alpha candidate | [`mode-presets.md`](../milestones/mode-presets.md) |
-| DSH-native Codex provider spike | Owner/catalog/selection complete; authenticated Turn pending | [`native-provider.md`](../milestones/native-provider.md) |
+| DSH-native Codex provider | Complete on alpha candidate | [`native-provider.md`](../milestones/native-provider.md) |
 
 ## 路线纠偏记录
 
@@ -173,16 +173,20 @@ Workspace/Session 关联到 opaque Codex thread id 所需的最小 binding，不
 代码、运行相关测试、审阅 diff、重启 Host，并在同一开发任务上继续工作。达到该门槛才可称为
 “可自迭代”的最小替代品；该门槛现已达到。
 
-### 4. Alpha native provider gate（进行中）
+### 4. Alpha native provider gate（Complete）
 
 DSH alpha.1 已原生持有 `llm-pi-ai/openai-codex` catalog、Responses transport、OAuth
 grant/refresh 与 credential store。Aezy 已用外置 base patch 薄启用该 owner，并在真实 3091
 证明 `standard` Session 可选择并持久化 native Codex model，同时保持默认 DeepSeek route 和
 `codex-app-server`/`aezy-codex` 隔离。
 
-下一 gate 是经明确授权走 DSH authorization 完成 OAuth 和真实 native Turn，并复核 restart、
-tool/approval/Security/Journal/usage。未通过前，它只是 model/owner spike，不是新的 agent loop，
-也不宣称可日常使用。证据见 [`native-provider.md`](../milestones/native-provider.md)。
+DSH-owned OAuth 已完成，真实 `standard` Turn、structured tool、Remote approval waterfall、Security
+audit、Journal/Review、usage 与 restart-resume 均通过。Node 24 env-proxy 与 alpha.1
+`/api/remote.mux` `$events` contract 已固化为回归门禁。它现在可日常 dogfood；证据见
+[`native-provider.md`](../milestones/native-provider.md)。
+
+这里完成的是 DSH 原生 agent loop 使用 OpenAI/Codex model，不是 Codex-inspired loop。后者若
+立项，仍作为同一 runtime contract 的独立 backend，并在 parity gate 通过前保持不可点击。
 
 ### 5. 可选 hardening 与可替换 DSH-native agent backend
 
