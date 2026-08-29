@@ -18,3 +18,20 @@
 
 - id: tool-ralph
   disabled: true
+
+# Alpha-native OpenAI Codex model route. The installed DSH llm-pi-ai adapter
+# owns the model catalog, Responses transport, OAuth grant and refresh. Aezy
+# only makes that dormant catalog route available; it never reads or copies a
+# Codex credential and does not change the default model.
+- id: llm-pi-ai
+  config:
+    providers:
+      openai-codex: {}
+
+# llm-pi-ai already registers its provider-owned login flows through this
+# public seam. The alpha Web bundle does not mount the seam itself yet, so the
+# external distribution supplies the missing composition row without adding a
+# second OAuth or credential implementation.
+- insert:
+    - id: authorization
+      name: '@deepseek-ai/dsh-authorization'

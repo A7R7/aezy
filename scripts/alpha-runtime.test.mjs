@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
   composeCodexPreset,
@@ -64,4 +65,11 @@ test('codex preset mounts its route fence after the authoritative DSH compositio
   )
   assert.ok(composition.indexOf('session-model-selection') < composition.indexOf('codex-app-server-mode'))
   assert.equal(composition.endsWith('\n'), true)
+})
+
+test('alpha base activates the DSH-owned Codex subscription route and authorization seam', async () => {
+  const patch = await readFile(new URL('../packages/aezy-base/cordis.patch.yml', import.meta.url), 'utf8')
+  assert.match(patch, /- id: llm-pi-ai\n  config:\n    providers:\n      openai-codex: \{\}/)
+  assert.match(patch, /- id: authorization\n      name: '@deepseek-ai\/dsh-authorization'/)
+  assert.doesNotMatch(patch, /apiKeyEnv|access[_-]?token|refresh[_-]?token/i)
 })

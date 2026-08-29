@@ -22,6 +22,7 @@
     "alpha:profile:dump": "node scripts/run-alpha-profile.mjs --dump-config",
     "alpha:web": "node scripts/run-alpha-profile.mjs",
     "test:alpha:runtime": "node --test scripts/alpha-runtime.test.mjs",
+    "test:alpha:native-provider": "node scripts/verify-alpha-native-provider.mjs",
     "test:m0": "node scripts/verify-m0.mjs",
     "test:brand": "node --test packages/aezy-brand/tests/*.test.mjs",
     "test:m1": "node --test packages/aezy-project/tests/project.test.mjs packages/aezy-project/tests/client-bundle.test.mjs",
