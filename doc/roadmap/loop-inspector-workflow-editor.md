@@ -1,7 +1,7 @@
 # Loop Inspector 与 Custom Agent Workflow Editor 路线
 
-> 状态：**E0 / CI.0、E1、E2 Complete；E3 in progress**<br>
-> 当前优先级：**E3 bounded control-flow authoring**<br>
+> 状态：**E0–E3 Complete；execution gated**<br>
+> 当前优先级：**无；等待 durable binding/compiler seam 决策**<br>
 > 更新日期：2026-08-30
 
 本文定义 Aezy 从只读 Loop Inspector 演进到简易 Custom Agent Workflow Editor 的产品边界、
@@ -328,11 +328,16 @@ E2 已按上述边界签收，证据见
 [`../milestones/workflow-editor.md`](../milestones/workflow-editor.md)。发布的 revision durable，
 但没有 runtime binding/compiler，因而不会出现在 preset roster，也不能执行。
 
-### E3：受限控制流（当前）
+### E3：受限控制流（Complete for authoring）
 
 - 在真实 parity gates 覆盖后才开放 structured condition、parallel、Subagent 和 bounded retry；
 - UI 必须可见地显示每个 budget、取消传播、join policy 和失败策略；
 - validator 对无界 cycle、不可达 finalize、权限升级、能力缺口和预算冲突 fail-closed。
+
+E3 的声明式 authoring 已签收，证据见
+[`../milestones/bounded-workflows.md`](../milestones/bounded-workflows.md)。由于 exact Session binding、
+compiler 与 macro runtime capabilities 不存在，所有 E3 revision 仍为 `executable:false`；这不是
+运行 parity 完成，也不让 `codex-inspired` 进入 selector。
 
 ## 9. `codex-inspired` parity gate
 
