@@ -1,7 +1,7 @@
 # Loop Inspector 与 Custom Agent Workflow Editor 路线
 
-> 状态：**E0 / CI.0 Complete；E1 in progress**<br>
-> 当前优先级：**E1 internal LoopDefinition**<br>
+> 状态：**E0 / CI.0、E1 Complete；E2 in progress**<br>
+> 当前优先级：**E2 template Editor**<br>
 > 更新日期：2026-08-30
 
 本文定义 Aezy 从只读 Loop Inspector 演进到简易 Custom Agent Workflow Editor 的产品边界、
@@ -281,10 +281,15 @@ E0 签收条件：
   Session persistence 不受影响；
 - 没有引入第二套 event bus、Session store、usage ledger、notification system 或 loop controller。
 
-## 7. E1：内部声明式 LoopDefinition 与 codex-inspired dogfood（当前）
+## 7. E1：内部声明式 LoopDefinition 与 codex-inspired dogfood（Complete）
 
 E1 只定义内部、不可点击、不可导入任意代码的 schema，并让 `codex-inspired` 成为第一个
 system-authored dogfood。只有 E0 已证明两条 backend 的观测准确性后，才确定 compiler 的具体 API。
+
+E1 已按上述边界签收，证据见
+[`../milestones/loop-definition.md`](../milestones/loop-definition.md)。alpha.1 没有公开 durable exact
+definition binding，因此 `codex-inspired@1` 已安装、校验并 content-addressed，但 resolver 保持
+`executable:false`，3091 roster 中没有可点击 preset。
 
 最小定义包含：
 
@@ -312,7 +317,7 @@ micro-loop。
 
 ## 8. E2–E3：逐步开放编辑能力
 
-### E2：模板式 Editor
+### E2：模板式 Editor（当前）
 
 - 只从已签名/内建模板创建、复制和参数化定义；
 - 表单/图形编辑都落到相同声明式 schema，预览 validator 和 capability resolution；

@@ -110,6 +110,7 @@ dsh plugin --profile <name> add <package-or-git-spec>
 | Agent modes / Codex App Server preset | Complete on alpha candidate | [`mode-presets.md`](../milestones/mode-presets.md) |
 | DSH-native Codex provider | Complete on alpha candidate | [`native-provider.md`](../milestones/native-provider.md) |
 | E0 / CI.0 Loop Inspector | Complete on alpha candidate | [`loop-inspector.md`](../milestones/loop-inspector.md) |
+| E1 immutable LoopDefinition | Complete, execution unavailable | [`loop-definition.md`](../milestones/loop-definition.md) |
 
 ## 路线纠偏记录
 
@@ -205,13 +206,14 @@ durable usage 时明确保持 partial。完整签收见 [`loop-inspector.md`](..
 详细路线见
 [`loop-inspector-workflow-editor.md`](loop-inspector-workflow-editor.md)。
 
-完整 alpha parity 仍是 `alpha` 合回主线的 release gate；它与当前 E1–E3 产品路线并行存在，
+完整 alpha parity 仍是 `alpha` 合回主线的 release gate；它与当前 E2–E3 产品路线并行存在，
 不能因为 E0 已完成而降低或跳过。
 
-### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（当前）
+### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（E2 current）
 
-E1 先定义内部、不可点击、不可执行任意代码的 versioned/immutable LoopDefinition，让
-`codex-inspired` 作为第一个 system-authored dogfood；E2 再开放模板式 Editor；E3 才增加
+E1 已定义内部、不可点击、不可执行任意代码的 versioned/immutable LoopDefinition，并让
+`codex-inspired@1` 作为第一个 system-authored validation dogfood；因 alpha.1 缺少 durable exact
+definition binding，它明确不可运行且不进入 preset roster。E2 当前开放模板式 Editor；E3 才增加
 structured condition、parallel、Subagent 与 bounded retry。外置 node plugin SDK 不在当前实施
 范围内，也不为它预留抽象。
 

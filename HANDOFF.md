@@ -4,7 +4,8 @@
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`alpha`<br>
 > 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
-> OpenAI/Codex provider（Complete）；E0/CI.0 Loop Inspector（Complete）
+> OpenAI/Codex provider（Complete）；E0/CI.0 Loop Inspector（Complete）；E1 immutable
+> LoopDefinition（Complete，execution unavailable）
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
@@ -66,6 +67,8 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
   per-preset catalog UI 与 Host provider fence。
 - `packages/aezy-inspector`：只读 Session event projector、LoopTrace contract、header 与
   timeline/runtime graph；不拥有 loop、history、usage 或控制状态。
+- `packages/aezy-workflow`：内部 immutable LoopDefinition、strict validator/capability resolver、
+  system-authored `codex-inspired@1`；当前无运行入口且不在 preset roster。
 
 ## 3. 当前产品基线
 
@@ -86,6 +89,7 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
 | Agent modes | standard/PTC/minimal/creative、legacy aezy、Codex App Server preset | `doc/milestones/mode-presets.md` |
 | Native provider | DSH-owned OAuth、OpenAI/Codex model、原生 tool/approval/Security/Journal/restart | `doc/milestones/native-provider.md` |
 | E0 / CI.0 | 双 backend durable LoopTrace、Session header、timeline/graph、live/cold/restart parity | `doc/milestones/loop-inspector.md` |
+| E1 | immutable LoopDefinition、canonical digest、fail-closed capability resolver | `doc/milestones/loop-definition.md` |
 
 `openai-codex` 是 standard/PTC/minimal/creative 可用的 DSH-native provider；
 `codex-app-server` 仍只使用 `aezy-codex`。两者的模型可能同名，但 agent loop owner 不同。
@@ -160,6 +164,7 @@ pnpm run test:codex
 pnpm run test:codex:dsh
 pnpm run test:inspector
 pnpm run test:alpha:runtime
+pnpm run test:workflow
 git diff --check
 ```
 
@@ -224,11 +229,13 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
    live/cold/restart digest parity 通过。App Server 缺失 durable item lifecycle/usage 时明确为
    partial，不建立第二账本。证据见 `doc/milestones/loop-inspector.md`。
 9. 完整 alpha parity gates 仍是 `alpha` 合回主线的 release gate；通过前不合并。
-10. 当前依次实施内部不可点击的 E1 LoopDefinition 与 `codex-inspired` system-authored dogfood；
-    E2–E3 依次为模板 Editor、受限 condition/parallel/Subagent/bounded retry。E4 与外置 node SDK
-    不在当前实施范围，也不为它预留抽象。完整路线见
+10. 已完成：E1 immutable LoopDefinition 与 `codex-inspired@1` system-authored validation dogfood。
+    alpha.1 缺少 durable exact definition binding，因此 resolver fail-closed、definition 不可运行，
+    3091 roster 中没有该 preset。证据见 `doc/milestones/loop-definition.md`。
+11. 当前依次实施 E2 模板 Editor、E3 受限 condition/parallel/Subagent/bounded retry。E4 与外置
+    node SDK 不在当前实施范围，也不为它预留抽象。完整路线见
     `doc/roadmap/loop-inspector-workflow-editor.md`。
-11. 按真实 dogfood 故障 harden 已完成的两条 backend；Traffic Board 与 Task Board 继续暂缓。
+12. 按真实 dogfood 故障 harden 已完成的两条 backend；Traffic Board 与 Task Board 继续暂缓。
 
 原 Activity dashboard 实验已全部废弃：原提交 `eae530ddcb`、`4d187252b0`、`d77430c012`
 分别由 `4428fc8037`、`2cb30ba1ab`、`b89422ddc0` 的独立 revert 撤销。不要从这些旧提交继续
@@ -261,6 +268,7 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 | Integrated Terminal Host/client | `packages/aezy-terminal/` |
 | Codex App Server、managed account Host/client 与完成证据 | `packages/aezy-codex/`、`doc/milestones/codex.md` |
 | Loop Inspector 与完成证据 | `packages/aezy-inspector/`、`doc/milestones/loop-inspector.md` |
+| LoopDefinition / Editor 路线 | `packages/aezy-workflow/`、`doc/milestones/loop-definition.md` |
 | Profile 同步与启动 | `scripts/sync-profile.mjs`、`scripts/run-profile.mjs` |
 | 文档入口与阅读分层 | `doc/README.md` |
 | 当前 milestone 证据 | `doc/milestones/` |
@@ -307,8 +315,9 @@ usage/restart 均已签收；codex-inspired 暂不提供选项。
 
 完整 alpha parity 仍是合回主线的 release gate；E0/CI.0 只读 Loop Inspector 已签收。先读
 doc/milestones/loop-inspector.md 与 doc/roadmap/loop-inspector-workflow-editor.md，从 E1 内部、
-不可点击、immutable LoopDefinition 继续，随后依次实施 E2 模板 Editor 与 E3 受限 control flow；
-不包含 E4。Inspector 失败只能降低可见性，不得影响 Turn，也不得展示 reasoning、credential、
+E1 immutable LoopDefinition 已签收，随后依次实施 E2 模板 Editor 与 E3 受限 control flow；不包含
+E4。definition execution 继续 fail-closed，`codex-inspired` 不进入 preset roster。Inspector 失败
+只能降低可见性，不得影响 Turn，也不得展示 reasoning、credential、
 secret prompt 或未脱敏 tool arguments。`codex-inspired` 在完整 parity gate 前不可点击。不要读取
 或管理 OAuth token，不修改 DSH 源码，不实现
 第二套 Session/Subagent/Task/PTY/compaction/approval/usage 内核，也不要捆绑 Browser、Boards、
