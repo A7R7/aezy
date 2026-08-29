@@ -94,3 +94,19 @@ test('native provider OAuth launcher requires an explicit user-authorized switch
   assert.match(launcher, /describeRecord\(key\)/)
   assert.doesNotMatch(launcher, /readRecord\(key\)|access[_-]?token|refresh[_-]?token/i)
 })
+
+test('native provider Turn gate keeps authentication opaque and uses the DSH control plane', async () => {
+  const gate = await readFile(
+    new URL('./verify-alpha-native-provider-turn.mjs', import.meta.url),
+    'utf8',
+  )
+  assert.match(gate, /AEZY_ALPHA_GATE_TOKEN/)
+  assert.match(gate, /api\/remote\.mux/)
+  assert.match(gate, /event === 'approval\/request'/)
+  assert.match(gate, /'\$events\/result'/)
+  assert.match(gate, /value: 'allowed-once'/)
+  assert.match(gate, /agentPreset: 'standard'/)
+  assert.match(gate, /provider: 'openai-codex'/)
+  assert.match(gate, /project\/ledger/)
+  assert.doesNotMatch(gate, /readRecord|access[_-]?token|refresh[_-]?token/i)
+})
