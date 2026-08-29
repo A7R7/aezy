@@ -27,6 +27,7 @@
     "test:alpha:native-provider": "node scripts/verify-alpha-native-provider.mjs",
     "test:alpha:native-turn": "node scripts/verify-alpha-native-provider-turn.mjs",
     "test:alpha:inspector": "node scripts/verify-loop-inspector.mjs",
+    "test:alpha:workflow-definition": "node scripts/verify-alpha-loop-definition.mjs",
     "test:m0": "node scripts/verify-m0.mjs",
     "test:brand": "node --test packages/aezy-brand/tests/*.test.mjs",
     "test:inspector": "pnpm --filter @aezy/inspector run test",
