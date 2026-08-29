@@ -110,3 +110,17 @@ test('native provider Turn gate keeps authentication opaque and uses the DSH con
   assert.match(gate, /project\/ledger/)
   assert.doesNotMatch(gate, /readRecord|access[_-]?token|refresh[_-]?token/i)
 })
+
+test('Loop Inspector gate consumes only authenticated Session follow/page truth', async () => {
+  const gate = await readFile(
+    new URL('./verify-loop-inspector.mjs', import.meta.url),
+    'utf8',
+  )
+  assert.match(gate, /AEZY_ALPHA_GATE_TOKEN/)
+  assert.match(gate, /endpoint: 'session\/follow'/)
+  assert.match(gate, /rpc\('session\/page'/)
+  assert.match(gate, /projectLoopTrace/)
+  assert.match(gate, /assert\.deepEqual\(live, cold\)/)
+  assert.match(gate, /AEZY_INSPECTOR_RESTART/)
+  assert.doesNotMatch(gate, /readRecord\(|ctx\.credentials|credentialStore/i)
+})

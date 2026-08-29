@@ -236,7 +236,6 @@ function project(input) {
   let sessionUsage = {}
   let currentTurn = null
   let currentStep = null
-  let previousSeq = null
 
   const stepKey = (turn, step) => `${String(turn)}:${String(step)}`
   const toolParent = (turn, step) => steps.get(stepKey(turn, step))?.spanId
@@ -247,11 +246,6 @@ function project(input) {
     : toolParent(currentTurn, currentStep)
 
   for (const event of events) {
-    const seq = integer(event.seq)
-    if (seq !== null) {
-      if (previousSeq !== null && seq !== previousSeq + 1) builder.diagnose('event-sequence-gap')
-      previousSeq = seq
-    }
     if (!RECOGNIZED.has(event.type)) continue
     const data = record(event.data) ?? {}
     const turn = integer(data.turn)
@@ -544,9 +538,12 @@ function project(input) {
   }
 
   if (input.hasMore === true) builder.diagnose('history-window-truncated')
-  if (backend === 'codex-app-server') builder.diagnose('app-server-item-lifecycle-partial')
+  if (backend === 'codex-app-server') {
+    builder.diagnose('app-server-item-lifecycle-partial')
+    if (Object.keys(sessionUsage).length === 0) builder.diagnose('app-server-usage-not-durable')
+  }
   const incomplete = input.hasMore === true
-    || diagnostics.some(item => item.code.includes('malformed') || item.code.includes('unmatched') || item.code === 'event-sequence-gap')
+    || diagnostics.some(item => item.code.includes('malformed') || item.code.includes('unmatched'))
     || backend === 'codex-app-server'
   const activeDepth = (span) => {
     let depth = 0

@@ -64,9 +64,21 @@ test('open calls remain multiple authoritative active spans', () => {
   assert.equal(trace.spans[0].status.value, 'active')
 })
 
+test('packed assistant chunk rows do not become false Session event gaps', () => {
+  const entries = dshFixture().map(entry => structuredClone(entry))
+  entries[3] = {
+    type: 'chunks',
+    event: { type: 'chunkrow/deltas', seq: 3, time: 120, data: { turn: 1, step: 1 } },
+  }
+  const trace = projectLoopTrace({ sessionId: 'packed', mode: 'standard', entries })
+  assert.equal(trace.completeness, 'complete')
+  assert.equal(trace.diagnostics.some(item => item.code === 'event-sequence-gap'), false)
+})
+
 test('App Server projection is coarse-partial and preserves only protocol-safe durable item identity', () => {
   const entries = dshFixture().map(entry => structuredClone(entry))
   entries[2].event.data.header.config.provider = 'aezy-codex'
+  delete entries[4].event.data.usage
   entries[9].event.data.meta = {
     aezyCodex: {
       threadId: 'thread-1', turnId: 'turn-1', itemId: 'item-1', type: 'dynamicTool',
@@ -77,6 +89,8 @@ test('App Server projection is coarse-partial and preserves only protocol-safe d
   assert.equal(trace.backend, 'codex-app-server')
   assert.equal(trace.completeness, 'partial')
   assert.equal(trace.diagnostics.some(item => item.code === 'app-server-item-lifecycle-partial'), true)
+  assert.equal(trace.diagnostics.some(item => item.code === 'app-server-usage-not-durable'), true)
+  assert.equal(trace.spans[0].usage, undefined)
   const tool = trace.spans.find(span => span.label.endsWith('write'))
   assert.equal(tool.sources.some(source => source.source === 'codex-app-server'
     && source.threadId === 'thread-1' && source.turnId === 'turn-1' && source.itemId === 'item-1'), true)
