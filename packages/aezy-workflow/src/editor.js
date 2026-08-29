@@ -3,15 +3,20 @@ import { chmod, mkdir, rename, writeFile } from 'node:fs/promises'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import {
+  E3_NODE_TYPES,
   LoopDefinitionRegistry,
   publishLoopDefinition,
   resolveLoopCapabilities,
 } from './definition.js'
-import { CODEX_INSPIRED_DEFINITION } from './system.js'
+import { BOUNDED_REVIEW_TEMPLATE, CODEX_INSPIRED_DEFINITION } from './system.js'
 
 const MAX_REVISIONS = 128
 const DRAFT_KEYS = new Set(['id', 'name', 'description', 'budgets'])
-const TEMPLATES = new Map([[CODEX_INSPIRED_DEFINITION.body.id, CODEX_INSPIRED_DEFINITION]])
+const TEMPLATES = new Map([
+  [CODEX_INSPIRED_DEFINITION.body.id, CODEX_INSPIRED_DEFINITION],
+  [BOUNDED_REVIEW_TEMPLATE.body.id, BOUNDED_REVIEW_TEMPLATE],
+])
+const E2_RUNTIME_CAPABILITIES = new Set(CODEX_INSPIRED_DEFINITION.body.backend.capabilities)
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -27,7 +32,7 @@ function inventoryFor(template) {
   return {
     backend: template.body.backend.id,
     capabilities: Object.fromEntries([
-      ...template.body.backend.capabilities.map(capability => [capability, true]),
+      ...template.body.backend.capabilities.map(capability => [capability, E2_RUNTIME_CAPABILITIES.has(capability)]),
       ['durable-definition-binding', false],
     ]),
   }
@@ -41,7 +46,7 @@ export function templateView(template) {
     digest: template.digest,
     backend: structuredClone(template.body.backend),
     budgets: structuredClone(template.body.budgets),
-    nodes: template.body.nodes.map(node => ({ id: node.id, type: node.type, label: node.label })),
+    nodes: template.body.nodes.map(node => ({ id: node.id, type: node.type, label: node.label, ...node.config === undefined ? {} : { config: structuredClone(node.config) } })),
   }
 }
 
@@ -97,7 +102,8 @@ export class WorkflowDefinitionStore {
       .reduce((revision, item) => Math.max(revision, item.revision), 0)
     const definition = materializeTemplate(templateId, draft, latest + 1)
     const published = publishLoopDefinition(definition, 'template')
-    const resolution = resolveLoopCapabilities(published, inventoryFor(TEMPLATES.get(templateId)), { stage: 'E2' })
+    const stage = published.body.nodes.some(node => E3_NODE_TYPES.includes(node.type)) ? 'E3' : 'E2'
+    const resolution = resolveLoopCapabilities(published, inventoryFor(TEMPLATES.get(templateId)), { stage })
     return { published, resolution, expectedRevision: latest }
   }
 

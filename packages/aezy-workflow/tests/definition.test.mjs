@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   assertLoopExecutable,
   CODEX_INSPIRED_DEFINITION,
+  BOUNDED_REVIEW_TEMPLATE,
   LoopDefinitionError,
   LoopDefinitionRegistry,
   loopDefinitionDigest,
@@ -101,6 +102,7 @@ test('structured conditions accept registered scalar facts and reject executable
   candidate.edges = [
     { from: 'orient', to: 'decision', outcome: 'success' },
     { from: 'decision', to: 'implement', outcome: 'true' },
+    { from: 'decision', to: 'implement', outcome: 'false' },
     ...candidate.edges.slice(1),
   ]
   assert.equal(validateLoopDefinition(candidate).ok, true)
@@ -200,7 +202,8 @@ test('capability resolution rejects a tampered revision/digest envelope', () => 
 test('E3 node vocabulary remains stage-gated in E1', () => {
   const candidate = baseDefinition()
   candidate.nodes.splice(1, 0, {
-    id: 'delegation', type: 'subagent', label: 'Delegation', config: { maxChildren: 2 },
+    id: 'delegation', type: 'subagent', label: 'Delegation',
+    config: { maxChildren: 2, cancelWithParent: true, failurePolicy: 'fail' },
   })
   candidate.edges = [
     { from: 'orient', to: 'delegation', outcome: 'success' },
@@ -212,4 +215,30 @@ test('E3 node vocabulary remains stage-gated in E1', () => {
   const resolution = resolveLoopCapabilities(published, inventory, { stage: 'E1' })
   assert.equal(resolution.ok, false)
   assert.deepEqual(resolution.missing, ['stage:E3:subagent'])
+})
+
+test('E3 bounded review template exposes only structured and bounded control policy', () => {
+  assert.equal(validateLoopDefinition(BOUNDED_REVIEW_TEMPLATE.body).ok, true)
+  const kinds = new Set(BOUNDED_REVIEW_TEMPLATE.body.nodes.map(node => node.type))
+  for (const kind of ['condition', 'parallel', 'subagent', 'bounded-retry']) assert.equal(kinds.has(kind), true)
+  const parallel = BOUNDED_REVIEW_TEMPLATE.body.nodes.find(node => node.type === 'parallel')
+  assert.deepEqual(parallel.config, { join: 'all-settled', maxConcurrency: 3, cancelRemaining: true, failurePolicy: 'collect' })
+  const subagent = BOUNDED_REVIEW_TEMPLATE.body.nodes.find(node => node.type === 'subagent')
+  assert.deepEqual(subagent.config, { maxChildren: 3, cancelWithParent: true, failurePolicy: 'continue' })
+  const retry = BOUNDED_REVIEW_TEMPLATE.body.nodes.find(node => node.type === 'bounded-retry')
+  assert.deepEqual(Object.keys(retry.config).sort(), ['maxIterations', 'maxTokens', 'maxToolCalls', 'maxWallTimeMs'].sort())
+})
+
+test('E3 validator rejects unknown facts, unsafe cancellation, and local budgets over global bounds', () => {
+  const unknownFact = structuredClone(BOUNDED_REVIEW_TEMPLATE.body)
+  unknownFact.nodes.find(node => node.type === 'condition').config.fact = 'transcript-contains-secret'
+  assert.equal(validateLoopDefinition(unknownFact).errors.some(error => error.code === 'unknown-fact'), true)
+
+  const unsafeCancel = structuredClone(BOUNDED_REVIEW_TEMPLATE.body)
+  unsafeCancel.nodes.find(node => node.type === 'subagent').config.cancelWithParent = false
+  assert.equal(validateLoopDefinition(unsafeCancel).errors.some(error => error.code === 'cancel-propagation'), true)
+
+  const conflict = structuredClone(BOUNDED_REVIEW_TEMPLATE.body)
+  conflict.nodes.find(node => node.type === 'bounded-retry').config.maxTokens = conflict.budgets.maxTokens + 1
+  assert.equal(validateLoopDefinition(conflict).errors.some(error => error.code === 'budget-conflict'), true)
 })
