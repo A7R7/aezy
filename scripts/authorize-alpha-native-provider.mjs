@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { realpathSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { createInterface } from 'node:readline/promises'
 import { join } from 'node:path'
@@ -24,17 +25,24 @@ if (process.env.AEZY_ALPHA_AUTHORIZE_NATIVE_PROVIDER !== '1') {
 // pi-ai contacts the OpenAI authorization endpoints. This also keeps OAuth on
 // the same pinned runtime as the 3091 Host instead of the developer's shell
 // Node version.
-if (process.execPath !== alphaNodeBin) {
+const isAlphaNode = realpathSync(process.execPath) === realpathSync(alphaNodeBin)
+if (process.env.AEZY_ALPHA_OAUTH_REEXEC !== '1') {
   const child = spawnSync(alphaNodeBin, [
     '--use-env-proxy',
     fileURLToPath(import.meta.url),
+    ...process.argv.slice(2),
   ], {
     cwd: process.cwd(),
-    env: process.env,
+    env: { ...process.env, AEZY_ALPHA_OAUTH_REEXEC: '1' },
     stdio: 'inherit',
   })
   if (child.error !== undefined) throw child.error
   process.exit(child.status ?? 1)
+}
+assert.equal(isAlphaNode, true, 'OAuth launcher re-entry did not use the pinned alpha Node runtime')
+if (process.argv.includes('--runtime-probe')) {
+  process.stdout.write(`${JSON.stringify({ runtime: process.version, envProxy: true })}\n`)
+  process.exit(0)
 }
 
 const expectedVersion = alphaMetadata.source.tag.replace('dsh-v', '')
