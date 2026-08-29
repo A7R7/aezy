@@ -1,6 +1,6 @@
 # Aezy 项目交接
 
-> 更新日期：2026-08-29<br>
+> 更新日期：2026-08-30<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`alpha`<br>
 > 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
@@ -213,10 +213,15 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
    structured tool、approval、Security、Journal/Review、usage 与 restart-resume 均通过。默认
    DeepSeek model 与 `codex-app-server`/`aezy-codex` 隔离未改变。证据见
    `doc/milestones/native-provider.md`。
-8. 下一步跑完整 alpha parity gates；通过前不把 `alpha` 分支合回主线。
-9. 再按真实 dogfood 故障 harden 已完成的两条 backend，并决定是否实现 Codex-inspired backend；
-   它必须通过同一 runtime contract，且不能复制 DSH 内核。
-10. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
+8. 完整 alpha parity gates 仍是 `alpha` 合回主线的 release gate；通过前不合并。
+9. 下一产品 milestone 收敛为 E0/CI.0 只读 Loop Inspector：先审计 DSH-native 与 App Server
+   event seam，定义最小 `LoopTrace/Span/SourceRef`，再做 Session header 状态与可展开
+   timeline/graph。它只消费 durable Session events，不驱动 loop；adapter 失败只降低可见性。
+10. E0 证明双 backend live/restart accuracy 后，才进入内部不可点击的 E1 LoopDefinition 与
+    `codex-inspired` system-authored dogfood；E2–E4 依次为模板 Editor、受限 condition/parallel/
+    Subagent/bounded retry、可选外置 node SDK。完整路线见
+    `doc/roadmap/loop-inspector-workflow-editor.md`。
+11. 按真实 dogfood 故障 harden 已完成的两条 backend；Traffic Board 与 Task Board 继续暂缓。
 
 原 Activity dashboard 实验已全部废弃：原提交 `eae530ddcb`、`4d187252b0`、`d77430c012`
 分别由 `4428fc8037`、`2cb30ba1ab`、`b89422ddc0` 的独立 revert 撤销。不要从这些旧提交继续
@@ -227,6 +232,9 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 
 - 读取、复制或自行刷新 Codex OAuth token；优先让 `app-server` 托管登录与凭据；
 - 建立第二套 Session/Subagent/Task/PTY/compaction/approval/usage 内核；
+- 让 Inspector 反向驱动 Turn，或展示 chain-of-thought、credential、secret prompt、未脱敏 tool
+  arguments；
+- 在 E0 accuracy gate 前实现 Editor/compiler，或在 parity gate 前提供可点击 `codex-inspired`；
 - 泛化重构已签收的 M1–M4、Turn journal 或 Terminal；
 - 提前捆绑 Traffic/Task Board、Cloud/Remote/PR、Side Chat、merge-back 或 Browser；
 - 修改 `.local/deepseek-harness/` 绕开缺失 seam。
@@ -248,6 +256,7 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 | 文档入口与阅读分层 | `doc/README.md` |
 | 当前 milestone 证据 | `doc/milestones/` |
 | 活动所有权路线 | `doc/roadmap/` |
+| Loop Inspector / Workflow Editor 详细路线 | `doc/roadmap/loop-inspector-workflow-editor.md` |
 | 长期产品与 DSH 参考 | `doc/reference/` |
 | 被取代的调研与 dogfood 证据 | `doc/archive/` |
 
@@ -274,27 +283,24 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 
 ```text
 请先完整阅读仓库根目录 HANDOFF.md、README.md 和
-doc/roadmap/aezy-upstream-ownership-roadmap.md，检查 git status、当前 DSH tag、3090 Host
+doc/roadmap/aezy-upstream-ownership-roadmap.md，检查 git status、当前 DSH tag 与 3091 Host
 以及 HANDOFF 中记录的功能基线。遵守 .local/deepseek-harness 只读、只用外置插件扩展、
-保留三个既有未跟踪 dogfood/test 项、每个大步骤独立且精确提交的边界。
+tracked worktree clean、无需保留历史 dogfood fixture、每个大步骤独立且精确提交的边界。
 
 M0–M4.2、Turn File Change Journal 与 Integrated Terminal side panel 已完成；需要细节时再按
 doc/README.md 索引读取对应 milestone，不要递归读取整个 doc/，也不要重构已签收切片。
 
-Activity dashboard 的三笔原提交已经独立 revert，Browser integration 已暂停；Traffic Board
-与 Task Board 暂缓。runtime/3090 仍签收于 rc.2，reference 已更新到 alpha.1；官方 alpha.1 npm
-family 尚未发布。固定官方 release artifacts 的隔离 3091 Remote/controller/client split runtime
-gate 已完成，不得从 reference 源码运行。Relay 0.1.2 companion 门禁已因真实
-tool/approval 硬约束失败；最小外置官方 App Server adapter 已完成 managed ChatGPT account、
-DSH Session↔Codex Thread/Turn、stream/activity、dynamic DSH tools、approval、Security、Journal、
-cancel 与 restart-resume。Codex 原生权限固定 read-only 且提权 fail-closed。Aezy 自身仓库的
-真实受管 Worktree 开发 Turn、失败恢复、测试、Journal/Review、Handoff、Host restart 与同一
-Thread continuation 已签收，完成证据见 doc/milestones/codex.md。隔离 alpha 也已恢复上游
-ui-agent-preset，保留 standard/ptc/minimal/cordis，新增 codex-app-server system preset、
-catalog UI/Host 双门禁与持久 header；旧 aezy 仅保历史恢复，codex-inspired 暂不提供选项。
-完成证据见 doc/milestones/mode-presets.md。下一步先跑完整 alpha parity gates，再做必要的
-dependency bootstrap/contract hardening，并评估同一 runtime contract 下的可选 DSH-native backend。不要读取
-或管理 OAuth token，不修改 DSH 源码，不实现第二套 Session/Subagent/
-Task/PTY/compaction/approval/usage 内核，也不要提前捆绑 Board、Cloud/Remote/PR、Side Chat
-或 merge-back。
+Activity dashboard 的三笔原提交已经独立 revert，Browser integration 已暂停；Traffic/Task Board
+继续暂缓。alpha 分支只使用固定官方 alpha.1 release artifacts、独立 DSH_HOME/profile/3091，
+不得从 reference 源码运行。Codex App Server self-development loop、原生 Agent preset 与
+codex-app-server system preset、DSH-native openai-codex OAuth/Turn/tool/approval/Security/Journal/
+usage/restart 均已签收；codex-inspired 暂不提供选项。
+
+完整 alpha parity 仍是合回主线的 release gate；下一产品 milestone 是 E0/CI.0 只读 Loop
+Inspector。先读 doc/roadmap/loop-inspector-workflow-editor.md，审计两条 backend 的 durable
+events，固定 LoopTrace/Span/SourceRef，再做 Session header 与 timeline/graph；不要提前实现
+Editor/compiler。Inspector 失败只能降低可见性，不得影响 Turn，也不得展示 reasoning、credential、
+secret prompt 或未脱敏 tool arguments。不要读取或管理 OAuth token，不修改 DSH 源码，不实现
+第二套 Session/Subagent/Task/PTY/compaction/approval/usage 内核，也不要捆绑 Browser、Boards、
+Cloud/Remote/PR、Side Chat 或 merge-back。
 ```

@@ -28,6 +28,12 @@ Milestone 维护已签收事实与明确的剩余门槛；未完成项必须在�
 其中的历史 Session ID、浏览器坐标或旧测试流水账复制回 HANDOFF/README；需要追溯时在原
 milestone 阅读。
 
+## 当前活动路线
+
+- [`roadmap/loop-inspector-workflow-editor.md`](roadmap/loop-inspector-workflow-editor.md)：
+  下一产品 milestone E0/CI.0 的只读 Loop Inspector、最小 trace contract、双 backend accuracy
+  gate，以及 E1–E4 Custom Agent Workflow Editor 演进边界。
+
 ## 长期参考
 
 - [`reference/codex-functions.md`](reference/codex-functions.md)：Codex Desktop/Harness

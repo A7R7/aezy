@@ -1,6 +1,6 @@
 # Aezy 上游边界与实施路线图
 
-> 活动路线文档，更新于 2026-08-28。已完成切片的详细实现和验证只在
+> 活动路线文档，更新于 2026-08-30。已完成切片的详细实现和验证只在
 > `doc/milestones/` 维护。
 
 ## 决策原则
@@ -67,6 +67,8 @@ publication gate 与路线影响见
 | Integrated Terminal | Aezy UI + DSH PTY owner | Session/cwd fence、line UI、动态 details/overlay、状态投影 | fork PTY/job/process；伪装 raw TTY/resize/ConPTY |
 | Multimodal attachment / request projection | DSH owner | 消费 normalized attachment、request variant、route offload 与 provider transport | 自建 image encoder/cache、provider Files index 或 text-only history rewrite |
 | Activity / Status / Usage / Notifications | 原实验废弃；未来拆入 Traffic/Task Board | 需要时投影各 runtime 的权威事件与 usage | 继续旧 Activity 提交；用小状态页代替完整 Board |
+| Loop Inspector | Aezy 只读 observability layer；backend/DSH events 是 truth | backend blueprint + runtime trace、provenance、timeline/graph、restart rebuild | 驱动 loop；复制 event/usage store；展示 reasoning/secret/raw arguments |
+| Custom Agent Workflow Editor | Aezy macro workflow 产品面 + DSH/backend runtime owner | immutable declarative definition、validator/capability resolver、preset/workflow compiler | 编辑或复制 model→tool→approval→result micro-loop；执行任意代码；扩大权限 |
 | ChatGPT Auth / Codex runtime | Codex `app-server` owner + Aezy 外置 adapter | 发起 managed browser/device login；投影 account/plan/rate/usage；映射 thread/turn/approval stream | 读取 OAuth token；自写 refresh/credential store；假定 Pro 是通用 API key |
 | Codex-inspired DSH backend | DSH Session/provider/tool/approval owner + Aezy adapter | 在同一 runtime contract 后增加可替换 backend，并复用 DSH 事实 | 为追求 Codex 外观复制 Session/Subagent/Task/PTY/compaction 内核 |
 | Browser interaction | Paused | 默认打开外部浏览器；未来仅在 agent 调试证据有明确价值时复议 CDP/screenshot/interaction | 为视觉完整性嵌入狭小 viewport；阻塞 self-development loop |
@@ -188,14 +190,39 @@ audit、Journal/Review、usage 与 restart-resume 均通过。Node 24 env-proxy 
 这里完成的是 DSH 原生 agent loop 使用 OpenAI/Codex model，不是 Codex-inspired loop。后者若
 立项，仍作为同一 runtime contract 的独立 backend，并在 parity gate 通过前保持不可点击。
 
-### 5. 可选 hardening 与可替换 DSH-native agent backend
+### 5. E0 / CI.0：只读 Loop Inspector（下一产品 milestone）
 
-近期只按真实故障补强 Worktree dependency bootstrap 和固定版本 App Server contract。之后再决定
-是否以同一 runtime contract 接入 DSH provider/Session/tool/approval seam，形成第二个
-Codex-inspired backend。先写 parity contract 与端到端测试，再实现 adapter；
-不得以“自主可控”为理由建立第二套 Session/Subagent/Task/usage/PTY/compaction 内核。
+先审计 DSH-native Session events 与 Codex App Server events，固定最小
+`LoopTrace/Span/SourceRef` contract，再做开发者优先的 Session header 状态与可展开
+timeline/graph。DSH alpha.1 已有 cold history、gap-free live follow、Client `eventSource`、durable
+usage/`sessionStats` 与 restart repair；Inspector 必须直接消费这些 owner，不增加 event bus、usage
+ledger 或第二日志。
 
-### 6. 暂缓产品面
+当前 App Server adapter 只为部分 tool activity 持久保存 `threadId/turnId/itemId`；没有 durable
+correlation 的 App-specific span 必须保持 `partial/unavailable`，不能猜测为权威事实。E0 先证明
+`standard` DSH-native 与 `codex-app-server` 两条 backend 的 live/cold accuracy、并行/nested span、
+usage、approval、cancel、restart 与脱敏安全，再决定 Editor/compiler 的具体实现。详细路线见
+[`loop-inspector-workflow-editor.md`](loop-inspector-workflow-editor.md)。
+
+完整 alpha parity 仍是 `alpha` 合回主线的 release gate；它与下一产品 milestone 并行存在，
+不能因为开展 E0 而降低或跳过。
+
+### 6. E1–E4：声明式 workflow 与可选 Codex-inspired backend
+
+E1 先定义内部、不可点击、不可执行任意代码的 versioned/immutable LoopDefinition，让
+`codex-inspired` 作为第一个 system-authored dogfood；E2 再开放模板式 Editor；E3 才增加
+structured condition、parallel、Subagent 与 bounded retry；E4 最后评估外置 node plugin SDK。
+
+Session 必须绑定 exact definition revision + digest，运行中不得热改；backend/model capability
+不满足时 fail-closed。`codex-inspired` 在 Session/tool/approval/Security/Journal/usage/cancel/
+compaction/Subagent/restart 与 Inspector parity gate 全部通过前保持不可点击。DSH/Codex backend
+继续持有 micro-loop 和 runtime truth，Aezy 不建立第二套 Session/Subagent/Task/usage/PTY/
+compaction/approval 内核。
+
+近期 hardening 仍只按真实 dogfood 故障补强 Worktree dependency bootstrap 和固定版本 App Server
+contract，不为未来 Editor 提前泛化已签收切片。
+
+### 7. 暂缓产品面
 
 - Traffic Board：未来按统一 provider proxy/control plane 立项，覆盖 provider/model/account pool、
   routing、request logs、quota/usage 与控制；

@@ -199,6 +199,7 @@ git -C .local/deepseek-harness checkout --detach cd5ef8148158c3a752a658978873241
 - 当前接手状态：[`HANDOFF.md`](HANDOFF.md)
 - 文档阅读顺序：[`doc/README.md`](doc/README.md)
 - 当前所有权与实施路线：[`doc/roadmap/aezy-upstream-ownership-roadmap.md`](doc/roadmap/aezy-upstream-ownership-roadmap.md)
+- 下一产品 milestone：[`doc/roadmap/loop-inspector-workflow-editor.md`](doc/roadmap/loop-inspector-workflow-editor.md)
 
 **Codex-backed self-development loop 已完成**：固定 Relay 0.1.2 companion 已完成隔离
 门禁，但因真实 structured tool/approval 硬约束失败而不进入 Aezy profile。最小外置 runtime
@@ -212,13 +213,16 @@ tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原�
 
 隔离 alpha.1 已恢复上游 Agent preset UI，并把 Codex App Server 收口为独立 system preset，
 完成 per-preset catalog UI 过滤、Host 执行门禁与 Session header 模式显示；证据见
-[`mode-presets.md`](doc/milestones/mode-presets.md)。下一步先跑完整 alpha parity gates，再围绕已完成
-闭环做 Worktree dependency bootstrap 和 App Server contract hardening，并决定是否需要同一
-runtime contract 下的 DSH-native backend。当前 DSH-owned `openai-codex` 已完成 OAuth、真实
-standard Turn、tool/approval/Security/Journal/usage 与 restart-resume gate。下一步先跑完整 alpha
-parity gates，再讨论 Codex-inspired backend，不以重写 agent loop 作为默认路线。
+[`mode-presets.md`](doc/milestones/mode-presets.md)。完整 alpha parity gates 仍是合回主线的 release
+gate；已完成闭环只按真实 dogfood 故障做 Worktree dependency bootstrap 与 App Server contract
+hardening。当前 DSH-owned `openai-codex` 已完成 OAuth、真实
+standard Turn、tool/approval/Security/Journal/usage 与 restart-resume gate。完整 alpha parity 仍是
+合回主线的 release gate；下一产品 milestone 收敛为 E0/CI.0 只读 Loop Inspector，先用 durable
+Session events 证明 DSH-native 与 Codex App Server 的 live/restart trace accuracy，再决定声明式
+Editor/compiler 和 `codex-inspired` 的实现。Inspector 不驱动 loop，且不得展示 reasoning、secret
+或未脱敏 tool arguments。
 
 已实现的 Activity dashboard 实验已经通过三笔独立 revert 全部撤销，不再作为后续基础。
 Traffic Board 与 Task Board 暂缓；Browser integration 暂停并默认使用外部浏览器。后续若实现
 DSH-native Codex-inspired loop，必须作为同一 runtime contract 的可替换 backend，不能复制
-DSH 的 Session/Subagent/Task/PTY/compaction/approval 内核。
+DSH 的 Session/Subagent/Task/PTY/compaction/approval 内核；在完整 parity gate 前保持不可点击。
