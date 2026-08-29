@@ -109,6 +109,7 @@ dsh plugin --profile <name> add <package-or-git-spec>
 | Codex-backed self-development loop | Complete | [`codex.md`](../milestones/codex.md) |
 | Agent modes / Codex App Server preset | Complete on alpha candidate | [`mode-presets.md`](../milestones/mode-presets.md) |
 | DSH-native Codex provider | Complete on alpha candidate | [`native-provider.md`](../milestones/native-provider.md) |
+| E0 / CI.0 Loop Inspector | Complete on alpha candidate | [`loop-inspector.md`](../milestones/loop-inspector.md) |
 
 ## 路线纠偏记录
 
@@ -190,24 +191,24 @@ audit、Journal/Review、usage 与 restart-resume 均通过。Node 24 env-proxy 
 这里完成的是 DSH 原生 agent loop 使用 OpenAI/Codex model，不是 Codex-inspired loop。后者若
 立项，仍作为同一 runtime contract 的独立 backend，并在 parity gate 通过前保持不可点击。
 
-### 5. E0 / CI.0：只读 Loop Inspector（下一产品 milestone）
+### 5. E0 / CI.0：只读 Loop Inspector（Complete）
 
-先审计 DSH-native Session events 与 Codex App Server events，固定最小
-`LoopTrace/Span/SourceRef` contract，再做开发者优先的 Session header 状态与可展开
-timeline/graph。DSH alpha.1 已有 cold history、gap-free live follow、Client `eventSource`、durable
-usage/`sessionStats` 与 restart repair；Inspector 必须直接消费这些 owner，不增加 event bus、usage
-ledger 或第二日志。
+`@aezy/inspector` 已固定最小 `LoopTrace/Span/SourceRef` contract，并通过开发者优先的 Session
+header、timeline 与 runtime graph 消费 DSH cold history/live `eventSource`。它没有增加 event bus、
+usage ledger、第二日志或 loop control path。
 
 当前 App Server adapter 只为部分 tool activity 持久保存 `threadId/turnId/itemId`；没有 durable
 correlation 的 App-specific span 必须保持 `partial/unavailable`，不能猜测为权威事实。E0 先证明
-`standard` DSH-native 与 `codex-app-server` 两条 backend 的 live/cold accuracy、并行/nested span、
-usage、approval、cancel、restart 与脱敏安全，再决定 Editor/compiler 的具体实现。详细路线见
+`standard` DSH-native 与 `codex-app-server` 两条 backend 的 live/cold/restart accuracy，并以 pure
+fixtures 验证并行/nested span、usage、approval、compaction/Subagent 与脱敏安全；App Server 缺失
+durable usage 时明确保持 partial。完整签收见 [`loop-inspector.md`](../milestones/loop-inspector.md)，
+详细路线见
 [`loop-inspector-workflow-editor.md`](loop-inspector-workflow-editor.md)。
 
-完整 alpha parity 仍是 `alpha` 合回主线的 release gate；它与下一产品 milestone 并行存在，
-不能因为开展 E0 而降低或跳过。
+完整 alpha parity 仍是 `alpha` 合回主线的 release gate；它与当前 E1–E3 产品路线并行存在，
+不能因为 E0 已完成而降低或跳过。
 
-### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend
+### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（当前）
 
 E1 先定义内部、不可点击、不可执行任意代码的 versioned/immutable LoopDefinition，让
 `codex-inspired` 作为第一个 system-authored dogfood；E2 再开放模板式 Editor；E3 才增加

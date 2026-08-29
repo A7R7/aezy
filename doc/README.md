@@ -23,6 +23,7 @@
 | Integrated Terminal | [`milestones/terminal.md`](milestones/terminal.md) |
 | Codex-backed managed account and self-development loop | [`milestones/codex.md`](milestones/codex.md) |
 | Alpha DSH-native Codex provider spike | [`milestones/native-provider.md`](milestones/native-provider.md) |
+| E0 / CI.0 read-only Loop Inspector | [`milestones/loop-inspector.md`](milestones/loop-inspector.md) |
 
 Milestone 维护已签收事实与明确的剩余门槛；未完成项必须在标题状态中标明 pending。不要把
 其中的历史 Session ID、浏览器坐标或旧测试流水账复制回 HANDOFF/README；需要追溯时在原
@@ -31,8 +32,8 @@ milestone 阅读。
 ## 当前活动路线
 
 - [`roadmap/loop-inspector-workflow-editor.md`](roadmap/loop-inspector-workflow-editor.md)：
-  下一产品 milestone E0/CI.0 的只读 Loop Inspector、最小 trace contract、双 backend accuracy
-  gate，以及 E1–E3 Custom Agent Workflow Editor 演进边界。
+  已签收 E0/CI.0 的只读 Loop Inspector；当前从 E1 内部 LoopDefinition 依次推进到 E3，
+  不包含 E4。
 
 ## 长期参考
 

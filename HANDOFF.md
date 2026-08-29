@@ -4,7 +4,7 @@
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`alpha`<br>
 > 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
-> OpenAI/Codex provider（Complete）
+> OpenAI/Codex provider（Complete）；E0/CI.0 Loop Inspector（Complete）
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
@@ -43,7 +43,7 @@
 1 个 Landlock entry tarball、逐文件 SHA-256 与官方 packed-install verification。本 `alpha` 分支
 只面向 `~/.aezy-alpha/dsh`、`aezy-alpha` profile 与 3091，不承诺 rc.2 runtime 兼容，也不能从
 reference 源码运行。隔离 selector、checksum-pinned consumer、composition、
-Web、Workspace、Session、mode/preset 与 6 个 Aezy Client bundle 已实机通过；完整证据见
+Web、Workspace、Session、mode/preset 与 7 个 Aezy Client bundle 已实机通过；完整证据见
 `doc/reference/dsh-alpha1-source-runtime.md`。alpha.1
 移除了 ApiProxy/client-runtime，新增 Remote controllers、package-owned shipped presets、PTC rename、
 provider-card slots、exact Turn usage、subagent model routing 与 experimental Agent Team；详细影响和
@@ -64,6 +64,8 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
   `aezy-codex` provider 的 Session↔Thread/Turn、stream/activity/cancel/resume 薄适配。
 - `packages/aezy-mode`：alpha-only 原生 preset 装配、`codex-app-server` system overlay、
   per-preset catalog UI 与 Host provider fence。
+- `packages/aezy-inspector`：只读 Session event projector、LoopTrace contract、header 与
+  timeline/runtime graph；不拥有 loop、history、usage 或控制状态。
 
 ## 3. 当前产品基线
 
@@ -83,6 +85,7 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
 | Codex loop | Managed ChatGPT、DSH dynamic tools、真实 Aezy 自开发闭环 | `doc/milestones/codex.md` |
 | Agent modes | standard/PTC/minimal/creative、legacy aezy、Codex App Server preset | `doc/milestones/mode-presets.md` |
 | Native provider | DSH-owned OAuth、OpenAI/Codex model、原生 tool/approval/Security/Journal/restart | `doc/milestones/native-provider.md` |
+| E0 / CI.0 | 双 backend durable LoopTrace、Session header、timeline/graph、live/cold/restart parity | `doc/milestones/loop-inspector.md` |
 
 `openai-codex` 是 standard/PTC/minimal/creative 可用的 DSH-native provider；
 `codex-app-server` 仍只使用 `aezy-codex`。两者的模型可能同名，但 agent loop owner 不同。
@@ -115,7 +118,7 @@ Tracked worktree clean；无需保留历史 dogfood fixture。
 http://127.0.0.1:3090
 ```
 
-alpha Host 已在本次验证监听 `http://127.0.0.1:3091`，进程状态必须重新检查。其
+alpha Host 已在本次验证重启后监听 `http://127.0.0.1:3091`，进程状态必须重新检查。其
 DSH_HOME/profile 与主线历史状态完全分离，启动命令为：
 
 ```bash
@@ -155,6 +158,8 @@ pnpm run test:m3
 pnpm run test:terminal
 pnpm run test:codex
 pnpm run test:codex:dsh
+pnpm run test:inspector
+pnpm run test:alpha:runtime
 git diff --check
 ```
 
@@ -173,7 +178,8 @@ Worktree/Journal/Security HTTP 回归，以及 open/send/read、多 PTY、SIGINT
 fence 和 `cd /tmp` live cwd 均通过。
 浏览器验证确认 1440px 下 Terminal 是 359px 原生 details 列且 Chat 保持选中；680px 下
 只显示无溢出的 overlay；reopen、scrollback、双 Session 隔离与 `pageerror=[]` 通过。
-其他里程碑的完整测试矩阵只在对应 milestone 中维护。
+E0 自动门禁为 Inspector 9/9、alpha runtime 9/9；真实 3091 双 backend live/cold trace 与 Host
+restart exact-prefix digest parity 通过。其他里程碑的完整测试矩阵只在对应 milestone 中维护。
 
 ## 6. 下一步与所有权
 
@@ -213,13 +219,14 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
    structured tool、approval、Security、Journal/Review、usage 与 restart-resume 均通过。默认
    DeepSeek model 与 `codex-app-server`/`aezy-codex` 隔离未改变。证据见
    `doc/milestones/native-provider.md`。
-8. 完整 alpha parity gates 仍是 `alpha` 合回主线的 release gate；通过前不合并。
-9. 下一产品 milestone 收敛为 E0/CI.0 只读 Loop Inspector：先审计 DSH-native 与 App Server
-   event seam，定义最小 `LoopTrace/Span/SourceRef`，再做 Session header 状态与可展开
-   timeline/graph。它只消费 durable Session events，不驱动 loop；adapter 失败只降低可见性。
-10. E0 证明双 backend live/restart accuracy 后，才进入内部不可点击的 E1 LoopDefinition 与
-    `codex-inspired` system-authored dogfood；E2–E3 依次为模板 Editor、受限 condition/parallel/
-    Subagent/bounded retry。外置 node SDK 不在当前实施范围。完整路线见
+8. 已完成：E0/CI.0 只读 Loop Inspector。`@aezy/inspector` 从 durable Session events 投影
+   `LoopTrace/Span/SourceRef`，交付 header 与 timeline/runtime graph；DSH-native 与 App Server
+   live/cold/restart digest parity 通过。App Server 缺失 durable item lifecycle/usage 时明确为
+   partial，不建立第二账本。证据见 `doc/milestones/loop-inspector.md`。
+9. 完整 alpha parity gates 仍是 `alpha` 合回主线的 release gate；通过前不合并。
+10. 当前依次实施内部不可点击的 E1 LoopDefinition 与 `codex-inspired` system-authored dogfood；
+    E2–E3 依次为模板 Editor、受限 condition/parallel/Subagent/bounded retry。E4 与外置 node SDK
+    不在当前实施范围，也不为它预留抽象。完整路线见
     `doc/roadmap/loop-inspector-workflow-editor.md`。
 11. 按真实 dogfood 故障 harden 已完成的两条 backend；Traffic Board 与 Task Board 继续暂缓。
 
@@ -234,7 +241,8 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 - 建立第二套 Session/Subagent/Task/PTY/compaction/approval/usage 内核；
 - 让 Inspector 反向驱动 Turn，或展示 chain-of-thought、credential、secret prompt、未脱敏 tool
   arguments；
-- 在 E0 accuracy gate 前实现 Editor/compiler，或在 parity gate 前提供可点击 `codex-inspired`；
+- 在 E1 capability/binding gate 前运行 imported definition，或在 parity gate 前提供可点击
+  `codex-inspired`；
 - 泛化重构已签收的 M1–M4、Turn journal 或 Terminal；
 - 提前捆绑 Traffic/Task Board、Cloud/Remote/PR、Side Chat、merge-back 或 Browser；
 - 修改 `.local/deepseek-harness/` 绕开缺失 seam。
@@ -252,6 +260,7 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 | Security policy/store/client | `packages/aezy-security/` |
 | Integrated Terminal Host/client | `packages/aezy-terminal/` |
 | Codex App Server、managed account Host/client 与完成证据 | `packages/aezy-codex/`、`doc/milestones/codex.md` |
+| Loop Inspector 与完成证据 | `packages/aezy-inspector/`、`doc/milestones/loop-inspector.md` |
 | Profile 同步与启动 | `scripts/sync-profile.mjs`、`scripts/run-profile.mjs` |
 | 文档入口与阅读分层 | `doc/README.md` |
 | 当前 milestone 证据 | `doc/milestones/` |
@@ -296,11 +305,12 @@ Activity dashboard 的三笔原提交已经独立 revert，Browser integration �
 codex-app-server system preset、DSH-native openai-codex OAuth/Turn/tool/approval/Security/Journal/
 usage/restart 均已签收；codex-inspired 暂不提供选项。
 
-完整 alpha parity 仍是合回主线的 release gate；下一产品 milestone 是 E0/CI.0 只读 Loop
-Inspector。先读 doc/roadmap/loop-inspector-workflow-editor.md，审计两条 backend 的 durable
-events，固定 LoopTrace/Span/SourceRef，再做 Session header 与 timeline/graph；不要提前实现
-Editor/compiler。Inspector 失败只能降低可见性，不得影响 Turn，也不得展示 reasoning、credential、
-secret prompt 或未脱敏 tool arguments。不要读取或管理 OAuth token，不修改 DSH 源码，不实现
+完整 alpha parity 仍是合回主线的 release gate；E0/CI.0 只读 Loop Inspector 已签收。先读
+doc/milestones/loop-inspector.md 与 doc/roadmap/loop-inspector-workflow-editor.md，从 E1 内部、
+不可点击、immutable LoopDefinition 继续，随后依次实施 E2 模板 Editor 与 E3 受限 control flow；
+不包含 E4。Inspector 失败只能降低可见性，不得影响 Turn，也不得展示 reasoning、credential、
+secret prompt 或未脱敏 tool arguments。`codex-inspired` 在完整 parity gate 前不可点击。不要读取
+或管理 OAuth token，不修改 DSH 源码，不实现
 第二套 Session/Subagent/Task/PTY/compaction/approval/usage 内核，也不要捆绑 Browser、Boards、
 Cloud/Remote/PR、Side Chat 或 merge-back。
 ```

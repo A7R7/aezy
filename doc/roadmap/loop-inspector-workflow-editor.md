@@ -1,7 +1,7 @@
 # Loop Inspector 与 Custom Agent Workflow Editor 路线
 
-> 状态：**Planned；尚未实现**<br>
-> 当前优先级：**E0 / CI.0**<br>
+> 状态：**E0 / CI.0 Complete；E1 in progress**<br>
+> 当前优先级：**E1 internal LoopDefinition**<br>
 > 更新日期：2026-08-30
 
 本文定义 Aezy 从只读 Loop Inspector 演进到简易 Custom Agent Workflow Editor 的产品边界、
@@ -159,7 +159,8 @@ interface Span {
   durationMs?: TraceFact<number>
   usage?: TraceFact<{
     inputTokens?: number
-    cachedInputTokens?: number
+    cacheReadTokens?: number
+    cacheWriteTokens?: number
     outputTokens?: number
     totalTokens?: number
   }>
@@ -177,6 +178,7 @@ interface LoopTrace {
   completeness: 'complete' | 'partial' | 'unavailable'
   spans: Span[]
   activeSpanIds: string[]
+  currentSpanId: string | null
   diagnostics: Array<{
     code: string
     message: string
@@ -217,8 +219,9 @@ Inspector 只显示允许列表中的结构化摘要，禁止默认“先收集�
 
 ## 6. E0 / CI.0：开发者优先的只读 Inspector
 
-E0 是下一项产品开发 milestone；完整 alpha parity 仍是分支合回主线的独立 release gate。E0 不
-实现 Editor/compiler，也不提供 `codex-inspired` 点击入口。
+E0 已在 alpha candidate 签收；完整证据见
+[`../milestones/loop-inspector.md`](../milestones/loop-inspector.md)。完整 alpha parity 仍是分支
+合回主线的独立 release gate。E0 没有实现 Editor/compiler，也没有提供 `codex-inspired` 点击入口。
 
 ### E0-A：event/capability inventory
 
@@ -278,7 +281,7 @@ E0 签收条件：
   Session persistence 不受影响；
 - 没有引入第二套 event bus、Session store、usage ledger、notification system 或 loop controller。
 
-## 7. E1：内部声明式 LoopDefinition 与 codex-inspired dogfood
+## 7. E1：内部声明式 LoopDefinition 与 codex-inspired dogfood（当前）
 
 E1 只定义内部、不可点击、不可导入任意代码的 schema，并让 `codex-inspired` 成为第一个
 system-authored dogfood。只有 E0 已证明两条 backend 的观测准确性后，才确定 compiler 的具体 API。
@@ -347,6 +350,6 @@ E0–E3 均不自动包含 Browser integration、Traffic Board、Task Board、Cl
 Workspace DAG 或 merge-back。它们继续按各自 owner/seam 单独立项。尤其 Loop Inspector 不是旧
 Activity dashboard 的复活，也不是统一流量控制或任务看板的缩小替代品。
 
-E0 完成前延后决定：Editor 的最终 graph 交互、compiler 的公开 package 边界、import/export、
+E1–E3 期间继续延后决定：Editor 的最终 graph 交互、compiler 的公开 package 边界、import/export、
 协作发布和商业模板目录。外置 node plugin SDK 明确不在 E0–E3 实施范围，也不为它预留抽象。
-先证明双 backend 的 trace 准确、安全且不影响 Turn，再扩大产品面。
+E0 已证明双 backend trace 的准确、安全与 fail-soft；后续扩大产品面仍受 E1–E3 各自门禁约束。
