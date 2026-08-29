@@ -73,3 +73,14 @@ test('alpha base activates the DSH-owned Codex subscription route and authorizat
   assert.match(patch, /- id: authorization\n      name: '@deepseek-ai\/dsh-authorization'/)
   assert.doesNotMatch(patch, /apiKeyEnv|access[_-]?token|refresh[_-]?token/i)
 })
+
+test('native provider OAuth launcher requires an explicit user-authorized switch', async () => {
+  const launcher = await readFile(
+    new URL('./authorize-alpha-native-provider.mjs', import.meta.url),
+    'utf8',
+  )
+  assert.match(launcher, /AEZY_ALPHA_AUTHORIZE_NATIVE_PROVIDER !== '1'/)
+  assert.match(launcher, /ctx\.authorization\.begin\(/)
+  assert.match(launcher, /describeRecord\(key\)/)
+  assert.doesNotMatch(launcher, /readRecord\(key\)|access[_-]?token|refresh[_-]?token/i)
+})
