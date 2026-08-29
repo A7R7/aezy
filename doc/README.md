@@ -22,9 +22,11 @@
 | Git-independent Turn journal | [`milestones/turn-journal.md`](milestones/turn-journal.md) |
 | Integrated Terminal | [`milestones/terminal.md`](milestones/terminal.md) |
 | Codex-backed managed account and self-development loop | [`milestones/codex.md`](milestones/codex.md) |
+| Alpha DSH-native Codex provider spike | [`milestones/native-provider.md`](milestones/native-provider.md) |
 
-Milestone 是已完成切片的签收事实。不要把其中的历史 Session ID、浏览器坐标或旧测试
-流水账复制回 HANDOFF/README；需要追溯时在原 milestone 阅读。
+Milestone 维护已签收事实与明确的剩余门槛；未完成项必须在标题状态中标明 pending。不要把
+其中的历史 Session ID、浏览器坐标或旧测试流水账复制回 HANDOFF/README；需要追溯时在原
+milestone 阅读。
 
 ## 长期参考
 

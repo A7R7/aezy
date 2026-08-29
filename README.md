@@ -34,7 +34,8 @@ Node 24/CMake/pnpm store 和 checksum-pinned 本地 release tarball closure；�
 
 ## 仓库布局
 
-- `packages/aezy-base/`、`packages/aezy-web/`：最小 Host/Web composition 与 Aezy preset。
+- `packages/aezy-base/`、`packages/aezy-web/`：最小 Host/Web composition 与 Aezy preset；alpha
+  base 只薄启用 DSH-owned `openai-codex` provider/authorization seam，不拥有 transport 或凭据。
 - `packages/aezy-brand/`：DSH 通用品牌 slots 的 Aezy occupant。
 - `packages/aezy-project/`：Project、Turn Journal、Git enrichment、Worktree/Handoff、
   Review/Files panel 与 Contextual References。
@@ -82,6 +83,19 @@ selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打�
 全量本地 override 安装 workspace closure。只有依赖安装、受审 native scripts 和 alpha CLI
 版本验证全部成功才写 completion marker；本分支的 `profile:sync`/`profile:dump`/`aezy:web`
 直接指向该 alpha profile，`alpha:*` 只是等价的显式别名。
+
+Alpha native provider 的无凭据验证命令：
+
+```bash
+pnpm run test:alpha:runtime
+pnpm run test:alpha:native-provider
+pnpm run test:mode
+```
+
+该 spike 已证明 `standard` Session 可以独立持久化 DSH-native
+`openai-codex/gpt-5.6-sol`，且不改变默认 DeepSeek model 或 `codex-app-server` 的
+`aezy-codex` route。OAuth 与真实 native Turn 尚未执行，不能把当前状态描述为完整可用；证据和
+剩余 gate 见 [`native-provider.md`](doc/milestones/native-provider.md)。
 
 ## 已完成能力
 
@@ -197,7 +211,9 @@ tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原�
 完成 per-preset catalog UI 过滤、Host 执行门禁与 Session header 模式显示；证据见
 [`mode-presets.md`](doc/milestones/mode-presets.md)。下一步先跑完整 alpha parity gates，再围绕已完成
 闭环做 Worktree dependency bootstrap 和 App Server contract hardening，并决定是否需要同一
-runtime contract 下的 DSH-native backend；不以重写 agent loop 作为默认路线。
+runtime contract 下的 DSH-native backend。当前已完成 DSH-owned `openai-codex` route、catalog 与
+空白 standard Session selection spike；下一步是经明确授权完成 OAuth 和真实 native Turn gate，
+再讨论 Codex-inspired backend，不以重写 agent loop 作为默认路线。
 
 已实现的 Activity dashboard 实验已经通过三笔独立 revert 全部撤销，不再作为后续基础。
 Traffic Board 与 Task Board 暂缓；Browser integration 暂停并默认使用外部浏览器。后续若实现

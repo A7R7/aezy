@@ -1,9 +1,10 @@
 # Aezy 项目交接
 
-> 更新日期：2026-08-28<br>
+> 更新日期：2026-08-29<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`alpha`<br>
-> 功能基线：Codex-backed Aezy self-development loop（Complete）
+> 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha native provider
+> owner/catalog/selection spike（Complete，OAuth/真实 Turn pending）
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
@@ -50,7 +51,8 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
 
 当前外置包：
 
-- `packages/aezy-base`：Host/base composition patch。
+- `packages/aezy-base`：Host/base composition patch；alpha 薄启用 DSH-owned
+  `openai-codex` provider 与 authorization seam。
 - `packages/aezy-web`：Web composition 与 Aezy preset。
 - `packages/aezy-brand`：品牌 slots。
 - `packages/aezy-project`：Project、Turn Journal、Git enrichment、Worktree/Handoff、
@@ -80,6 +82,10 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
 | Terminal | DSH line PTY 的多标签 Integrated Terminal side panel | `doc/milestones/terminal.md` |
 | Codex loop | Managed ChatGPT、DSH dynamic tools、真实 Aezy 自开发闭环 | `doc/milestones/codex.md` |
 | Agent modes | standard/PTC/minimal/creative、legacy aezy、Codex App Server preset | `doc/milestones/mode-presets.md` |
+
+当前进行中的下一 milestone 是 native provider authenticated Turn。owner/catalog/空白 Session
+selection spike 已通过，证据见 `doc/milestones/native-provider.md`；OAuth 尚未启动，真实 native
+Turn 尚未执行，因此不列入上面的 Complete 产品切片。
 
 接手时最容易误解的语义：
 
@@ -209,11 +215,16 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 6. 已完成：alpha 恢复上游 `ui-agent-preset`，保留 standard/ptc/minimal/cordis，
    增加 `codex-app-server` system preset、catalog UI/Host 双门禁与原生持久 header；旧 `aezy`
    仅保历史恢复，`codex-inspired` 不可点击。证据见 `doc/milestones/mode-presets.md`。
-7. 下一步先跑完整 alpha parity gates；通过前不把 `alpha` 分支合回主线。之后对已完成闭环做必要的
-   Worktree dependency bootstrap 与 App Server contract hardening，
-   再决定是否基于 DSH provider/Session/tool/approval seam 实现第二个
-   Codex-inspired backend；它必须通过同一 runtime contract，且不能复制 DSH 内核。
-8. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
+7. 已完成：alpha native provider owner/catalog/selection spike。只通过 `@aezy/base` 启用
+   DSH alpha.1 已有 `llm-pi-ai/openai-codex` 与 authorization owner；默认 DeepSeek model、
+   `codex-app-server`/`aezy-codex` 路由和既有 Session 均未改变。OAuth 未启动、真实 native Turn
+   未执行，证据见 `doc/milestones/native-provider.md`。
+8. 下一步经用户明确授权，完成 DSH-owned OAuth、真实 standard preset native Turn、restart、
+   tool/approval/Security/Journal/usage gate；之后再跑完整 alpha parity gates。通过前不把
+   `alpha` 分支合回主线。
+9. 再对已完成 App Server 闭环做必要 hardening，并决定是否实现第二个 Codex-inspired backend；
+   它必须通过同一 runtime contract，且不能复制 DSH 内核。
+10. Traffic Board 与 Task Board 保留为后续完整产品面，当前不阻塞 coding loop。
 
 原 Activity dashboard 实验已全部废弃：原提交 `eae530ddcb`、`4d187252b0`、`d77430c012`
 分别由 `4428fc8037`、`2cb30ba1ab`、`b89422ddc0` 的独立 revert 撤销。不要从这些旧提交继续
