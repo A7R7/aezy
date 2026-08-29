@@ -136,6 +136,9 @@ importers:
       '@aezy/security':
         specifier: workspace:*
         version: link:../aezy-security
+      '@aezy/workflow':
+        specifier: workspace:*
+        version: link:../aezy-workflow
 
   packages/aezy-workflow: {}
 

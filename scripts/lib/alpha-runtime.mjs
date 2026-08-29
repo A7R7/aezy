@@ -53,7 +53,7 @@ const aezyPackages = [
   ['@aezy/security', 'packages/aezy-security', true],
   ['@aezy/terminal', 'packages/aezy-terminal', true],
   ['@aezy/web', 'packages/aezy-web', false],
-  ['@aezy/workflow', 'packages/aezy-workflow', false],
+  ['@aezy/workflow', 'packages/aezy-workflow', true],
 ]
 const alphaAllowedBuilds = {
   '@google/genai': false,

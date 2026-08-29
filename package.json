@@ -16,6 +16,7 @@
     "build:m2": "pnpm --filter @aezy/security run build",
     "build:m3": "pnpm --filter @aezy/project run build",
     "build:terminal": "pnpm --filter @aezy/terminal run build",
+    "build:workflow": "pnpm --filter @aezy/workflow run build",
     "profile:sync": "node scripts/sync-alpha-profile.mjs",
     "profile:dump": "node scripts/run-alpha-profile.mjs --dump-config",
     "aezy:web": "node scripts/run-alpha-profile.mjs",
