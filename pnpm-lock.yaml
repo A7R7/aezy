@@ -127,6 +127,9 @@ importers:
       '@aezy/brand':
         specifier: workspace:*
         version: link:../aezy-brand
+      '@aezy/inspector':
+        specifier: workspace:*
+        version: link:../aezy-inspector
       '@aezy/project':
         specifier: workspace:*
         version: link:../aezy-project

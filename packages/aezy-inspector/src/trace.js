@@ -548,9 +548,23 @@ function project(input) {
   const incomplete = input.hasMore === true
     || diagnostics.some(item => item.code.includes('malformed') || item.code.includes('unmatched') || item.code === 'event-sequence-gap')
     || backend === 'codex-app-server'
+  const activeDepth = (span) => {
+    let depth = 0
+    let cursor = span.parentSpanId
+    const seen = new Set()
+    while (cursor !== undefined && !seen.has(cursor) && depth < 32) {
+      seen.add(cursor)
+      depth += 1
+      cursor = builder.byId.get(cursor)?.parentSpanId
+    }
+    return depth
+  }
   const activeSpans = builder.spans
     .filter(span => span.status.value === 'active')
-    .sort((left, right) => (right.startedAt?.value ?? 0) - (left.startedAt?.value ?? 0))
+    .sort((left, right) => {
+      const time = (right.startedAt?.value ?? 0) - (left.startedAt?.value ?? 0)
+      return time !== 0 ? time : activeDepth(right) - activeDepth(left)
+    })
 
   return {
     schemaVersion: LOOP_TRACE_SCHEMA_VERSION,

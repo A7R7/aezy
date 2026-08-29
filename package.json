@@ -10,6 +10,7 @@
   "scripts": {
     "build:brand": "pnpm --filter @aezy/brand run build",
     "build:codex": "pnpm --filter @aezy/codex run build",
+    "build:inspector": "pnpm --filter @aezy/inspector run build",
     "build:mode": "pnpm --filter @aezy/mode run build",
     "build:m1": "pnpm --filter @aezy/project run build",
     "build:m2": "pnpm --filter @aezy/security run build",
