@@ -137,6 +137,8 @@ importers:
         specifier: workspace:*
         version: link:../aezy-security
 
+  packages/aezy-workflow: {}
+
 packages:
 
   '@anthropic-ai/sdk@0.91.1':
