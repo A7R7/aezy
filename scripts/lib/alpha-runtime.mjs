@@ -294,7 +294,7 @@ function syncSystemPresets() {
     }
     writeFileSync(
       join(staging, 'codex-app-server', 'agent.cordis.yml'),
-      `${codexOverlay.trimEnd()}\n\n${shippedStandard}`,
+      composeCodexPreset(shippedStandard, codexOverlay),
     )
     rmSync(alphaSystemPresetRoot, { recursive: true, force: true })
     renameSync(staging, alphaSystemPresetRoot)
@@ -303,6 +303,15 @@ function syncSystemPresets() {
     throw error
   }
   return alphaSystemPresetRoot
+}
+
+/**
+ * Mount the fence after DSH's authoritative preset rows. Cordis waterfalls
+ * enter later listeners first, so the fence's `await next()` observes the
+ * Session controller's final model selection instead of the Agent seed route.
+ */
+export function composeCodexPreset(shippedStandard, codexOverlay) {
+  return `${shippedStandard.trimEnd()}\n\n${codexOverlay.trim()}\n`
 }
 
 export function syncAlphaProfile() {

@@ -7,7 +7,7 @@ model selector by the current Session preset, and fences that preset to the
 approval, or persistence runtime.
 
 The package contains only preset metadata and a provider-fence overlay. The
-isolated runtime selector prepends the overlay to the installed DSH release's
+isolated runtime selector appends the overlay to the installed DSH release's
 authoritative `standard` composition, then stages the generated preset beside
 legacy `aezy`. DSH therefore remains the owner of version-specific tool, plan,
 compaction and subagent invariants; Aezy does not copy that composition.

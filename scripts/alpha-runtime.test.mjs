@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { parseSha256Manifest, profileManifest, workspaceSettings } from './lib/alpha-runtime.mjs'
+import {
+  composeCodexPreset,
+  parseSha256Manifest,
+  profileManifest,
+  workspaceSettings,
+} from './lib/alpha-runtime.mjs'
 
 const zero = '0'.repeat(64)
 const one = '1'.repeat(64)
@@ -50,4 +55,13 @@ test('alpha profile pins transitive workspace edges to local tarballs', () => {
     selector.startsWith('@deepseek-ai/dsh-subprocess-local@file:') && allowed === true
   )), true)
   assert.match(manifest.dependencies['@deepseek-ai/dsh'], /^file:\/\/\/tmp\/dsh\.tgz$/)
+})
+
+test('codex preset mounts its route fence after the authoritative DSH composition', () => {
+  const composition = composeCodexPreset(
+    "- id: session-model-selection\n  name: '@deepseek-ai/dsh-session-controller'\n",
+    "- id: codex-app-server-mode\n  name: '@aezy/mode'\n",
+  )
+  assert.ok(composition.indexOf('session-model-selection') < composition.indexOf('codex-app-server-mode'))
+  assert.equal(composition.endsWith('\n'), true)
 })
