@@ -80,6 +80,8 @@ test('native provider OAuth launcher requires an explicit user-authorized switch
     'utf8',
   )
   assert.match(launcher, /AEZY_ALPHA_AUTHORIZE_NATIVE_PROVIDER !== '1'/)
+  assert.match(launcher, /spawnSync\(alphaNodeBin/)
+  assert.match(launcher, /'--use-env-proxy'/)
   assert.match(launcher, /ctx\.authorization\.begin\(/)
   assert.match(launcher, /describeRecord\(key\)/)
   assert.doesNotMatch(launcher, /readRecord\(key\)|access[_-]?token|refresh[_-]?token/i)

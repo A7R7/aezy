@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { createInterface } from 'node:readline/promises'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   alphaDshHome,
   alphaMetadata,
+  alphaNodeBin,
   alphaProfileDir,
   verifyAlphaArtifacts,
 } from './lib/alpha-runtime.mjs'
@@ -15,6 +17,24 @@ if (process.env.AEZY_ALPHA_AUTHORIZE_NATIVE_PROVIDER !== '1') {
     'Refusing to start OAuth without explicit authorization.',
     'Set AEZY_ALPHA_AUTHORIZE_NATIVE_PROVIDER=1 only for a user-approved alpha login attempt.',
   ].join(' '))
+}
+
+// Node's built-in fetch does not consume HTTP(S)_PROXY by default. Re-enter
+// through the exact alpha toolchain with its explicit env-proxy switch before
+// pi-ai contacts the OpenAI authorization endpoints. This also keeps OAuth on
+// the same pinned runtime as the 3091 Host instead of the developer's shell
+// Node version.
+if (process.execPath !== alphaNodeBin) {
+  const child = spawnSync(alphaNodeBin, [
+    '--use-env-proxy',
+    fileURLToPath(import.meta.url),
+  ], {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: 'inherit',
+  })
+  if (child.error !== undefined) throw child.error
+  process.exit(child.status ?? 1)
 }
 
 const expectedVersion = alphaMetadata.source.tag.replace('dsh-v', '')
@@ -65,6 +85,8 @@ try {
   process.stdout.write(`${JSON.stringify({
     type: 'authorization-start',
     owner: '@deepseek-ai/dsh-llm-pi-ai',
+    runtime: process.version,
+    envProxy: true,
     key,
     method: 'oauth',
     alreadyConfigured: before.configured,
