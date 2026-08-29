@@ -112,6 +112,8 @@ importers:
         specifier: 0.149.0
         version: 0.149.0
 
+  packages/aezy-inspector: {}
+
   packages/aezy-mode: {}
 
   packages/aezy-project: {}
