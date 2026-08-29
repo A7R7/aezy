@@ -32,7 +32,7 @@ milestone 阅读。
 
 - [`roadmap/loop-inspector-workflow-editor.md`](roadmap/loop-inspector-workflow-editor.md)：
   下一产品 milestone E0/CI.0 的只读 Loop Inspector、最小 trace contract、双 backend accuracy
-  gate，以及 E1–E4 Custom Agent Workflow Editor 演进边界。
+  gate，以及 E1–E3 Custom Agent Workflow Editor 演进边界。
 
 ## 长期参考
 

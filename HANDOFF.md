@@ -218,8 +218,8 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
    event seam，定义最小 `LoopTrace/Span/SourceRef`，再做 Session header 状态与可展开
    timeline/graph。它只消费 durable Session events，不驱动 loop；adapter 失败只降低可见性。
 10. E0 证明双 backend live/restart accuracy 后，才进入内部不可点击的 E1 LoopDefinition 与
-    `codex-inspired` system-authored dogfood；E2–E4 依次为模板 Editor、受限 condition/parallel/
-    Subagent/bounded retry、可选外置 node SDK。完整路线见
+    `codex-inspired` system-authored dogfood；E2–E3 依次为模板 Editor、受限 condition/parallel/
+    Subagent/bounded retry。外置 node SDK 不在当前实施范围。完整路线见
     `doc/roadmap/loop-inspector-workflow-editor.md`。
 11. 按真实 dogfood 故障 harden 已完成的两条 backend；Traffic Board 与 Task Board 继续暂缓。
 

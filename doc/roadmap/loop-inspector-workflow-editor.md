@@ -307,7 +307,7 @@ micro-loop。
 - backend/model 不满足 capability 时 fail-closed，不能用 Aezy compatibility shim 仿制 capability；
 - 如果 DSH 没有公开、durable 的 definition binding seam，E1 保持内部不可运行，先解决 owner seam。
 
-## 8. E2–E4：逐步开放编辑能力
+## 8. E2–E3：逐步开放编辑能力
 
 ### E2：模板式 Editor
 
@@ -321,13 +321,6 @@ micro-loop。
 - 在真实 parity gates 覆盖后才开放 structured condition、parallel、Subagent 和 bounded retry；
 - UI 必须可见地显示每个 budget、取消传播、join policy 和失败策略；
 - validator 对无界 cycle、不可达 finalize、权限升级、能力缺口和预算冲突 fail-closed。
-
-### E4：外置 node plugin SDK
-
-- 最后才评估外置 node plugin SDK；node 只能声明宏观 compiler contribution、capability 和
-  Inspector blueprint/adapter，不能接管 micro-loop；
-- package 安装、签名/来源、schema version、sandbox、权限与兼容性必须先有独立设计；
-- 没有充分第三方用例时不为“可扩展”提前泛化 E1–E3。
 
 ## 9. `codex-inspired` parity gate
 
@@ -350,10 +343,10 @@ micro-loop。
 
 ## 10. 明确不捆绑
 
-E0–E4 均不自动包含 Browser integration、Traffic Board、Task Board、Cloud/Remote/PR、Side Chat、
+E0–E3 均不自动包含 Browser integration、Traffic Board、Task Board、Cloud/Remote/PR、Side Chat、
 Workspace DAG 或 merge-back。它们继续按各自 owner/seam 单独立项。尤其 Loop Inspector 不是旧
 Activity dashboard 的复活，也不是统一流量控制或任务看板的缩小替代品。
 
 E0 完成前延后决定：Editor 的最终 graph 交互、compiler 的公开 package 边界、import/export、
-协作发布、第三方 node SDK 和商业模板目录。先证明双 backend 的 trace 准确、安全且不影响 Turn，
-再扩大产品面。
+协作发布和商业模板目录。外置 node plugin SDK 明确不在 E0–E3 实施范围，也不为它预留抽象。
+先证明双 backend 的 trace 准确、安全且不影响 Turn，再扩大产品面。

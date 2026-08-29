@@ -207,11 +207,12 @@ usage、approval、cancel、restart 与脱敏安全，再决定 Editor/compiler 
 完整 alpha parity 仍是 `alpha` 合回主线的 release gate；它与下一产品 milestone 并行存在，
 不能因为开展 E0 而降低或跳过。
 
-### 6. E1–E4：声明式 workflow 与可选 Codex-inspired backend
+### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend
 
 E1 先定义内部、不可点击、不可执行任意代码的 versioned/immutable LoopDefinition，让
 `codex-inspired` 作为第一个 system-authored dogfood；E2 再开放模板式 Editor；E3 才增加
-structured condition、parallel、Subagent 与 bounded retry；E4 最后评估外置 node plugin SDK。
+structured condition、parallel、Subagent 与 bounded retry。外置 node plugin SDK 不在当前实施
+范围内，也不为它预留抽象。
 
 Session 必须绑定 exact definition revision + digest，运行中不得热改；backend/model capability
 不满足时 fail-closed。`codex-inspired` 在 Session/tool/approval/Security/Journal/usage/cancel/
