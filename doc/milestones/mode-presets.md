@@ -9,7 +9,8 @@
 隔离 alpha runtime 重新启用了 DSH 原生 `ui-agent-preset`，新建 Session 可选择上游随包发布的
 `standard`、`ptc`、`minimal`、`cordis`，其中 `cordis` 的产品名称为“创造模式”。Aezy 额外
 提供不可删除的 `codex-app-server` system preset；旧 `aezy` 仍作为 system preset 存在，保证
-历史 Session 能按原 header 恢复。`codex-inspired` 没有目录、roster entry 或可点击选项。
+历史 Session 能按原 header 恢复。普通启动下 `codex-inspired` 没有目录、roster entry 或可点击
+选项；后续 E1 internal dogfood 只能由显式环境开关暂存 exact-digest preset，未改变本门禁。
 
 Session header 的模式名称由原生 `ui-agent-preset` 读取 durable `agentPreset` projection 持久
 显示；Aezy 没有复制 header 或 preset 状态机。

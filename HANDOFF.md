@@ -4,7 +4,8 @@
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`alpha`<br>
 > 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
-> OpenAI/Codex provider（Complete）；E0.1 Loop Inspector revision 3（Candidate：等待产品验收）
+> OpenAI/Codex provider（Complete）；E0.1 Loop Inspector revision 3（Candidate：等待产品验收）；
+> Codex-inspired E1 internal dogfood（In progress：真实 restart continuation 通过，完整 parity pending）
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
@@ -69,6 +70,9 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
   topology 按 owner lane 呈现，不拥有 loop、history、usage 或控制状态。
 - `packages/aezy-layout`：只在 desktop 拖拽期间接管现有 details resize handle，将 Chat/details
   共享内容区的下限/上限设为 25%/75%；不替换 AppFrame、slot、open/close 或窄屏 overlay。
+- `packages/aezy-workflow`：alpha-only immutable system LoopDefinition、capability resolver 与
+  DSH public Agent/tool/LLM hook compiler/controller；内部 codex-inspired revision 仅显式 dogfood，
+  普通 roster 不可见，不拥有 DSH micro-loop。
 
 ## 3. 当前产品基线
 
@@ -89,6 +93,7 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
 | Agent modes | standard/PTC/minimal/creative、legacy aezy、Codex App Server preset | `doc/milestones/mode-presets.md` |
 | Native provider | DSH-owned OAuth、OpenAI/Codex model、原生 tool/approval/Security/Journal/restart | `doc/milestones/native-provider.md` |
 | E0.1 | revision 3 双 backend full logic graph、durable overlay、Timeline、live/cold/restart parity（candidate） | `doc/milestones/loop-inspector.md` |
+| E1 slice | immutable Codex-inspired macro loop、DSH hook compiler、真实 native Turn + restart continuation（internal/pending parity） | `doc/milestones/codex-inspired.md` |
 
 `openai-codex` 是 standard/PTC/minimal/creative 可用的 DSH-native provider；
 `codex-app-server` 仍只使用 `aezy-codex`。两者的模型可能同名，但 agent loop owner 不同。
@@ -163,6 +168,7 @@ pnpm run test:codex
 pnpm run test:codex:dsh
 pnpm run test:inspector
 pnpm run test:layout
+pnpm run test:workflow
 pnpm run test:alpha:runtime
 git diff --check
 ```
@@ -182,7 +188,7 @@ Worktree/Journal/Security HTTP 回归，以及 open/send/read、多 PTY、SIGINT
 fence 和 `cd /tmp` live cwd 均通过。
 浏览器验证确认 1440px 下 Terminal 是 359px 原生 details 列且 Chat 保持选中；680px 下
 只显示无溢出的 overlay；reopen、scrollback、双 Session 隔离与 `pageerror=[]` 通过。
-E0 自动门禁为 Inspector 10/10、alpha runtime 10/10、mode 4/4、Codex 20/20；布局单元/Client
+E0/E1 自动门禁为 Inspector 10/10、workflow 12/12、alpha runtime 12/12、mode 4/4、Codex 20/20；布局单元/Client
 门禁 6/6。真实 3091 在 1416px AppFrame 下通过既有 drag handle 将 Chat/details 固定到共享区
 25%/75%（284px/852px），details 超过完整 frame 的一半与上游 520px ceiling；680px 下仍为
 原生 overlay。真实 3091 双 backend
@@ -238,10 +244,13 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
    public protocol/DSH bridge，只有模型推理 opaque。Inspector 10/10 与真实双 backend DOM/digest/
    live/cold/restart gate 通过，等待产品验收后再决定是否恢复 E0 Complete。
 9. 完整 alpha parity gates 仍是 `alpha` 合回主线的 release gate；通过前不合并。
-10. E1–E3 的当前实现已通过新增 revert 提交撤回，原提交完整保留供历史追溯；三个阶段均暂停，
-    直到静态 backend logic graph 版本的 E0 被重新验收。E4 与外置 node SDK 不在当前范围，也不
-    为它预留抽象。长期路线见
-    `doc/roadmap/loop-inspector-workflow-editor.md`。
+10. 旧 E1–E3 实现已通过 revert 撤回，原提交完整保留。E1 已按新边界重新开始：
+    `@aezy/workflow` revision 1（digest `f7841cbd49eb…`）描述宏观 coding loop，并只在
+    `AEZY_CODEX_INSPIRED_DOGFOOD=1` 暂存 exact preset。真实 Session
+    `aezy-codex-inspired-mtfs9w1k` 用 `openai-codex/gpt-5.6-sol` 完成 Turn 1、Host restart 与同
+    Session Turn 2；普通启动 system root 仍只有 `aezy` / `codex-app-server`。接下来按
+    `doc/milestones/codex-inspired.md` 补 approval/Security/Journal/cancel/compaction/Subagent/
+    Inspector parity；完成前不可点击。E2/E3 暂停，E4 不在范围。
 11. 按真实 dogfood 故障 harden 已完成的两条 backend；Traffic Board 与 Task Board 继续暂缓。
 
 原 Activity dashboard 实验已全部废弃：原提交 `eae530ddcb`、`4d187252b0`、`d77430c012`
@@ -318,12 +327,14 @@ Activity dashboard 的三笔原提交已经独立 revert，Browser integration �
 继续暂缓。alpha 分支只使用固定官方 alpha.1 release artifacts、独立 DSH_HOME/profile/3091，
 不得从 reference 源码运行。Codex App Server self-development loop、原生 Agent preset 与
 codex-app-server system preset、DSH-native openai-codex OAuth/Turn/tool/approval/Security/Journal/
-usage/restart 均已签收；codex-inspired 暂不提供选项。
+usage/restart 均已签收；codex-inspired 已有 internal revision 1 和真实 restart dogfood，但完整
+parity 前仍不提供选项。
 
 完整 alpha parity 仍是合回主线的 release gate；E0/CI.0 因原 graph 只是 runtime span tree 而重新
 打开。先读 doc/milestones/loop-inspector.md 与 doc/roadmap/loop-inspector-workflow-editor.md，完成
 静态 backend logic graph：blueprint 是主体，runtime trace 只叠加 active/visited/usage/duration，
-Timeline 保留逐次证据；App Server 私有内核显示为 opaque。E1–E3 暂停，不包含 E4。Inspector
+Timeline 保留逐次证据；App Server 私有内核显示为 opaque。E1 internal dogfood 已开始，下一步
+只按 doc/milestones/codex-inspired.md 补 parity；E2/E3 暂停，不包含 E4。Inspector
 失败只能降低可见性，不得影响 Turn，也不得展示 reasoning、credential、secret prompt 或未脱敏
 tool arguments。`codex-inspired` 在完整 parity gate 前不可点击。不要读取
 或管理 OAuth token，不修改 DSH 源码，不实现

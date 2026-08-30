@@ -24,6 +24,7 @@
 | Codex-backed managed account and self-development loop | [`milestones/codex.md`](milestones/codex.md) |
 | Alpha DSH-native Codex provider spike | [`milestones/native-provider.md`](milestones/native-provider.md) |
 | E0 / CI.0 read-only Loop Inspector | [`milestones/loop-inspector.md`](milestones/loop-inspector.md) |
+| E1 internal Codex-inspired Agent Loop | [`milestones/codex-inspired.md`](milestones/codex-inspired.md) |
 
 Milestone 维护已签收事实与明确的剩余门槛；未完成项必须在标题状态中标明 pending。不要把
 其中的历史 Session ID、浏览器坐标或旧测试流水账复制回 HANDOFF/README；需要追溯时在原
@@ -32,8 +33,8 @@ milestone 阅读。
 ## 当前活动路线
 
 - [`roadmap/loop-inspector-workflow-editor.md`](roadmap/loop-inspector-workflow-editor.md)：
-  E0/CI.0 已交付静态 backend logic graph corrected candidate，等待产品验收；E1–E3 已撤回
-  当前实现并暂停，原 Git 历史保留；不包含 E4。
+  E0/CI.0 已交付静态 backend logic graph corrected candidate，等待产品验收；E1 已重新开始
+  internal codex-inspired dogfood，完整 parity pending 且不可点击；E2/E3 暂停，不包含 E4。
 
 ## 长期参考
 

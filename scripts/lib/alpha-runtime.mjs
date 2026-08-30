@@ -15,6 +15,10 @@ import { homedir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { repoRoot } from './profile.mjs'
+import {
+  CODEX_INSPIRED_LOOP,
+  CODEX_INSPIRED_PRESET_ID,
+} from '../../packages/aezy-workflow/src/system.js'
 
 export const alphaMetadataPath = join(repoRoot, 'compatibility', 'dsh-alpha-runtime.json')
 export const alphaMetadata = JSON.parse(readFileSync(alphaMetadataPath, 'utf8'))
@@ -53,6 +57,7 @@ const aezyPackages = [
   ['@aezy/project', 'packages/aezy-project', true],
   ['@aezy/security', 'packages/aezy-security', true],
   ['@aezy/terminal', 'packages/aezy-terminal', true],
+  ['@aezy/workflow', 'packages/aezy-workflow', false],
   ['@aezy/web', 'packages/aezy-web', false],
 ]
 const alphaAllowedBuilds = {
@@ -271,6 +276,10 @@ export function workspaceSettings(dependencies) {
   }
 }
 
+export function codexInspiredDogfoodEnabled(environment = process.env) {
+  return environment.AEZY_CODEX_INSPIRED_DOGFOOD === '1'
+}
+
 function syncSystemPresets() {
   const staging = mkdtempSync(join(alphaDshHome, '.system-presets-'))
   try {
@@ -302,6 +311,27 @@ function syncSystemPresets() {
       join(staging, 'codex-app-server', 'agent.cordis.yml'),
       composeCodexPreset(shippedStandard, codexOverlay),
     )
+    if (codexInspiredDogfoodEnabled()) {
+      const source = join(
+        alphaProfileDir,
+        'node_modules',
+        '@aezy',
+        'workflow',
+        'presets',
+        'codex-inspired',
+      )
+      const target = join(staging, CODEX_INSPIRED_PRESET_ID)
+      cpSync(source, target, { recursive: true })
+      const inspiredOverlay = readFileSync(join(target, 'overlay.cordis.yml'), 'utf8')
+      if (!inspiredOverlay.includes(`digest: ${CODEX_INSPIRED_LOOP.digest}`)
+        || !inspiredOverlay.includes(`presetId: ${CODEX_INSPIRED_PRESET_ID}`)) {
+        throw new Error('Codex-inspired preset template does not bind the exact system definition')
+      }
+      writeFileSync(
+        join(target, 'agent.cordis.yml'),
+        composeCodexPreset(shippedStandard, inspiredOverlay),
+      )
+    }
     rmSync(alphaSystemPresetRoot, { recursive: true, force: true })
     renameSync(staging, alphaSystemPresetRoot)
   } catch (error) {

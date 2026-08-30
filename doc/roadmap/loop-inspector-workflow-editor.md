@@ -1,7 +1,7 @@
 # Loop Inspector 与 Custom Agent Workflow Editor 路线
 
-> 状态：**E0.1 revision 3 candidate；E1–E3 paused**<br>
-> 当前优先级：**静态 backend logic graph**<br>
+> 状态：**E0.1 revision 3 candidate；E1 internal dogfood in progress；E2/E3 paused**<br>
+> 当前优先级：**Codex-inspired parity hardening**<br>
 > 更新日期：2026-08-30
 
 本文定义 Aezy 从只读 Loop Inspector 演进到简易 Custom Agent Workflow Editor 的产品边界、
@@ -224,7 +224,8 @@ E0 的 runtime trace foundation 曾完成 live/cold/restart 与脱敏门禁；�
 runtime overlay 与独立 Timeline。
 实现和 restart gate 已通过，当前等待产品验收；完整证据见
 [`../milestones/loop-inspector.md`](../milestones/loop-inspector.md)。完整 alpha parity 仍是分支合回
-主线的独立 release gate。E0 没有实现 Editor/compiler，也没有提供 `codex-inspired` 点击入口。
+主线的独立 release gate。E0 自身不实现 Editor/compiler，也不提供 `codex-inspired` 点击入口；
+后续 E1 internal dogfood 仍保持不可点击。
 
 ### E0-A：event/capability inventory
 
@@ -291,10 +292,19 @@ E0 签收条件：
   Session persistence 不受影响；
 - 没有引入第二套 event bus、Session store、usage ledger、notification system 或 loop controller。
 
-## 7. E1：内部声明式 LoopDefinition 与 codex-inspired dogfood（Paused）
+## 7. E1：内部声明式 LoopDefinition 与 codex-inspired dogfood（In progress）
 
-当前 E1–E3 实现已经撤回，Git 历史完整保留；本节仅保留未来路线定义。E1 只定义内部、不可点击、不可导入任意代码的 schema，并让 `codex-inspired` 成为第一个
-system-authored dogfood。只有 E0 已证明两条 backend 的观测准确性后，才确定 compiler 的具体 API。
+旧 E1–E3 实现已经撤回，Git 历史完整保留。用户在 E0.1 revision 3 实机可读后明确授权重新开始
+codex-inspired；新的 E1 不恢复旧 Editor 实现，只定义内部、不可点击、不可导入任意代码的 schema，
+并让 `codex-inspired` 成为第一个 system-authored dogfood。
+
+E1 第一个可执行切片已落在外置 `@aezy/workflow`：immutable revision 1、canonical digest、validator、
+capability resolver、DSH Agent hook compiler/controller 与 exact-digest internal preset。静态 definition
+描述 task binding、investigation、planning、implementation、verification、Review/Journal、completion
+check 与 bounded recovery 的宏观 coding loop；不描述或接管 DSH 的 model→tool→approval→result
+micro-loop。真实 3091 已完成 DSH-native `openai-codex` Turn 与 Host restart 后同 Session 第二轮；
+普通启动仍不暂存该 preset。完整证据与剩余 parity 见
+[`../milestones/codex-inspired.md`](../milestones/codex-inspired.md)。
 
 最小定义包含：
 
@@ -318,7 +328,9 @@ micro-loop。
 - imported definition 按不受信任配置处理，不能扩大 preset/Session 现有权限；
 - definition revision 一经发布不可变，Session 必须持久绑定 exact revision + digest；运行中禁止热改；
 - backend/model 不满足 capability 时 fail-closed，不能用 Aezy compatibility shim 仿制 capability；
-- 如果 DSH 没有公开、durable 的 definition binding seam，E1 保持内部不可运行，先解决 owner seam。
+- 当前 alpha.1 没有独立 definition field；internal preset id 因此包含完整 revision digest，并由
+  runtime config + durable `agentPreset` projection 双重绑定。若未来需要对用户定义开放，必须先有
+  独立、公开、durable 的 binding seam；不得把本 dogfood 约定泛化成导入格式。
 
 ## 8. E2–E3：逐步开放编辑能力（Paused）
 
@@ -337,8 +349,8 @@ micro-loop。
 
 ## 9. `codex-inspired` parity gate
 
-`codex-inspired` 在通过与 `standard` 和 Codex App Server 相同的以下真实门禁前保持路线定义，
-不进入可点击 mode selector：
+`codex-inspired` 已进入显式 internal dogfood，但在通过与 `standard` 和 Codex App Server 相同的
+以下真实门禁前不进入可点击 mode selector：
 
 - Session create/resume/restart 与 exact LoopDefinition revision/digest；
 - structured tool protocol 与并行/nested call；
@@ -360,6 +372,6 @@ E0–E3 均不自动包含 Browser integration、Traffic Board、Task Board、Cl
 Workspace DAG 或 merge-back。它们继续按各自 owner/seam 单独立项。尤其 Loop Inspector 不是旧
 Activity dashboard 的复活，也不是统一流量控制或任务看板的缩小替代品。
 
-E1–E3 期间继续延后决定：Editor 的最终 graph 交互、compiler 的公开 package 边界、import/export、
+E1–E3 期间继续延后决定：Editor 的最终 graph 交互、compiler 的公开 SDK 边界、import/export、
 协作发布和商业模板目录。外置 node plugin SDK 明确不在 E0–E3 实施范围，也不为它预留抽象。
 E0 已证明双 backend trace 的准确、安全与 fail-soft；后续扩大产品面仍受 E1–E3 各自门禁约束。

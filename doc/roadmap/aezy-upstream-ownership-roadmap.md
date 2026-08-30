@@ -215,11 +215,13 @@ durable usage 时明确保持 partial。完整签收见 [`loop-inspector.md`](..
 完整 alpha parity 仍是 `alpha` 合回主线的 release gate，不能因为既有 runtime trace gates 已通过
 而降低或跳过。
 
-### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（Paused）
+### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（E1 in progress）
 
-E1–E3 的当前实现已由后续 revert 提交撤回，原始提交完整保留供历史追溯。只有纠正后的 E0 静态
-logic graph 获得验收后才重新评估这些阶段。路线定义仍是：E1 定义内部、不可点击、不可执行任意代码的 versioned/immutable LoopDefinition，让
-`codex-inspired` 作为第一个 system-authored dogfood；E2 再开放模板式 Editor；E3 才增加
+旧 E1–E3 实现已由后续 revert 提交撤回，原始提交完整保留供历史追溯。E0.1 revision 3 可读后，
+E1 已按新边界重新开始：外置 `@aezy/workflow` 提供内部、不可点击、不可执行任意代码的
+versioned/immutable LoopDefinition，让 `codex-inspired` 作为第一个 system-authored dogfood；
+revision 1 已通过真实 DSH-native Turn 与 restart 后同 Session continuation，但完整 parity pending。
+E2 仍暂停，未来才考虑模板式 Editor；E3 仍暂停，之后才增加
 structured condition、parallel、Subagent 与 bounded retry。外置 node plugin SDK 不在当前实施
 范围内，也不为它预留抽象。
 

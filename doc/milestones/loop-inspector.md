@@ -115,6 +115,7 @@ profile，没有修改 `.local/deepseek-harness/`。
 ## 当前边界
 
 上述自动与真实 gate 已签收 E0.1 revision 3 candidate 的 full static topology、runtime overlay 与
-restart reconstruction；E0 仍等待产品验收，不自动恢复 Complete。E1–E3 当前实现已 revert 并
-暂停，原 Git 历史保留；E0 获得验收前不继续 Editor/compiler。
+restart reconstruction；E0 仍等待产品验收，不自动恢复 Complete。旧 E1–E3 实现已 revert，
+原 Git 历史保留；后续经明确授权重新开始的 E1 internal codex-inspired dogfood 不改变 E0 的
+候选状态，也没有恢复 Editor。E2/E3 继续暂停。
 不得把 Inspector 变为控制器，也不得在 parity gate 前开放 `codex-inspired`。E4 不在当前范围。

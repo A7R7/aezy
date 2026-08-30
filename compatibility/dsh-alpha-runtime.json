@@ -71,7 +71,7 @@
     "releaseFamily": "241 members at 0.1.2-alpha.1; publish order resolved",
     "officialClientBuildRecord": "218 client artifacts with 4 public values",
     "packedInstall": "installed @deepseek-ai/dsh reports 0.1.2-alpha.1",
-    "isolatedConsumer": "pnpm 11.7.0 installed 251 checksum-pinned DSH/vendor/Landlock tarballs and 10 packed Aezy plugins through local overrides; Node 24.20.0 rebuilt koffi and loaded the Linux optional closure",
+    "isolatedConsumer": "pnpm 11.7.0 installed 251 checksum-pinned DSH/vendor/Landlock tarballs and 11 packed Aezy plugins through local overrides; Node 24.20.0 rebuilt koffi and loaded the Linux optional closure",
     "compositionDump": "DSH alpha Base/Web plus all 10 Aezy out-of-tree packages composed successfully; native ui-agent-preset is enabled, the Host-global ui-model-selection is replaced by the mode projection, @aezy/inspector remains a read-only Session event consumer, and @aezy/layout preserves the upstream AppFrame owner",
     "host": "127.0.0.1:3091 served an authenticated Web index with all 8 Aezy Client bundles, including @aezy/inspector, @aezy/layout, @aezy/mode, and native ui-agent-preset",
     "remoteControllers": "workspace/create and session/create/list/modelCatalog succeeded through the alpha /api Remote controller transport",
@@ -79,6 +79,7 @@
     "stableBaseline": "127.0.0.1:3090 remained HTTP 200 and the stable CLI/profile remained 0.1.1-rc.2",
     "loopInspector": "E0.1 revision-3 full logic blueprints use five owner lanes per backend. DSH-native has 40 nodes/59 edges at digest dc8900a001b6...; Codex App Server has 41 nodes/54 edges at digest c3a0b8b2ebab... and is source-pinned to official rust-v0.149.0 commit 758ef40f50c1a458425c7cfbf1eb12cbc07af0b0/tree 0f7a27df60e01dccf918f3203235266a0d6e3258. Only model inference is opaque. Runtime traces remain overlay-only and Timeline remains the occurrence log. Live/cold trace reconstruction at throughSeq 207/861 and the revision-3 DOM/digests remained identical across 3091 restarts; native was complete and App Server remained explicitly partial.",
     "proportionalLayout": "A real existing details-handle drag at a 1416px AppFrame produced a 284px Chat column and 852px details column: exactly 25%/75% of the 1136px shared content region, with details exceeding both the upstream 520px ceiling and half of the full frame. At 680px the existing Inspector overlay remained authoritative and proportional facts were absent.",
+    "codexInspired": "E1 internal dogfood revision 1 is exact-bound at digest f7841cbd49ebf7f3ad8e73db76e945eca86c6c7ac6311871bbd9d402f0fb0248. A real openai-codex/gpt-5.6-sol Session completed a structured DSH read Turn, survived Host restart, and completed Turn 2 in the same Session with durable policy/header/tool/result/usage evidence. Normal profile sync removed the internal preset from the system root; full approval/Security/Journal/cancel/compaction/Subagent/Inspector parity remains pending and the mode is not clickable.",
     "verifiedAt": "2026-08-30"
   },
   "selector": {

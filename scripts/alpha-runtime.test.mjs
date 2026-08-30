@@ -3,11 +3,16 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
   alphaRuntimeEnv,
+  codexInspiredDogfoodEnabled,
   composeCodexPreset,
   parseSha256Manifest,
   profileManifest,
   workspaceSettings,
 } from './lib/alpha-runtime.mjs'
+import {
+  CODEX_INSPIRED_LOOP,
+  CODEX_INSPIRED_PRESET_ID,
+} from '../packages/aezy-workflow/src/system.js'
 
 const zero = '0'.repeat(64)
 const one = '1'.repeat(64)
@@ -73,6 +78,22 @@ test('codex preset mounts its route fence after the authoritative DSH compositio
   assert.equal(composition.endsWith('\n'), true)
 })
 
+test('codex-inspired stays absent by default and binds exact definition only for explicit dogfood', async () => {
+  assert.equal(codexInspiredDogfoodEnabled({}), false)
+  assert.equal(codexInspiredDogfoodEnabled({ AEZY_CODEX_INSPIRED_DOGFOOD: '0' }), false)
+  assert.equal(codexInspiredDogfoodEnabled({ AEZY_CODEX_INSPIRED_DOGFOOD: '1' }), true)
+  const [runtime, overlay] = await Promise.all([
+    readFile(new URL('./lib/alpha-runtime.mjs', import.meta.url), 'utf8'),
+    readFile(new URL('../packages/aezy-workflow/presets/codex-inspired/overlay.cordis.yml', import.meta.url), 'utf8'),
+  ])
+  assert.match(runtime, /\['@aezy\/workflow', 'packages\/aezy-workflow', false\]/)
+  assert.match(runtime, /if \(codexInspiredDogfoodEnabled\(\)\)/)
+  assert.match(overlay, new RegExp(`digest: ${CODEX_INSPIRED_LOOP.digest}`))
+  assert.match(overlay, new RegExp(`presetId: ${CODEX_INSPIRED_PRESET_ID}`))
+  assert.match(overlay, /AEZY_CODEX_INSPIRED_DOGFOOD === '1'/)
+  assert.doesNotMatch(overlay, /javascript|packageImport|promptTemplate|access[_-]?token|refresh[_-]?token/i)
+})
+
 test('alpha base activates the DSH-owned Codex subscription route and authorization seam', async () => {
   const patch = await readFile(new URL('../packages/aezy-base/cordis.patch.yml', import.meta.url), 'utf8')
   assert.match(patch, /- id: llm-pi-ai\n  config:\n    providers:\n      openai-codex: \{\}/)
@@ -109,6 +130,20 @@ test('native provider Turn gate keeps authentication opaque and uses the DSH con
   assert.match(gate, /provider: 'openai-codex'/)
   assert.match(gate, /project\/ledger/)
   assert.doesNotMatch(gate, /readRecord|access[_-]?token|refresh[_-]?token/i)
+})
+
+test('codex-inspired Turn gate requires explicit dogfood and exact durable preset binding', async () => {
+  const gate = await readFile(
+    new URL('./verify-alpha-codex-inspired-turn.mjs', import.meta.url),
+    'utf8',
+  )
+  assert.match(gate, /AEZY_CODEX_INSPIRED_DOGFOOD !== '1'/)
+  assert.match(gate, /CODEX_INSPIRED_PRESET_ID/)
+  assert.match(gate, /agentPreset: CODEX_INSPIRED_PRESET_ID/)
+  assert.match(gate, /provider: 'openai-codex'/)
+  assert.match(gate, /event\.type === 'request\/header'/)
+  assert.match(gate, /event\.type === 'tool\/call' && event\.data\.name === 'read'/)
+  assert.doesNotMatch(gate, /readRecord|access[_-]?token|refresh[_-]?token|provider:\s*['"]aezy-codex/)
 })
 
 test('Loop Inspector gate consumes only authenticated Session follow/page truth', async () => {

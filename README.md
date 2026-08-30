@@ -53,6 +53,9 @@ Node 24/CMake/pnpm store 和 checksum-pinned 本地 release tarball closure；�
 - `packages/aezy-layout/`：在保留 DSH AppFrame、slot 与 responsive owner 的前提下，薄扩展
   既有 desktop details resize handle；Chat 最少保留共享内容区的 25%，side panel 最多可占
   75%，窄屏继续使用原生 overlay。
+- `packages/aezy-workflow/`：alpha-only immutable LoopDefinition、capability resolver 与 DSH
+  Agent hook compiler/controller；首个 `codex-inspired` revision 只允许显式 internal dogfood，
+  不复制 DSH micro-loop，也不进入普通 mode roster。
 - `doc/`：按 milestone、roadmap、reference 和 archive 分层的项目文档；入口见
   [`doc/README.md`](doc/README.md)。
 
@@ -85,7 +88,7 @@ pnpm run alpha:profile:dump
 pnpm run alpha:web -- --host 127.0.0.1 --port 3091 --no-open
 ```
 
-selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打包 10 个 Aezy 外置包，再用
+selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打包 11 个 Aezy 外置包，再用
 全量本地 override 安装 workspace closure。只有依赖安装、受审 native scripts 和 alpha CLI
 版本验证全部成功才写 completion marker；本分支的 `profile:sync`/`profile:dump`/`aezy:web`
 直接指向该 alpha profile，`alpha:*` 只是等价的显式别名。
@@ -94,6 +97,7 @@ Alpha native provider 验证命令：
 
 ```bash
 pnpm run test:alpha:runtime
+pnpm run test:workflow
 pnpm run test:alpha:native-provider
 pnpm run test:mode
 pnpm run test:inspector
@@ -102,6 +106,9 @@ pnpm run test:layout
 AEZY_ALPHA_GATE_TOKEN=<launch-token> pnpm run test:alpha:native-turn
 AEZY_ALPHA_GATE_TOKEN=<launch-token> pnpm run test:alpha:inspector
 AEZY_ALPHA_GATE_TOKEN=<launch-token> pnpm run test:alpha:layout
+# 只供内部 parity dogfood；普通启动不会出现该 preset：
+AEZY_CODEX_INSPIRED_DOGFOOD=1 AEZY_ALPHA_GATE_TOKEN=<launch-token> \
+  pnpm run test:alpha:codex-inspired-turn
 ```
 
 `standard` Session 已通过 DSH-owned OAuth、真实 `openai-codex/gpt-5.6-sol` Turn、structured
@@ -125,6 +132,7 @@ model 或 `codex-app-server` 的 `aezy-codex` route。证据见
 | Agent modes | 原生四模式、legacy `aezy`、Codex App Server preset 与双门禁 | [`mode-presets.md`](doc/milestones/mode-presets.md) |
 | Native provider | DSH-owned OAuth、OpenAI/Codex models 与原生 agent loop parity | [`native-provider.md`](doc/milestones/native-provider.md) |
 | Loop Inspector | 静态 backend logic graph、durable trace overlay、Timeline 与 restart rebuild | [`loop-inspector.md`](doc/milestones/loop-inspector.md) |
+| Codex-inspired | 内部 immutable macro loop + DSH hook compiler；完整 parity pending、不可点击 | [`codex-inspired.md`](doc/milestones/codex-inspired.md) |
 
 关键语义：
 
@@ -238,11 +246,14 @@ standard Turn、tool/approval/Security/Journal/usage 与 restart-resume gate。E
 trace accuracy；但原 Graph 只是同一 runtime span log 的树形缩略版，不满足静态 agent-loop 逻辑图
 目标，因此 E0 已纠正为 backend-specific node/edge/guard/owner/source blueprint 主图，runtime trace
 只叠加 active/visited/count/usage/duration；Codex App Server 不公开的内部控制流显示为 opaque。
-实现与双 backend restart gate 已通过，当前等待产品验收。E1–E3 的现有实现已 revert 且暂停，
-原 Git 历史保留；不包含 E4。Inspector 不驱动 loop，
+实现与双 backend restart gate 已通过，当前等待产品验收。旧 E1–E3 实现已 revert，原 Git 历史
+保留；E1 已按新的宏观 workflow 边界重新开始，internal `codex-inspired` revision 1 已完成真实
+Turn 与 restart continuation，但完整 parity pending 且不可点击；E2/E3 继续暂停，不包含 E4。
+Inspector 不驱动 loop，
 且不得展示 reasoning、secret 或未脱敏 tool arguments。
 
 已实现的 Activity dashboard 实验已经通过三笔独立 revert 全部撤销，不再作为后续基础。
-Traffic Board 与 Task Board 暂缓；Browser integration 暂停并默认使用外部浏览器。后续若实现
-DSH-native Codex-inspired loop，必须作为同一 runtime contract 的可替换 backend，不能复制
-DSH 的 Session/Subagent/Task/PTY/compaction/approval 内核；在完整 parity gate 前保持不可点击。
+Traffic Board 与 Task Board 暂缓；Browser integration 暂停并默认使用外部浏览器。当前
+DSH-native Codex-inspired 首个 internal dogfood slice 通过外置 immutable definition 与公共
+Agent hooks 编译宏观 coding policy，DSH 继续持有 Session/Subagent/Task/PTY/compaction/approval
+内核；在完整 parity gate 前保持不可点击。

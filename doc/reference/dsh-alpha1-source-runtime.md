@@ -99,7 +99,9 @@ source release artifacts 已通过以下隔离 runtime gate：
 - Node `24.20.0`、pnpm `11.7.0`、隔离 CMake `4.2.3` 完成 743-package Linux optional closure；
   `koffi`、`node-pty`、`sharp` 均可在 3091 Host 加载；
 - completion marker 只在 install/scripts/CLI version 全部成功后写入，中断或失败的半安装不能复用；
-- `alpha:profile:dump` 成功组成 DSH Base/Web 与全部 8 个 Aezy package；
+- `alpha:profile:dump` 初始成功组成 DSH Base/Web 与 8 个 Aezy package；当前 selector 已扩展为
+  11 个外置 package，其中 8 个包含 Client bundle，`@aezy/workflow` 等 Host-only package 不增加
+  Web bundle 数；
 - 3091 authenticated Web index 为 21,183 bytes，包含 `@aezy/brand`、`codex`、`project`、
   `security`、`terminal` 以及 Remote/Connection/Modules/UI Session/UI Workspace；
 - 真实 `/api` Remote transport 完成 `workspace/create`、`session/modelCatalog`、
@@ -120,7 +122,8 @@ alpha 已是本分支唯一开发 runtime；mode/preset gate 也已完成：
 
 1. 原生 roster 保留 `standard/ptc/minimal/cordis`，新增 system `codex-app-server`；
 2. catalog UI 过滤、Host 执行门禁、header projection 与 legacy `aezy` 恢复通过真实 3091；
-   `codex-inspired` 只保留路线定义且不可点击；
+   `codex-inspired` 已有只在显式 dogfood 开关下暂存的 internal exact-digest preset，普通 roster
+   仍不可见且不可点击；
 3. 下一步跑相称的 M0–M4.2、Terminal、Security、Codex、自开发 loop 与
    Session/tool/approval/Journal parity gates；
 4. parity gates 全部通过前不把 `alpha` 分支合回主线；本分支机器元数据固定为 alpha.1。

@@ -1,0 +1,18 @@
+# Appended to the checksum-pinned DSH standard preset only by the alpha runtime
+# selector and only when AEZY_CODEX_INSPIRED_DOGFOOD=1. The preset directory id
+# contains the full immutable definition digest. Normal 3091 launches never
+# stage this directory, so the mode is not present in the clickable roster.
+
+- id: codex-inspired-loop
+  name: '@aezy/workflow'
+  config:
+    enabled: !!js process.env.AEZY_CODEX_INSPIRED_DOGFOOD === '1'
+    definitionId: codex-inspired
+    revision: 1
+    digest: f7841cbd49ebf7f3ad8e73db76e945eca86c6c7ac6311871bbd9d402f0fb0248
+    presetId: codex-inspired-r1-f7841cbd49ebf7f3ad8e73db76e945eca86c6c7ac6311871bbd9d402f0fb0248
+    budgets:
+      maxIterations: 64
+      maxWallTimeMs: 3600000
+      maxTokens: 250000
+      maxToolCalls: 256
