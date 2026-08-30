@@ -48,7 +48,8 @@ Node 24/CMake/pnpm store 和 checksum-pinned 本地 release tarball closure；�
 - `packages/aezy-mode/`：alpha-only 的原生 preset 装配、Codex system preset overlay、
   per-preset model directory 与 Host provider fence；不拥有 Agent/Session/tool loop。
 - `packages/aezy-inspector/`：从权威 durable Session events 纯投影 `LoopTrace`，提供 Session
-  header、timeline/runtime graph；不拥有 loop、history、usage 或控制状态。
+  header、静态 backend logic graph 与独立 evidence timeline；不拥有 loop、history、usage 或
+  控制状态。
 - `doc/`：按 milestone、roadmap、reference 和 archive 分层的项目文档；入口见
   [`doc/README.md`](doc/README.md)。
 
@@ -118,7 +119,7 @@ model 或 `codex-app-server` 的 `aezy-codex` route。证据见
 | Codex loop | Managed ChatGPT、DSH dynamic tools 与 Aezy 自开发闭环 | [`codex.md`](doc/milestones/codex.md) |
 | Agent modes | 原生四模式、legacy `aezy`、Codex App Server preset 与双门禁 | [`mode-presets.md`](doc/milestones/mode-presets.md) |
 | Native provider | DSH-owned OAuth、OpenAI/Codex models 与原生 agent loop parity | [`native-provider.md`](doc/milestones/native-provider.md) |
-| Loop Inspector | 双 backend durable trace、Session header、timeline/graph 与 restart rebuild | [`loop-inspector.md`](doc/milestones/loop-inspector.md) |
+| Loop Inspector | 静态 backend logic graph、durable trace overlay、Timeline 与 restart rebuild | [`loop-inspector.md`](doc/milestones/loop-inspector.md) |
 
 关键语义：
 
@@ -226,9 +227,10 @@ hardening。当前 DSH-owned `openai-codex` 已完成 OAuth、真实
 standard Turn、tool/approval/Security/Journal/usage 与 restart-resume gate。E0/CI.0 Loop Inspector
 已有 durable Session event projector、只读 Session header、Timeline 与双 backend live/cold/restart
 trace accuracy；但原 Graph 只是同一 runtime span log 的树形缩略版，不满足静态 agent-loop 逻辑图
-目标，因此 E0 已重新打开。当前先把 backend-specific node/edge/guard/owner blueprint 作为主图，
-runtime trace 只叠加 active/visited/usage/duration；Codex App Server 不公开的内部控制流显示为
-opaque。E1–E3 的现有实现已 revert 且暂停，原 Git 历史保留；不包含 E4。Inspector 不驱动 loop，
+目标，因此 E0 已纠正为 backend-specific node/edge/guard/owner/source blueprint 主图，runtime trace
+只叠加 active/visited/count/usage/duration；Codex App Server 不公开的内部控制流显示为 opaque。
+实现与双 backend restart gate 已通过，当前等待产品验收。E1–E3 的现有实现已 revert 且暂停，
+原 Git 历史保留；不包含 E4。Inspector 不驱动 loop，
 且不得展示 reasoning、secret 或未脱敏 tool arguments。
 
 已实现的 Activity dashboard 实验已经通过三笔独立 revert 全部撤销，不再作为后续基础。

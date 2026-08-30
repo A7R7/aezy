@@ -67,7 +67,7 @@ publication gate 与路线影响见
 | Integrated Terminal | Aezy UI + DSH PTY owner | Session/cwd fence、line UI、动态 details/overlay、状态投影 | fork PTY/job/process；伪装 raw TTY/resize/ConPTY |
 | Multimodal attachment / request projection | DSH owner | 消费 normalized attachment、request variant、route offload 与 provider transport | 自建 image encoder/cache、provider Files index 或 text-only history rewrite |
 | Activity / Status / Usage / Notifications | 原实验废弃；未来拆入 Traffic/Task Board | 需要时投影各 runtime 的权威事件与 usage | 继续旧 Activity 提交；用小状态页代替完整 Board |
-| Loop Inspector | Aezy 只读 observability layer；backend/DSH events 是 truth | backend blueprint + runtime trace、provenance、timeline/graph、restart rebuild | 驱动 loop；复制 event/usage store；展示 reasoning/secret/raw arguments |
+| Loop Inspector | Aezy 只读 observability layer；backend/DSH events 是 truth | static backend blueprint + runtime overlay、provenance、evidence timeline、restart rebuild | 驱动 loop；复制 event/usage store；展示 reasoning/secret/raw arguments |
 | Custom Agent Workflow Editor | Aezy macro workflow 产品面 + DSH/backend runtime owner | immutable declarative definition、validator/capability resolver、preset/workflow compiler | 编辑或复制 model→tool→approval→result micro-loop；执行任意代码；扩大权限 |
 | ChatGPT Auth / Codex runtime | Codex `app-server` owner + Aezy 外置 adapter | 发起 managed browser/device login；投影 account/plan/rate/usage；映射 thread/turn/approval stream | 读取 OAuth token；自写 refresh/credential store；假定 Pro 是通用 API key |
 | Codex-inspired DSH backend | DSH Session/provider/tool/approval owner + Aezy adapter | 在同一 runtime contract 后增加可替换 backend，并复用 DSH 事实 | 为追求 Codex 外观复制 Session/Subagent/Task/PTY/compaction 内核 |
@@ -109,7 +109,7 @@ dsh plugin --profile <name> add <package-or-git-spec>
 | Codex-backed self-development loop | Complete | [`codex.md`](../milestones/codex.md) |
 | Agent modes / Codex App Server preset | Complete on alpha candidate | [`mode-presets.md`](../milestones/mode-presets.md) |
 | DSH-native Codex provider | Complete on alpha candidate | [`native-provider.md`](../milestones/native-provider.md) |
-| E0 / CI.0 Loop Inspector | Reopened: static backend logic graph | [`loop-inspector.md`](../milestones/loop-inspector.md) |
+| E0 / CI.0 Loop Inspector | Corrected candidate: pending product acceptance | [`loop-inspector.md`](../milestones/loop-inspector.md) |
 
 ## 路线纠偏记录
 
@@ -191,17 +191,18 @@ audit、Journal/Review、usage 与 restart-resume 均通过。Node 24 env-proxy 
 这里完成的是 DSH 原生 agent loop 使用 OpenAI/Codex model，不是 Codex-inspired loop。后者若
 立项，仍作为同一 runtime contract 的独立 backend，并在 parity gate 通过前保持不可点击。
 
-### 5. E0 / CI.0：只读 Loop Inspector（Reopened）
+### 5. E0 / CI.0：只读 Loop Inspector（Corrected candidate）
 
 `@aezy/inspector` 已固定最小 `LoopTrace/Span/SourceRef` runtime evidence contract，并通过 Session
 header 与 timeline 消费 DSH cold history/live `eventSource`。既有 Graph 直接重排同一组 span，
 本质仍是调用日志，不能解释 backend 的静态控制流，因此不能作为 E0 完成证据。
 
-纠正后的 E0 以 backend-specific 静态 blueprint 为主体：明确 node、edge、guard、owner、SourceRef
+纠正后的 E0 已以 backend-specific 静态 blueprint 为主体：明确 node、edge、guard、owner、SourceRef
 与 opaque boundary；runtime trace 只投影 active/visited/count/usage/duration overlay。DSH-native 图
 以固定上游 agent-loop/tool/approval/retry/compaction/Subagent contract 为权威；Codex App Server 只画
 公开协议和 Aezy/DSH bridge，私有 agent core 必须是 opaque 节点，不能推测内部步骤。Timeline 继续
-显示实际 occurrence，不再另设与它同源同构的 runtime Graph。
+显示实际 occurrence，不再另设与它同源同构的 runtime Graph。实现与真实 restart gate 已通过，
+但在产品验收前不恢复 E0 Complete。
 
 当前 App Server adapter 只为部分 tool activity 持久保存 `threadId/turnId/itemId`；没有 durable
 correlation 的 App-specific span 必须保持 `partial/unavailable`，不能猜测为权威事实。E0 先证明

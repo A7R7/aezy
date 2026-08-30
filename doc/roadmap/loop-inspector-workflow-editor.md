@@ -1,6 +1,6 @@
 # Loop Inspector 与 Custom Agent Workflow Editor 路线
 
-> 状态：**E0 / CI.0 Reopened；E1–E3 paused**<br>
+> 状态：**E0 / CI.0 corrected candidate；E1–E3 paused**<br>
 > 当前优先级：**静态 backend logic graph**<br>
 > 更新日期：2026-08-30
 
@@ -219,10 +219,11 @@ Inspector 只显示允许列表中的结构化摘要，禁止默认“先收集�
 
 ## 6. E0 / CI.0：开发者优先的只读 Inspector
 
-E0 的 runtime trace foundation 曾完成 live/cold/restart 与脱敏门禁，证据见
-[`../milestones/loop-inspector.md`](../milestones/loop-inspector.md)；但既有 Graph 只是 Timeline span 的
-树形重排，没有静态 edge/guard/owner topology，因此 E0 已重新打开。完整 alpha parity 仍是分支
-合回主线的独立 release gate。E0 没有实现 Editor/compiler，也没有提供 `codex-inspired` 点击入口。
+E0 的 runtime trace foundation 曾完成 live/cold/restart 与脱敏门禁；随后已移除只是 Timeline span
+树形重排的旧 Graph，并交付 revisioned static backend topology、runtime overlay 与独立 Timeline。
+实现和 restart gate 已通过，当前等待产品验收；完整证据见
+[`../milestones/loop-inspector.md`](../milestones/loop-inspector.md)。完整 alpha parity 仍是分支合回
+主线的独立 release gate。E0 没有实现 Editor/compiler，也没有提供 `codex-inspired` 点击入口。
 
 ### E0-A：event/capability inventory
 

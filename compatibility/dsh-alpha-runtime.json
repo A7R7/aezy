@@ -77,7 +77,7 @@
     "remoteControllers": "workspace/create and session/create/list/modelCatalog succeeded through the alpha /api Remote controller transport",
     "modePreset": "agentPresets/list returned standard, ptc, minimal, cordis, legacy aezy, and codex-app-server only; standard/codex-app-server/aezy Session creation and durable agentPreset projections succeeded; catalog UI and Host adapter fences are covered by 4/4 mode and 20/20 Codex tests",
     "stableBaseline": "127.0.0.1:3090 remained HTTP 200 and the stable CLI/profile remained 0.1.1-rc.2",
-    "loopInspector": "DSH-native and Codex App Server live traces equaled cold reconstruction at exact durable prefixes; both rebuilt to identical semantic digests after a 3091 restart. Native was complete with provider usage; App Server was explicitly partial because full item lifecycle and usage are not durable Session facts.",
+    "loopInspector": "Corrected E0 candidate uses revision-2 static backend logic blueprints with explicit nodes, edges, guards, owners and source refs; DSH-native follows pinned upstream owner contracts while the App Server graph has one explicit opaque official core and only public protocol/DSH bridge structure. Durable traces are overlay-only and Timeline remains the occurrence log. At throughSeq 207/861, DSH-native and Codex App Server live traces equaled cold reconstruction and rebuilt to identical semantic digests after a 3091 restart; native was complete and App Server remained explicitly partial.",
     "verifiedAt": "2026-08-30"
   },
   "selector": {
