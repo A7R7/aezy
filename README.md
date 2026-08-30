@@ -49,8 +49,8 @@ Node 24/CMake/pnpm store 和 checksum-pinned 本地 release tarball closure；�
   per-preset model directory 与 Host provider fence；不拥有 Agent/Session/tool loop。
 - `packages/aezy-inspector/`：从权威 durable Session events 纯投影 `LoopTrace`，提供 Session
   header、timeline/runtime graph；不拥有 loop、history、usage 或控制状态。
-- `packages/aezy-workflow/`：内部 immutable LoopDefinition、validator/capability resolver、Settings
-  template Editor 与 bounded control-flow authoring；definition 无运行入口，也不在 preset selector 中。
+- `packages/aezy-workflow/`：内部 immutable LoopDefinition、validator/capability resolver 与
+  system-authored `codex-inspired` 定义；当前无运行入口，也不在 preset selector 中。
 - `doc/`：按 milestone、roadmap、reference 和 archive 分层的项目文档；入口见
   [`doc/README.md`](doc/README.md)。
 
@@ -124,7 +124,6 @@ model 或 `codex-app-server` 的 `aezy-codex` route。证据见
 | Native provider | DSH-owned OAuth、OpenAI/Codex models 与原生 agent loop parity | [`native-provider.md`](doc/milestones/native-provider.md) |
 | Loop Inspector | 双 backend durable trace、Session header、timeline/graph 与 restart rebuild | [`loop-inspector.md`](doc/milestones/loop-inspector.md) |
 | LoopDefinition | immutable revision/digest、strict validator、capability resolver、non-clickable codex-inspired | [`loop-definition.md`](doc/milestones/loop-definition.md) |
-| Workflow Editor | 内建模板、immutable publishing、bounded control-flow authoring | [`workflow-editor.md`](doc/milestones/workflow-editor.md)、[`bounded-workflows.md`](doc/milestones/bounded-workflows.md) |
 
 关键语义：
 
@@ -213,7 +212,7 @@ git -C .local/deepseek-harness checkout --detach cd5ef8148158c3a752a658978873241
 - 当前接手状态：[`HANDOFF.md`](HANDOFF.md)
 - 文档阅读顺序：[`doc/README.md`](doc/README.md)
 - 当前所有权与实施路线：[`doc/roadmap/aezy-upstream-ownership-roadmap.md`](doc/roadmap/aezy-upstream-ownership-roadmap.md)
-- E0–E3 完成与 execution gate：[`doc/roadmap/loop-inspector-workflow-editor.md`](doc/roadmap/loop-inspector-workflow-editor.md)
+- 当前产品路线 E2–E3：[`doc/roadmap/loop-inspector-workflow-editor.md`](doc/roadmap/loop-inspector-workflow-editor.md)
 
 **Codex-backed self-development loop 已完成**：固定 Relay 0.1.2 companion 已完成隔离
 门禁，但因真实 structured tool/approval 硬约束失败而不进入 Aezy profile。最小外置 runtime
@@ -234,10 +233,9 @@ standard Turn、tool/approval/Security/Journal/usage 与 restart-resume gate。E
 也已从 durable Session events 证明 DSH-native 与 Codex App Server 的 live/cold/restart trace
 accuracy，并交付只读 Session header、timeline/runtime graph；App Server 缺失的 durable item usage
 明确显示为 partial。E1 内部 immutable LoopDefinition 已完成；`codex-inspired@1` 因缺少 durable
-definition binding 而 fail-closed，未进入 preset roster。E2 模板式 Editor 与 E3 bounded control-
-flow authoring 已完成，发布 revision 在 Host restart 后可恢复；definition execution 仍因 binding、
-compiler 与 capability gaps 不可用。E4 不在范围。Inspector 不驱动 loop，且不得展示 reasoning、
-secret 或未脱敏 tool arguments。
+definition binding 而 fail-closed，未进入 preset roster。当前依次实施 E2 模板式 Editor 与 E3
+受限 control flow；不包含 E4。Inspector 不驱动 loop，且不得展示 reasoning、secret 或未脱敏
+tool arguments。
 
 已实现的 Activity dashboard 实验已经通过三笔独立 revert 全部撤销，不再作为后续基础。
 Traffic Board 与 Task Board 暂缓；Browser integration 暂停并默认使用外部浏览器。后续若实现

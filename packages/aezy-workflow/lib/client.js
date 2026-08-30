@@ -288,7 +288,7 @@ window.__ModuleLoader__.load({
 											color: colors.muted,
 											marginTop: 7
 										},
-										children: template.nodes.map((node) => `${node.label} [${node.type}]${node.config === void 0 ? "" : ` ${JSON.stringify(node.config)}`}`).join(" → ")
+										children: template.nodes.map((node) => `${node.label} [${node.type}]`).join(" → ")
 									}),
 									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 										style: {

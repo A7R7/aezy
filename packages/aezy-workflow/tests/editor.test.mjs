@@ -68,20 +68,3 @@ test('built client is a Settings template editor with no execution or arbitrary 
   assert.doesNotMatch(source, /session\/prompt|workflowEngine|new Function|eval\(|import definition|Run workflow/i)
   assert.match(bundle, /data-aezy-workflow-editor/)
 })
-
-test('E3 control-flow template is authorable but capability resolution remains fail-closed', async () => {
-  const root = await mkdtemp('/tmp/aezy-workflow-e3-')
-  const store = new WorkflowDefinitionStore(join(root, 'definitions.json'))
-  const template = store.snapshot().templates.find(item => item.id === 'bounded-review')
-  assert.ok(template)
-  assert.equal(template.nodes.some(node => node.type === 'condition'), true)
-  assert.equal(template.nodes.some(node => node.type === 'parallel'), true)
-  assert.equal(template.nodes.some(node => node.type === 'subagent'), true)
-  assert.equal(template.nodes.some(node => node.type === 'bounded-retry'), true)
-  const candidate = draft('my-bounded-review')
-  const preview = store.preview({ templateId: 'bounded-review', draft: candidate })
-  assert.equal(preview.resolution.executable, false)
-  assert.deepEqual(preview.resolution.missing, [
-    'bounded-retry', 'durable-definition-binding', 'parallel', 'structured-facts',
-  ])
-})

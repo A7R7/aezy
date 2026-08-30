@@ -62,7 +62,6 @@ export declare const LOOP_COMPILER_TARGET: 'dsh-agent-preset'
 export declare const LOOP_COMPILER_VERSION: 1
 export declare const LOOP_NODE_TYPES: readonly LoopNodeType[]
 export declare const E3_NODE_TYPES: readonly LoopNodeType[]
-export declare const STRUCTURED_FACTS: readonly string[]
 export declare function validateLoopDefinition(input: unknown): DefinitionValidation
 export declare function loopDefinitionDigest(definition: LoopDefinition): string
 export declare function publishLoopDefinition(definition: LoopDefinition, trust?: DefinitionTrust): PublishedLoopDefinition

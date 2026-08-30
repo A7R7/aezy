@@ -19,15 +19,11 @@ export const LOOP_NODE_TYPES = Object.freeze([
 export const E3_NODE_TYPES = Object.freeze([
   'condition', 'bounded-retry', 'parallel', 'subagent',
 ])
-export const STRUCTURED_FACTS = Object.freeze([
-  'tests-passed', 'review-passed', 'tool-failed', 'subagent-failed',
-])
 
 const IDENTIFIER = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/
 const DIGEST = /^[0-9a-f]{64}$/
 const NODE_TYPES = new Set(LOOP_NODE_TYPES)
 const E3_TYPES = new Set(E3_NODE_TYPES)
-const FACTS = new Set(STRUCTURED_FACTS)
 const ROOT_KEYS = new Set([
   'schemaVersion', 'id', 'revision', 'name', 'description', 'backend',
   'compiler', 'budgets', 'nodes', 'edges',
@@ -38,8 +34,8 @@ const BUDGET_KEYS = new Set(['maxIterations', 'maxWallTimeMs', 'maxTokens', 'max
 const NODE_KEYS = new Set(['id', 'type', 'label', 'requires', 'config'])
 const EDGE_KEYS = new Set(['from', 'to', 'outcome'])
 const CONDITION_KEYS = new Set(['fact', 'operator', 'value'])
-const PARALLEL_KEYS = new Set(['join', 'maxConcurrency', 'cancelRemaining', 'failurePolicy'])
-const SUBAGENT_KEYS = new Set(['maxChildren', 'cancelWithParent', 'failurePolicy'])
+const PARALLEL_KEYS = new Set(['join', 'maxConcurrency'])
+const SUBAGENT_KEYS = new Set(['maxChildren'])
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -109,9 +105,7 @@ function validateNodeConfig(node, path, errors) {
   const configPath = `${path}.config`
   if (node.type === 'condition') {
     if (!ownKeys(node.config, CONDITION_KEYS, configPath, errors)) return
-    if (identifier(node.config.fact, `${configPath}.fact`, errors) && !FACTS.has(node.config.fact)) {
-      errors.push({ path: `${configPath}.fact`, code: 'unknown-fact', message: 'must name a registered structured fact' })
-    }
+    identifier(node.config.fact, `${configPath}.fact`, errors)
     if (!['equals', 'not-equals', 'present', 'absent'].includes(node.config.operator)) {
       errors.push({ path: `${configPath}.operator`, code: 'operator', message: 'must be a registered structured-fact operator' })
     }
@@ -129,15 +123,11 @@ function validateNodeConfig(node, path, errors) {
       errors.push({ path: `${configPath}.join`, code: 'join', message: 'must be all or all-settled' })
     }
     positiveInteger(node.config.maxConcurrency, `${configPath}.maxConcurrency`, errors)
-    if (typeof node.config.cancelRemaining !== 'boolean') errors.push({ path: `${configPath}.cancelRemaining`, code: 'boolean', message: 'must be explicit' })
-    if (!['fail-fast', 'collect'].includes(node.config.failurePolicy)) errors.push({ path: `${configPath}.failurePolicy`, code: 'failure-policy', message: 'must be fail-fast or collect' })
     return
   }
   if (node.type === 'subagent') {
     if (!ownKeys(node.config, SUBAGENT_KEYS, configPath, errors)) return
     positiveInteger(node.config.maxChildren, `${configPath}.maxChildren`, errors)
-    if (node.config.cancelWithParent !== true) errors.push({ path: `${configPath}.cancelWithParent`, code: 'cancel-propagation', message: 'must remain true' })
-    if (!['fail', 'continue'].includes(node.config.failurePolicy)) errors.push({ path: `${configPath}.failurePolicy`, code: 'failure-policy', message: 'must be fail or continue' })
     return
   }
   if (node.config !== undefined) {
@@ -277,22 +267,6 @@ export function validateLoopDefinition(input) {
   for (const component of cyclicComponents(adjacency)) {
     if (!component.some(id => nodeTypes.get(id) === 'bounded-retry')) {
       errors.push({ path: '$.edges', code: 'unbounded-cycle', message: 'every cycle must pass through a bounded-retry node' })
-    }
-  }
-  for (const node of (Array.isArray(input.nodes) ? input.nodes : [])) {
-    if (node.type !== 'bounded-retry' || !isRecord(node.config) || !isRecord(input.budgets)) continue
-    for (const key of BUDGET_KEYS) {
-      if (Number.isSafeInteger(node.config[key]) && Number.isSafeInteger(input.budgets[key])
-        && node.config[key] > input.budgets[key]) {
-        errors.push({ path: `$.nodes.${String(node.id)}.config.${key}`, code: 'budget-conflict', message: 'cannot exceed the global budget' })
-      }
-    }
-  }
-  for (const node of (Array.isArray(input.nodes) ? input.nodes : [])) {
-    if (node.type !== 'condition') continue
-    const outcomes = (Array.isArray(input.edges) ? input.edges : []).filter(edge => edge.from === node.id).map(edge => edge.outcome)
-    if (outcomes.filter(value => value === 'true').length !== 1 || outcomes.filter(value => value === 'false').length !== 1) {
-      errors.push({ path: '$.edges', code: 'condition-branches', message: `condition ${String(node.id)} must have one true and one false edge` })
     }
   }
   return errors.length === 0 ? { ok: true, errors: [] } : { ok: false, errors }

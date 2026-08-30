@@ -5,7 +5,7 @@
 > 分支：`alpha`<br>
 > 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
 > OpenAI/Codex provider（Complete）；E0/CI.0 Loop Inspector（Complete）；E1 immutable
-> LoopDefinition、E2 Template Editor、E3 bounded control-flow authoring（Complete，execution unavailable）
+> LoopDefinition（Complete，execution unavailable）
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
@@ -44,7 +44,7 @@
 1 个 Landlock entry tarball、逐文件 SHA-256 与官方 packed-install verification。本 `alpha` 分支
 只面向 `~/.aezy-alpha/dsh`、`aezy-alpha` profile 与 3091，不承诺 rc.2 runtime 兼容，也不能从
 reference 源码运行。隔离 selector、checksum-pinned consumer、composition、
-Web、Workspace、Session、mode/preset 与 8 个 Aezy Client bundle 已实机通过；完整证据见
+Web、Workspace、Session、mode/preset 与 7 个 Aezy Client bundle 已实机通过；完整证据见
 `doc/reference/dsh-alpha1-source-runtime.md`。alpha.1
 移除了 ApiProxy/client-runtime，新增 Remote controllers、package-owned shipped presets、PTC rename、
 provider-card slots、exact Turn usage、subagent model routing 与 experimental Agent Team；详细影响和
@@ -68,8 +68,7 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
 - `packages/aezy-inspector`：只读 Session event projector、LoopTrace contract、header 与
   timeline/runtime graph；不拥有 loop、history、usage 或控制状态。
 - `packages/aezy-workflow`：内部 immutable LoopDefinition、strict validator/capability resolver、
-  Settings template Editor、bounded control-flow authoring 与 system-authored `codex-inspired@1`；
-  execution unavailable，且不在 preset roster。
+  system-authored `codex-inspired@1`；当前无运行入口且不在 preset roster。
 
 ## 3. 当前产品基线
 
@@ -91,7 +90,6 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
 | Native provider | DSH-owned OAuth、OpenAI/Codex model、原生 tool/approval/Security/Journal/restart | `doc/milestones/native-provider.md` |
 | E0 / CI.0 | 双 backend durable LoopTrace、Session header、timeline/graph、live/cold/restart parity | `doc/milestones/loop-inspector.md` |
 | E1 | immutable LoopDefinition、canonical digest、fail-closed capability resolver | `doc/milestones/loop-definition.md` |
-| E2–E3 | template Editor、immutable publishing、bounded control-flow authoring | `doc/milestones/workflow-editor.md`、`doc/milestones/bounded-workflows.md` |
 
 `openai-codex` 是 standard/PTC/minimal/creative 可用的 DSH-native provider；
 `codex-app-server` 仍只使用 `aezy-codex`。两者的模型可能同名，但 agent loop owner 不同。
@@ -234,14 +232,10 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 10. 已完成：E1 immutable LoopDefinition 与 `codex-inspired@1` system-authored validation dogfood。
     alpha.1 缺少 durable exact definition binding，因此 resolver fail-closed、definition 不可运行，
     3091 roster 中没有该 preset。证据见 `doc/milestones/loop-definition.md`。
-11. 已完成：E2 template Editor 与 E3 受限 condition/parallel/Subagent/bounded retry authoring；
-    `e2-template-gate@1`、`e3-bounded-gate@1` 均跨 Host restart 保持 exact digest。definition
-    execution 仍因 durable binding/compiler/capability gaps fail-closed。证据见
-    `doc/milestones/workflow-editor.md` 与 `doc/milestones/bounded-workflows.md`。
-12. E4 与外置 node SDK 不在当前实施范围，也不为它预留抽象。下一运行阶段需要独立、慎重的
-    DSH-owned durable binding/compiler seam 决策。完整路线见
+11. 当前依次实施 E2 模板 Editor、E3 受限 condition/parallel/Subagent/bounded retry。E4 与外置
+    node SDK 不在当前实施范围，也不为它预留抽象。完整路线见
     `doc/roadmap/loop-inspector-workflow-editor.md`。
-13. 按真实 dogfood 故障 harden 已完成的两条 backend；Traffic Board 与 Task Board 继续暂缓。
+12. 按真实 dogfood 故障 harden 已完成的两条 backend；Traffic Board 与 Task Board 继续暂缓。
 
 原 Activity dashboard 实验已全部废弃：原提交 `eae530ddcb`、`4d187252b0`、`d77430c012`
 分别由 `4428fc8037`、`2cb30ba1ab`、`b89422ddc0` 的独立 revert 撤销。不要从这些旧提交继续
@@ -321,8 +315,8 @@ usage/restart 均已签收；codex-inspired 暂不提供选项。
 
 完整 alpha parity 仍是合回主线的 release gate；E0/CI.0 只读 Loop Inspector 已签收。先读
 doc/milestones/loop-inspector.md 与 doc/roadmap/loop-inspector-workflow-editor.md，从 E1 内部、
-E0–E3 已签收；不包含 E4。definition execution 继续 fail-closed，`codex-inspired` 不进入 preset
-roster。下一运行阶段必须先审计/决定 DSH-owned durable binding/compiler seam。Inspector 失败
+E1 immutable LoopDefinition 已签收，随后依次实施 E2 模板 Editor 与 E3 受限 control flow；不包含
+E4。definition execution 继续 fail-closed，`codex-inspired` 不进入 preset roster。Inspector 失败
 只能降低可见性，不得影响 Turn，也不得展示 reasoning、credential、
 secret prompt 或未脱敏 tool arguments。`codex-inspired` 在完整 parity gate 前不可点击。不要读取
 或管理 OAuth token，不修改 DSH 源码，不实现

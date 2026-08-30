@@ -4,7 +4,7 @@ export interface WorkflowTemplateView {
   id: string; name: string; description: string; digest: string
   backend: { id: string; capabilities: string[] }
   budgets: LoopBudgets
-  nodes: Array<{ id: string; type: string; label: string; config?: Record<string, unknown> }>
+  nodes: Array<{ id: string; type: string; label: string }>
 }
 export declare function templateView(template: PublishedLoopDefinition): WorkflowTemplateView
 export declare function materializeTemplate(templateId: string, draft: WorkflowDraft, revision: number): import('./definition.js').LoopDefinition

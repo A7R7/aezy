@@ -58,11 +58,6 @@ async function webRequest(path, init = {}) {
 const before = await webRequest('/aezy/api/workflows')
 assert.equal(before.executionAvailable, false)
 assert.equal(before.templates.some(template => template.id === 'codex-inspired'), true)
-const boundedTemplate = before.templates.find(template => template.id === 'bounded-review')
-assert.ok(boundedTemplate)
-for (const kind of ['condition', 'parallel', 'subagent', 'bounded-retry']) {
-  assert.equal(boundedTemplate.nodes.some(node => node.type === kind), true)
-}
 const gateId = 'e2-template-gate'
 const draft = {
   id: gateId,
@@ -85,30 +80,6 @@ if (gateRevision === undefined) {
 const after = await webRequest('/aezy/api/workflows')
 assert.equal(after.revisions.some(item => item.body.id === gateId && item.digest === gateRevision.digest), true)
 
-const e3Id = 'e3-bounded-gate'
-const e3Draft = {
-  id: e3Id,
-  name: 'E3 Bounded Gate',
-  description: 'Structured bounded control-flow publishing gate.',
-  budgets: { maxIterations: 6, maxWallTimeMs: 900_000, maxTokens: 80_000, maxToolCalls: 64 },
-}
-let e3Revision = after.revisions.find(item => item.body.id === e3Id)
-if (e3Revision === undefined) {
-  const preview = await webRequest('/aezy/api/workflows/preview', {
-    method: 'POST', body: JSON.stringify({ templateId: 'bounded-review', draft: e3Draft }),
-  })
-  assert.equal(preview.resolution.executable, false)
-  assert.deepEqual(preview.resolution.missing, [
-    'bounded-retry', 'durable-definition-binding', 'parallel', 'structured-facts',
-  ])
-  const published = await webRequest('/aezy/api/workflows/publish', {
-    method: 'POST', body: JSON.stringify({ templateId: 'bounded-review', draft: e3Draft, expectedRevision: 0 }),
-  })
-  e3Revision = published.revision
-}
-const finalSnapshot = await webRequest('/aezy/api/workflows')
-assert.equal(finalSnapshot.revisions.some(item => item.body.id === e3Id && item.digest === e3Revision.digest), true)
-
 const response = await fetch(`${baseUrl}/api/agentPresets/list`, {
   method: 'POST',
   headers: { Cookie: cookie, 'content-type': 'application/json' },
@@ -130,7 +101,6 @@ process.stdout.write(`${JSON.stringify({
   definition: { id: definition.body.id, revision: definition.revision, digest: definition.digest },
   resolution: { executable: resolution.executable, missing: resolution.missing },
   templateEditor: { published: `${gateRevision.body.id}@${String(gateRevision.revision)}`, digest: gateRevision.digest },
-  boundedControlFlow: { published: `${e3Revision.body.id}@${String(e3Revision.revision)}`, digest: e3Revision.digest, executable: false },
   webIndex: { bytes: Buffer.byteLength(index), workflowBundle: true },
   clickablePreset: false,
 }, null, 2)}\n`)

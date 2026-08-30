@@ -5,7 +5,7 @@ type Budget = { maxIterations: number; maxWallTimeMs: number; maxTokens: number;
 type Template = {
   id: string; name: string; description: string; digest: string
   backend: { id: string; capabilities: string[] }; budgets: Budget
-  nodes: Array<{ id: string; type: string; label: string; config?: Record<string, unknown> }>
+  nodes: Array<{ id: string; type: string; label: string }>
 }
 type Revision = { body: { id: string; revision: number; name: string }; digest: string }
 type Snapshot = { executionAvailable: false; templates: Template[]; revisions: Revision[] }
@@ -88,7 +88,7 @@ export function WorkflowSettingsSection(_props: SettingsSectionOwnerProps) {
         {([['maxIterations','Iterations'],['maxWallTimeMs','Wall time ms'],['maxTokens','Tokens'],['maxToolCalls','Tool calls']] as const).map(([key,label]) => <label key={key}>{label}<br/><input type="number" min={1} value={draft.budgets[key]} onChange={event => { setBudget(key,event.target.value); setPreview(null) }} style={{ ...field, marginTop: 5, width: '100%', boxSizing: 'border-box' }}/></label>)}
       </div>
       <div style={{ padding: 14, border: `1px solid ${colors.border}`, borderRadius: 10, background: colors.surface }}>
-        <strong>Template graph</strong><div style={{ color: colors.muted, marginTop: 7 }}>{template.nodes.map(node => `${node.label} [${node.type}]${node.config === undefined ? '' : ` ${JSON.stringify(node.config)}`}`).join(' → ')}</div>
+        <strong>Template graph</strong><div style={{ color: colors.muted, marginTop: 7 }}>{template.nodes.map(node => `${node.label} [${node.type}]`).join(' → ')}</div>
         <div style={{ color: colors.muted, marginTop: 6 }}>Backend: {template.backend.id} · Template digest {template.digest.slice(0,12)}…</div>
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
