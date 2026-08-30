@@ -47,10 +47,53 @@ export interface Span {
   readonly safeFacts?: Readonly<Record<string, TraceFact<string | number | boolean | null>>>
 }
 
+export type BlueprintNodeKind = 'boundary' | 'phase' | 'decision' | 'model' |
+  'retry' | 'tool' | 'approval' | 'subagent' | 'compaction' | 'finalize' | 'opaque'
+export type BlueprintEdgeKind = 'normal' | 'branch' | 'loop-back' | 'retry' | 'cancel'
+
+export interface BlueprintSourceRef {
+  readonly authority: 'upstream-source' | 'public-protocol' | 'adapter-source'
+  readonly owner: string
+  readonly symbol: string
+  readonly revision: string
+  readonly path: string
+}
+
+export interface BlueprintRuntimeBinding {
+  readonly spanNodeIds: readonly string[]
+  readonly statuses?: readonly SpanStatus[]
+}
+
+export interface BlueprintNode {
+  readonly id: string
+  readonly kind: BlueprintNodeKind
+  readonly label: string
+  readonly owner: string
+  readonly description: string
+  readonly position: Readonly<{ x: number; y: number }>
+  readonly sourceRefs: readonly BlueprintSourceRef[]
+  readonly runtime?: BlueprintRuntimeBinding
+  readonly opaque?: true
+}
+
+export interface BlueprintEdge {
+  readonly id: string
+  readonly from: string
+  readonly to: string
+  readonly kind: BlueprintEdgeKind
+  readonly label: string
+  readonly guard: string
+  readonly sourceRefs: readonly BlueprintSourceRef[]
+}
+
 export interface LoopBlueprint {
   readonly id: string
   readonly revision: number
-  readonly nodes: readonly string[]
+  readonly title: string
+  readonly description: string
+  readonly canvas: Readonly<{ width: number; height: number; nodeWidth: number; nodeHeight: number }>
+  readonly nodes: readonly BlueprintNode[]
+  readonly edges: readonly BlueprintEdge[]
   readonly digest: string
 }
 
@@ -89,7 +132,37 @@ export interface LoopTraceInput {
   readonly running?: boolean
 }
 
+export interface BlueprintNodeOverlay {
+  readonly nodeId: string
+  readonly visited: boolean
+  readonly active: boolean
+  readonly visits: number
+  readonly status: SpanStatus
+  readonly durationMs: number
+  readonly activeSince?: number
+  readonly usage?: TraceUsage
+  readonly sources: readonly SourceRef[]
+  readonly evidence: 'derived'
+}
+
+export interface BlueprintEdgeOverlay {
+  readonly edgeId: string
+  readonly traversed: boolean
+  readonly active: boolean
+  readonly traversals: number
+  readonly evidence: 'derived'
+}
+
+export interface BlueprintOverlay {
+  readonly blueprintId: string
+  readonly blueprintRevision: number
+  readonly nodes: Readonly<Record<string, BlueprintNodeOverlay>>
+  readonly edges: Readonly<Record<string, BlueprintEdgeOverlay>>
+}
+
 export declare const LOOP_TRACE_SCHEMA_VERSION: 1
 export declare const EVIDENCE: Readonly<Record<EvidenceClass, EvidenceClass>>
 export declare const LOOP_BLUEPRINTS: Readonly<Record<'dsh-native' | 'codex-app-server', LoopBlueprint>>
+export declare function canonicalBlueprint(blueprint: LoopBlueprint): string
+export declare function projectBlueprintOverlay(trace: LoopTrace): BlueprintOverlay
 export declare function projectLoopTrace(input?: LoopTraceInput): LoopTrace

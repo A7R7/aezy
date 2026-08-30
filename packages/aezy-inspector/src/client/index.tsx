@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { Context } from '@deepseek-ai/cordis'
-import { projectLoopTrace } from '../trace.js'
-import type { LoopTrace, Span, TraceUsage } from '../trace.js'
+import { projectBlueprintOverlay, projectLoopTrace } from '../trace.js'
+import type {
+  BlueprintEdge, BlueprintNode, BlueprintSourceRef, LoopTrace, Span, TraceUsage,
+} from '../trace.js'
 
 type Observable<T> = {
   getSnapshot(): T
@@ -316,42 +318,152 @@ function Timeline({ trace, now }: { trace: LoopTrace; now: number }) {
   </ol>
 }
 
-function GraphNode({ span, children, trace }: { span: Span; children: Map<string, Span[]>; trace: LoopTrace }) {
-  const nested = children.get(span.spanId) ?? []
-  const active = trace.activeSpanIds.includes(span.spanId)
-  return <div data-aezy-loop-graph-node={span.blueprintNodeId ?? span.kind} data-span-status={span.status.value} style={{ minWidth: 145, maxWidth: 260, flex: '1 1 160px', padding: 8, border: `1px solid ${active ? colors.active : colors.border}`, boxShadow: active ? `0 0 0 1px ${colors.active}` : 'none', borderRadius: 8, background: colors.soft }}>
-    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-      <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: statusColor(span.status.value) }} />
-      <strong style={{ fontSize: 11 }}>{span.label}</strong>
-    </div>
-    <div style={{ marginTop: 3, color: colors.muted, fontSize: 9 }}>{span.blueprintNodeId ?? span.kind}</div>
-    {nested.length === 0 ? null : <div style={{ marginTop: 9, paddingTop: 9, borderTop: `1px solid ${colors.border}`, display: 'flex', alignItems: 'stretch', gap: 7, flexWrap: 'wrap' }}>
-      {nested.map(child => <GraphNode key={child.spanId} span={child} children={children} trace={trace} />)}
-    </div>}
-  </div>
+type BlueprintSelection = { kind: 'node'; value: BlueprintNode } | { kind: 'edge'; value: BlueprintEdge }
+
+function blueprintPath(edge: BlueprintEdge, nodes: Map<string, BlueprintNode>, width: number, height: number): string {
+  const from = nodes.get(edge.from)
+  const to = nodes.get(edge.to)
+  if (from === undefined || to === undefined) return ''
+  const sx = from.position.x + width / 2
+  const sy = from.position.y + height / 2
+  const tx = to.position.x + width / 2
+  const ty = to.position.y + height / 2
+  if (edge.kind === 'loop-back') {
+    const bend = Math.max(70, Math.abs(ty - sy) * 0.35)
+    return `M ${String(sx)} ${String(sy)} C ${String(sx)} ${String(sy + bend)}, ${String(tx)} ${String(ty - bend)}, ${String(tx)} ${String(ty)}`
+  }
+  const middle = (sx + tx) / 2
+  return `M ${String(sx)} ${String(sy)} C ${String(middle)} ${String(sy)}, ${String(middle)} ${String(ty)}, ${String(tx)} ${String(ty)}`
 }
 
-function Graph({ trace }: { trace: LoopTrace }) {
-  const spans = trace.spans
-  const ids = new Set(spans.map(span => span.spanId))
-  const children = new Map<string, Span[]>()
-  const roots: Span[] = []
-  for (const span of spans) {
-    if (span.parentSpanId === undefined || !ids.has(span.parentSpanId)) roots.push(span)
-    else children.set(span.parentSpanId, [...children.get(span.parentSpanId) ?? [], span])
-  }
-  return <div data-aezy-loop-graph style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-    <div style={{ color: colors.muted, fontSize: 10 }}>
-      Blueprint {trace.blueprint.id}@{String(trace.blueprint.revision)} · {trace.blueprint.digest.slice(0, 22)}…
+function BlueprintRefs({ refs }: { refs: readonly BlueprintSourceRef[] }) {
+  return <ul style={{ margin: '6px 0 0', paddingLeft: 17, color: colors.muted, fontSize: 10 }}>
+    {refs.map(source => <li key={`${source.authority}:${source.owner}:${source.symbol}`} style={{ marginTop: 3 }}>
+      {source.owner} · {source.symbol}<br />
+      <span style={{ opacity: .78 }}>{source.revision} · {source.path}</span>
+    </li>)}
+  </ul>
+}
+
+function LogicGraph({ trace, now }: { trace: LoopTrace; now: number }) {
+  const blueprint = trace.blueprint
+  const overlay = useMemo(() => projectBlueprintOverlay(trace), [trace])
+  const nodes = useMemo(() => new Map(blueprint.nodes.map(nodeValue => [nodeValue.id, nodeValue])), [blueprint])
+  const [selection, setSelection] = useState<BlueprintSelection | null>(null)
+  const [fit, setFit] = useState(true)
+  const [availableWidth, setAvailableWidth] = useState(blueprint.canvas.width)
+  const frame = useRef<HTMLDivElement>(null)
+  const { width, height, nodeWidth, nodeHeight } = blueprint.canvas
+
+  useEffect(() => {
+    const element = frame.current
+    if (element === null || typeof ResizeObserver === 'undefined') return
+    const update = () => { setAvailableWidth(Math.max(1, element.clientWidth)) }
+    const observer = new ResizeObserver(update)
+    observer.observe(element)
+    update()
+    return () => { observer.disconnect() }
+  }, [blueprint])
+
+  const scale = fit ? Math.min(1, availableWidth / width) : 1
+
+  return <section data-aezy-loop-logic-graph data-blueprint={blueprint.id} style={{ padding: 12 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, marginBottom: 10 }}>
+      <div>
+        <strong style={{ display: 'block', fontSize: 13 }}>{blueprint.title}</strong>
+        <span style={{ display: 'block', maxWidth: 760, marginTop: 3, color: colors.muted, fontSize: 10 }}>{blueprint.description}</span>
+      </div>
+      <div style={{ marginLeft: 'auto', color: colors.muted, fontSize: 9, textAlign: 'right' }}>
+        Static blueprint v{String(blueprint.revision)}<br />{blueprint.digest.slice(0, 24)}…<br />
+        <button type="button" onClick={() => { setFit(value => !value) }} style={{ marginTop: 4, padding: 0, border: 0, background: 'transparent', color: colors.active, cursor: 'pointer', fontSize: 9 }}>{fit ? 'Open at 100%' : 'Fit overview'}</button>
+      </div>
     </div>
-    {roots.map(span => <GraphNode key={span.spanId} span={span} children={children} trace={trace} />)}
-  </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, color: colors.muted, fontSize: 9 }}>
+      <span><i style={{ display: 'inline-block', width: 8, height: 8, marginRight: 4, borderRadius: '50%', background: colors.active }} />active</span>
+      <span><i style={{ display: 'inline-block', width: 8, height: 8, marginRight: 4, borderRadius: '50%', background: colors.done }} />visited</span>
+      <span>solid topology is static · highlights are durable trace overlay</span>
+    </div>
+    <div ref={frame} style={{ width: '100%', overflow: 'auto' }}>
+      <div style={{ position: 'relative', width: width * scale, height: height * scale }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, width, height, transform: `scale(${String(scale)})`, transformOrigin: 'top left', border: `1px solid ${colors.border}`, borderRadius: 10, background: colors.raised, overflow: 'hidden' }}>
+      <svg aria-label={`${blueprint.title} edges`} width={width} height={height} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        <defs>
+          <marker id="aezy-loop-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
+          </marker>
+        </defs>
+        {blueprint.edges.map(edgeValue => {
+          const state = overlay.edges[edgeValue.id]
+          const from = nodes.get(edgeValue.from)
+          const to = nodes.get(edgeValue.to)
+          if (from === undefined || to === undefined) return null
+          const labelX = (from.position.x + to.position.x + nodeWidth) / 2
+          const labelY = (from.position.y + to.position.y + nodeHeight) / 2 - 5
+          const stroke = state.active ? colors.active : state.traversed ? colors.done : colors.muted
+          return <g key={edgeValue.id} data-aezy-loop-blueprint-edge={edgeValue.id} data-edge-kind={edgeValue.kind} data-traversed={String(state.traversed)}>
+            <path d={blueprintPath(edgeValue, nodes, nodeWidth, nodeHeight)} fill="none" stroke={stroke} strokeOpacity={state.traversed ? .9 : .34} strokeWidth={state.active ? 2.4 : edgeValue.kind === 'loop-back' ? 1.7 : 1.3} strokeDasharray={edgeValue.kind === 'loop-back' || edgeValue.kind === 'retry' ? '5 4' : undefined} markerEnd="url(#aezy-loop-arrow)" />
+            <text x={labelX} y={labelY} textAnchor="middle" fill={state.traversed ? colors.text : colors.muted} stroke={colors.raised} strokeWidth="4" paintOrder="stroke" fontSize="9">{edgeValue.label}</text>
+          </g>
+        })}
+      </svg>
+      {blueprint.nodes.map(nodeValue => {
+        const state = overlay.nodes[nodeValue.id]
+        const activeDuration = state.activeSince === undefined ? 0 : Math.max(0, now - state.activeSince)
+        const elapsed = state.durationMs + activeDuration
+        const tokens = usageTotal(state.usage)
+        const borderColor = state.active ? colors.active : state.visited ? colors.done : colors.border
+        return <button
+          key={nodeValue.id}
+          type="button"
+          data-aezy-loop-blueprint-node={nodeValue.id}
+          data-node-kind={nodeValue.kind}
+          data-runtime-status={state.status}
+          aria-label={`${nodeValue.label}; owner ${nodeValue.owner}; ${state.visited ? `visited ${String(state.visits)} times` : 'not visited in loaded Session history'}`}
+          onClick={() => { setSelection({ kind: 'node', value: nodeValue }) }}
+          style={{
+            position: 'absolute', left: nodeValue.position.x, top: nodeValue.position.y,
+            width: nodeWidth, height: nodeHeight, padding: '8px 9px', textAlign: 'left', overflow: 'hidden',
+            border: `${nodeValue.opaque ? '2px dashed' : '1px solid'} ${borderColor}`,
+            boxShadow: state.active ? `0 0 0 2px color-mix(in srgb, ${colors.active} 28%, transparent)` : 'none',
+            borderRadius: 8, background: nodeValue.opaque ? `repeating-linear-gradient(135deg, ${colors.soft}, ${colors.soft} 7px, ${colors.raised} 7px, ${colors.raised} 14px)` : colors.soft,
+            color: colors.text, cursor: 'pointer', zIndex: 1,
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <i aria-hidden="true" style={{ width: 7, height: 7, flex: '0 0 auto', borderRadius: '50%', background: state.active ? colors.active : state.visited ? statusColor(state.status) : colors.muted }} />
+            <strong style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11 }}>{nodeValue.label}</strong>
+            {nodeValue.opaque ? <small style={{ marginLeft: 'auto', color: colors.warning, fontSize: 8 }}>OPAQUE</small> : null}
+          </span>
+          <span style={{ display: 'block', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: colors.muted, fontSize: 9 }}>{nodeValue.owner}</span>
+          <span style={{ display: 'block', marginTop: 7, color: state.visited ? colors.text : colors.muted, fontSize: 9 }}>
+            {state.visited ? `${String(state.visits)} visit${state.visits === 1 ? '' : 's'}` : 'static'}
+            {elapsed > 0 ? ` · ${durationText(elapsed)}` : ''}{tokens === null ? '' : ` · ${shortNumber(tokens)} tok`}
+          </span>
+        </button>
+      })}
+        </div>
+      </div>
+    </div>
+    <div style={{ marginTop: 10, minHeight: 76, padding: '9px 10px', border: `1px solid ${colors.border}`, borderRadius: 8, background: colors.soft }}>
+      {selection === null ? <span style={{ color: colors.muted, fontSize: 10 }}>Select a node to inspect its static owner and source contract. Edge labels show the branch or loop guard.</span>
+        : selection.kind === 'node' ? <>
+          <strong style={{ fontSize: 11 }}>{selection.value.label}</strong>
+          <span style={{ marginLeft: 7, color: colors.muted, fontSize: 9 }}>{selection.value.kind} · {selection.value.owner}{selection.value.opaque ? ' · opaque boundary' : ''}</span>
+          <p style={{ margin: '5px 0 0', color: colors.muted, fontSize: 10 }}>{selection.value.description}</p>
+          <BlueprintRefs refs={selection.value.sourceRefs} />
+        </> : <>
+          <strong style={{ fontSize: 11 }}>{selection.value.label}</strong>
+          <p style={{ margin: '5px 0 0', color: colors.muted, fontSize: 10 }}>Guard: {selection.value.guard}</p>
+          <BlueprintRefs refs={selection.value.sourceRefs} />
+        </>}
+    </div>
+  </section>
 }
 
 export function InspectorPanel({ panel, trace: source, surface, closePanel, syncLayout }: PanelProps) {
   const target = useSyncExternalStore(panel.subscribe, panel.getSnapshot)
   const trace = useSyncExternalStore(source.subscribe, source.getSnapshot)
-  const [view, setView] = useState<'timeline' | 'graph'>('timeline')
+  const [view, setView] = useState<'logic' | 'timeline'>('logic')
   const [viewport, setViewport] = useState(() => window.innerWidth)
   const [now, setNow] = useState(() => Date.now())
   const narrow = viewport < 760
@@ -396,14 +508,14 @@ export function InspectorPanel({ panel, trace: source, surface, closePanel, sync
         <button type="button" aria-label="Close Loop Inspector" onClick={closePanel} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: colors.muted, cursor: 'pointer', fontSize: 20 }}>×</button>
       </div>
       <div role="tablist" aria-label="Loop Inspector view" style={{ display: 'flex', gap: 5, marginTop: 9 }}>
-        {(['timeline', 'graph'] as const).map(id => <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => { setView(id) }} style={{ border: `1px solid ${view === id ? colors.active : colors.border}`, borderRadius: 6, background: view === id ? colors.soft : 'transparent', color: colors.text, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}>{id === 'timeline' ? 'Timeline' : 'Graph'}</button>)}
+        {(['logic', 'timeline'] as const).map(id => <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => { setView(id) }} style={{ border: `1px solid ${view === id ? colors.active : colors.border}`, borderRadius: 6, background: view === id ? colors.soft : 'transparent', color: colors.text, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}>{id === 'logic' ? 'Backend Logic' : 'Timeline'}</button>)}
       </div>
     </header>
     {trace.diagnostics.length === 0 ? null : <div data-aezy-loop-diagnostics style={{ flex: '0 0 auto', padding: '6px 10px', borderBottom: `1px solid ${colors.border}`, color: colors.warning, fontSize: 10 }}>
       Visibility: {trace.diagnostics.map(item => item.code).join(' · ')}
     </div>}
     <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto' }}>
-      {view === 'timeline' ? <Timeline trace={trace} now={now} /> : <Graph trace={trace} />}
+      {view === 'logic' ? <LogicGraph trace={trace} now={now} /> : <Timeline trace={trace} now={now} />}
     </div>
   </aside>
 

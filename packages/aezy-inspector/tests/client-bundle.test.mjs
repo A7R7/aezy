@@ -84,13 +84,18 @@ test('built client binds the public Session eventSource to a dynamic read-only i
   }
 })
 
-test('built inspector exposes timeline/graph evidence UI and no Agent control path', async () => {
+test('built inspector exposes a static backend logic graph plus evidence timeline and no Agent control path', async () => {
   const sourceText = await readFile(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
   const bundle = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
   for (const marker of [
     'data-aezy-loop-inspector', 'data-aezy-loop-inspector-panel',
-    'data-aezy-loop-timeline', 'data-aezy-loop-graph', 'data-aezy-loop-graph-node',
+    'data-aezy-loop-timeline', 'data-aezy-loop-logic-graph',
+    'data-aezy-loop-blueprint-node', 'data-aezy-loop-blueprint-edge',
   ]) assert.match(bundle, new RegExp(marker))
+  assert.match(bundle, /Backend Logic/)
+  assert.match(bundle, /Static blueprint/)
+  assert.match(bundle, /OPAQUE/)
+  assert.doesNotMatch(sourceText, /function GraphNode/)
   assert.match(sourceText, /binding\.eventSource/)
   assert.match(sourceText, /session\.loadOlder\(\)/)
   assert.match(sourceText, /name: 'details', priority: -30/)

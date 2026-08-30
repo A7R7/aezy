@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import test from 'node:test'
-import { LOOP_BLUEPRINTS, projectLoopTrace } from '../src/trace.js'
+import {
+  LOOP_BLUEPRINTS, canonicalBlueprint, projectBlueprintOverlay, projectLoopTrace,
+} from '../src/trace.js'
 
 function event(type, seq, time, data) {
   return { type: 'event', event: { type, seq, time, data } }
@@ -25,12 +27,48 @@ function dshFixture() {
   ]
 }
 
-test('backend blueprints carry the digest of their exact revision and node vocabulary', () => {
+test('backend blueprints carry the digest of their exact static topology', () => {
   for (const blueprint of Object.values(LOOP_BLUEPRINTS)) {
-    const canonical = `${blueprint.id}@${String(blueprint.revision)}:${blueprint.nodes.join(',')}`
-    const digest = `sha256:${createHash('sha256').update(canonical).digest('hex')}`
+    const digest = `sha256:${createHash('sha256').update(canonicalBlueprint(blueprint)).digest('hex')}`
     assert.equal(blueprint.digest, digest)
+    assert.equal(blueprint.revision, 2)
+    assert.ok(blueprint.nodes.length >= 10)
+    assert.ok(blueprint.edges.length >= 15)
+    const ids = new Set(blueprint.nodes.map(node => node.id))
+    assert.equal(ids.size, blueprint.nodes.length)
+    for (const node of blueprint.nodes) {
+      assert.ok(node.label.length > 0)
+      assert.ok(node.owner.length > 0)
+      assert.ok(node.description.length > 0)
+      assert.ok(node.sourceRefs.length > 0)
+      assert.equal(Number.isFinite(node.position.x) && Number.isFinite(node.position.y), true)
+    }
+    for (const edge of blueprint.edges) {
+      assert.equal(ids.has(edge.from), true, edge.id)
+      assert.equal(ids.has(edge.to), true, edge.id)
+      assert.ok(edge.guard.length > 0)
+      assert.ok(edge.sourceRefs.length > 0)
+    }
   }
+  const codex = LOOP_BLUEPRINTS['codex-app-server']
+  assert.deepEqual(codex.nodes.filter(node => node.opaque).map(node => node.id), ['codex-agent-core'])
+  assert.match(codex.nodes.find(node => node.id === 'codex-agent-core').description, /not exposed|not inferred/)
+})
+
+test('runtime trace is a derived overlay on static nodes and edges, not the graph topology', () => {
+  const trace = projectLoopTrace({ sessionId: 'overlay', mode: 'standard', entries: dshFixture() })
+  const overlay = projectBlueprintOverlay(trace)
+  assert.equal(overlay.blueprintId, 'dsh-native')
+  assert.equal(overlay.nodes['model-request'].visited, true)
+  assert.equal(overlay.nodes['model-request'].visits, 1)
+  assert.equal(overlay.nodes['approval-gate'].visited, true)
+  assert.equal(overlay.nodes['tool-pipeline'].visits, 2)
+  assert.equal(overlay.nodes.compaction.visited, false)
+  assert.equal(overlay.edges['response-tools'].traversed, true)
+  assert.equal(overlay.edges['scheduler-gates'].traversed, true)
+  assert.equal(overlay.edges['result-loops-step'].traversed, false)
+  assert.equal(Object.keys(overlay.nodes).length, trace.blueprint.nodes.length)
+  assert.equal(Object.keys(overlay.edges).length, trace.blueprint.edges.length)
 })
 
 test('DSH-native projection is deterministic, nested, concurrent, and usage-exact', () => {
@@ -94,6 +132,9 @@ test('App Server projection is coarse-partial and preserves only protocol-safe d
   const tool = trace.spans.find(span => span.label.endsWith('write'))
   assert.equal(tool.sources.some(source => source.source === 'codex-app-server'
     && source.threadId === 'thread-1' && source.turnId === 'turn-1' && source.itemId === 'item-1'), true)
+  const overlay = projectBlueprintOverlay(trace)
+  assert.equal(overlay.nodes['codex-agent-core'].visited, true)
+  assert.equal(trace.blueprint.nodes.find(node => node.id === 'codex-agent-core').opaque, true)
 })
 
 test('projection never leaks reasoning, prompts, credentials, raw arguments, results, reasons, or opaque meta', () => {

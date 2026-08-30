@@ -6,18 +6,144 @@ export const EVIDENCE = Object.freeze({
   inferred: 'inferred',
 })
 
+const DSH_REVISION = 'dsh-v0.1.2-alpha.1@cd5ef8148158c3a752a658978873241fdf8e2bbc'
+const CODEX_REVISION = '@openai/codex@0.149.0'
+
+function ref(authority, owner, symbol, revision, path) {
+  return Object.freeze({ authority, owner, symbol, revision, path })
+}
+
+const DSH_LOOP = ref('upstream-source', '@deepseek-ai/dsh-agent-loop', 'ReactLoopAgent', DSH_REVISION, 'packages/core/agent-loop/src/agent.ts')
+const DSH_TOOLS = ref('upstream-source', '@deepseek-ai/dsh-tools', 'Tools execution pipeline', DSH_REVISION, 'packages/core/tools/README.md')
+const DSH_APPROVAL = ref('upstream-source', '@deepseek-ai/dsh-user-approval', 'UserApproval.request', DSH_REVISION, 'packages/interaction/user-approval/src/index.ts')
+const DSH_RETRY = ref('upstream-source', '@deepseek-ai/dsh-llm-retry', 'agent/request-error recovery', DSH_REVISION, 'packages/llm/llm-retry/README.md')
+const DSH_COMPACTION = ref('upstream-source', '@deepseek-ai/dsh-compaction', 'CompactionEngine', DSH_REVISION, 'packages/compaction/compaction/README.md')
+const DSH_SUBAGENT = ref('upstream-source', '@deepseek-ai/dsh-subagent', 'Subagent provider/continuation', DSH_REVISION, 'packages/subagent/subagent/README.md')
+const CODEX_PROTOCOL = ref('public-protocol', '@openai/codex', 'App Server JSON-RPC', CODEX_REVISION, 'app-server')
+const AEZY_CODEX = ref('adapter-source', '@aezy/codex', 'CodexDshAdapter', 'workspace', 'packages/aezy-codex/src/dsh-adapter.js')
+
+function node(id, kind, label, owner, description, x, y, sourceRefs, runtime = undefined, opaque = false) {
+  return Object.freeze({
+    id, kind, label, owner, description,
+    position: Object.freeze({ x, y }),
+    sourceRefs: Object.freeze(sourceRefs),
+    ...(runtime === undefined ? {} : { runtime: Object.freeze({
+      spanNodeIds: Object.freeze(runtime.spanNodeIds),
+      ...(runtime.statuses === undefined ? {} : { statuses: Object.freeze(runtime.statuses) }),
+    }) }),
+    ...(opaque ? { opaque: true } : {}),
+  })
+}
+
+function edge(id, from, to, kind, label, guard, sourceRefs) {
+  return Object.freeze({ id, from, to, kind, label, guard, sourceRefs: Object.freeze(sourceRefs) })
+}
+
+function blueprint(value) {
+  return Object.freeze({ ...value, nodes: Object.freeze(value.nodes), edges: Object.freeze(value.edges) })
+}
+
+export function canonicalBlueprint(blueprintValue) {
+  return JSON.stringify({
+    id: blueprintValue.id,
+    revision: blueprintValue.revision,
+    title: blueprintValue.title,
+    description: blueprintValue.description,
+    canvas: blueprintValue.canvas,
+    nodes: blueprintValue.nodes,
+    edges: blueprintValue.edges,
+  })
+}
+
 export const LOOP_BLUEPRINTS = Object.freeze({
-  'dsh-native': Object.freeze({
+  'dsh-native': blueprint({
     id: 'dsh-native',
-    revision: 1,
-    nodes: Object.freeze(['session', 'turn', 'agent-phase', 'model', 'retry', 'tool', 'approval', 'subagent', 'compaction', 'finalize']),
-    digest: 'sha256:8b7f2e002d9e885fdf63781ba693eacd0d198cb1aa50fb4a29c036cf0cec0dc3',
+    revision: 2,
+    title: 'DSH native agent loop',
+    description: 'Static control flow owned by the DSH Agent and composed tool, retry, approval, compaction, and Subagent services.',
+    canvas: Object.freeze({ width: 1160, height: 790, nodeWidth: 180, nodeHeight: 86 }),
+    nodes: [
+      node('inbox', 'boundary', 'Queued input', 'DSH Agent / Inbox', 'Follow-up and steering input waits in the Session-backed inbox.', 28, 32, [DSH_LOOP], { spanNodeIds: ['session'] }),
+      node('turn-boundary', 'boundary', 'Open Turn', 'DSH Agent', 'A waking input opens one durable turn/start boundary.', 248, 32, [DSH_LOOP], { spanNodeIds: ['turn'] }),
+      node('pre-step', 'phase', 'Claim + assemble context', 'DSH Agent / system prompt', 'Claim the target inbox, assemble prompt sections, and run the pre-step waterfall.', 468, 32, [DSH_LOOP], { spanNodeIds: ['agent-phase'] }),
+      node('model-request', 'model', 'Build + stream model request', 'DSH Agent / LLM adapter', 'Resolve the provider route, append the request header, stream blocks, and durably append the assistant message.', 688, 32, [DSH_LOOP], { spanNodeIds: ['model'] }),
+      node('response-decision', 'decision', 'Tool calls?', 'DSH Agent', 'A completed assistant message either ends the step or yields ordered tool calls.', 908, 32, [DSH_LOOP], { spanNodeIds: ['model'], statuses: ['completed'] }),
+      node('model-retry', 'retry', 'Provider retry/backoff', 'DSH LLM retry', 'A retry decision records durable scheduling and re-enters the same model step.', 688, 188, [DSH_LOOP, DSH_RETRY], { spanNodeIds: ['retry'] }),
+      node('tool-scheduler', 'tool', 'Schedule tool calls', 'DSH Agent tool scheduler', 'Exclusive calls form barriers; parallel calls run in a bounded rolling pool and commit in model order.', 908, 250, [DSH_LOOP, DSH_TOOLS], { spanNodeIds: ['tool'] }),
+      node('approval-gate', 'approval', 'Security + approval gate', 'DSH tools / approval', 'Pre-execute policy and monotonic guards may deny or request a fail-closed human decision.', 688, 406, [DSH_TOOLS, DSH_APPROVAL], { spanNodeIds: ['approval'] }),
+      node('tool-pipeline', 'tool', 'Execute + finalize tool', 'DSH tools', 'Dispatch through execute wrappers, post-process, finalize content, and freeze the result.', 908, 406, [DSH_TOOLS], { spanNodeIds: ['tool'] }),
+      node('subagent', 'subagent', 'Subagent-owned child loop', 'DSH Subagent', 'A Subagent tool may create or resume a separately owned child Session and later return its result.', 688, 562, [DSH_SUBAGENT, DSH_TOOLS], { spanNodeIds: ['subagent'] }),
+      node('result-context', 'phase', 'Commit result + next-step context', 'DSH Agent / Session', 'Append tool/result in model order and stage additional context for the next step.', 908, 562, [DSH_LOOP, DSH_TOOLS], { spanNodeIds: ['tool'], statuses: ['completed', 'failed', 'cancelled', 'interrupted'] }),
+      node('compaction', 'compaction', 'Compaction checkpoint', 'DSH Compaction backend', 'Pressure or context-overflow recovery replaces a balanced surface range under a durable bracket.', 468, 250, [DSH_COMPACTION], { spanNodeIds: ['compaction'] }),
+      node('finalize', 'finalize', 'Finalize Turn', 'DSH Agent', 'No pending next-step input remains; run the stopping hook and choose the structured end reason.', 468, 650, [DSH_LOOP], { spanNodeIds: ['turn'], statuses: ['completed', 'failed', 'cancelled', 'interrupted'] }),
+      node('turn-end', 'boundary', 'Durable turn/end', 'DSH Agent / Session', 'Append turn/end, then return idle or claim queued work in a new Turn.', 248, 650, [DSH_LOOP], { spanNodeIds: ['turn'], statuses: ['completed', 'failed', 'cancelled', 'interrupted'] }),
+    ],
+    edges: [
+      edge('input-opens-turn', 'inbox', 'turn-boundary', 'normal', 'wakeup', 'queued input is claimed', [DSH_LOOP]),
+      edge('turn-enters-step', 'turn-boundary', 'pre-step', 'normal', 'next-turn', 'turn is open', [DSH_LOOP]),
+      edge('step-requests-model', 'pre-step', 'model-request', 'normal', 'enter', 'pre-step accepts', [DSH_LOOP]),
+      edge('step-blocked', 'pre-step', 'finalize', 'branch', 'blocked', 'pre-step rejects', [DSH_LOOP]),
+      edge('request-yields-response', 'model-request', 'response-decision', 'normal', 'assistant message', 'stream completes', [DSH_LOOP]),
+      edge('request-retries', 'model-request', 'model-retry', 'retry', 'retryable error', 'request-error returns retry', [DSH_LOOP, DSH_RETRY]),
+      edge('retry-model', 'model-retry', 'model-request', 'loop-back', 'same step', 'backoff completes', [DSH_RETRY]),
+      edge('context-overflow', 'model-request', 'compaction', 'branch', 'context overflow', 'compaction recovery accepts', [DSH_COMPACTION]),
+      edge('compaction-rebuilds', 'compaction', 'pre-step', 'loop-back', 'rebuild context', 'checkpoint commits', [DSH_COMPACTION]),
+      edge('response-final', 'response-decision', 'finalize', 'branch', 'no tool calls', 'assistant response is terminal', [DSH_LOOP]),
+      edge('response-tools', 'response-decision', 'tool-scheduler', 'branch', 'tool calls', 'assistant response contains tool calls', [DSH_LOOP]),
+      edge('scheduler-gates', 'tool-scheduler', 'approval-gate', 'branch', 'ask / guard', 'tool policy requires decision', [DSH_TOOLS, DSH_APPROVAL]),
+      edge('scheduler-executes', 'tool-scheduler', 'tool-pipeline', 'branch', 'allow', 'no approval is required', [DSH_TOOLS]),
+      edge('approval-executes', 'approval-gate', 'tool-pipeline', 'branch', 'allowed once', 'approval grants this action', [DSH_APPROVAL, DSH_TOOLS]),
+      edge('approval-denies', 'approval-gate', 'result-context', 'branch', 'deny / cancel', 'gate returns a fail-closed tool outcome', [DSH_APPROVAL, DSH_TOOLS]),
+      edge('tool-spawns-child', 'tool-pipeline', 'subagent', 'branch', 'Subagent tool', 'selected tool delegates', [DSH_SUBAGENT, DSH_TOOLS]),
+      edge('tool-commits-result', 'tool-pipeline', 'result-context', 'normal', 'result', 'dispatch settles', [DSH_LOOP, DSH_TOOLS]),
+      edge('child-commits-result', 'subagent', 'result-context', 'normal', 'settlement', 'child publishes an outcome', [DSH_SUBAGENT]),
+      edge('result-loops-step', 'result-context', 'pre-step', 'loop-back', 'next step', 'tool does not conclude Turn', [DSH_LOOP]),
+      edge('result-concludes', 'result-context', 'finalize', 'branch', 'concludes Turn', 'tool result concludes Turn', [DSH_LOOP]),
+      edge('finalize-ends', 'finalize', 'turn-end', 'normal', 'end reason', 'Turn converges', [DSH_LOOP]),
+      edge('next-turn', 'turn-end', 'turn-boundary', 'loop-back', 'queued follow-up', 'inbox still has pending input', [DSH_LOOP]),
+    ],
+    digest: 'sha256:33dfdb3bb1ef190eeaddb04045328a3e557c17703a5b5c7456eb83615c553d3a',
   }),
-  'codex-app-server': Object.freeze({
+  'codex-app-server': blueprint({
     id: 'codex-app-server',
-    revision: 1,
-    nodes: Object.freeze(['session', 'turn', 'agent-phase', 'codex-turn-stream', 'retry', 'dsh-tool-bridge', 'approval', 'subagent', 'compaction', 'finalize']),
-    digest: 'sha256:16cd37c97f5c8b88962d73e8b8cb84d206144bd6ffd84dd8353dac3eacd87d6b',
+    revision: 2,
+    title: 'Codex App Server through DSH',
+    description: 'Static public protocol and security bridge. The official Codex agent core remains intentionally opaque.',
+    canvas: Object.freeze({ width: 1160, height: 790, nodeWidth: 180, nodeHeight: 86 }),
+    nodes: [
+      node('dsh-turn', 'boundary', 'DSH Turn + step', 'DSH Agent / Session', 'DSH owns the visible durable Turn, step, request header, and final assistant projection.', 28, 32, [DSH_LOOP, AEZY_CODEX], { spanNodeIds: ['turn', 'agent-phase'] }),
+      node('thread-binding', 'phase', 'Bind or resume Thread', 'Aezy Codex adapter', 'Resolve the durable Session-to-Thread binding, then call thread/start or thread/resume.', 248, 32, [AEZY_CODEX, CODEX_PROTOCOL], { spanNodeIds: ['agent-phase'] }),
+      node('codex-turn-start', 'phase', 'Start Codex Turn', 'Codex App Server protocol', 'Call turn/start with the selected model, read-only native permissions, dynamic DSH tools, and DSH instructions.', 468, 32, [AEZY_CODEX, CODEX_PROTOCOL], { spanNodeIds: ['codex-turn-stream'] }),
+      node('codex-agent-core', 'opaque', 'Official Codex agent core', 'Codex App Server', 'Private model/tool/compaction/subagent micro-loop is not exposed by the public protocol and is not inferred.', 688, 32, [CODEX_PROTOCOL], { spanNodeIds: ['codex-turn-stream'] }, true),
+      node('public-item-stream', 'decision', 'Public item / request stream', 'Codex App Server protocol', 'Observe documented item deltas/completions, interaction requests, and turn completion.', 908, 32, [AEZY_CODEX, CODEX_PROTOCOL], { spanNodeIds: ['codex-turn-stream'] }),
+      node('assistant-projection', 'phase', 'Project assistant output', 'Aezy Codex adapter / DSH Session', 'Translate public message/reasoning blocks into the current DSH stream without persisting private reasoning text in Inspector.', 908, 188, [AEZY_CODEX], { spanNodeIds: ['codex-turn-stream'], statuses: ['completed'] }),
+      node('native-permission', 'approval', 'Decline native escalation', 'Aezy Codex adapter', 'Codex-native command/file/permission escalation stays read-only and is declined fail-closed.', 688, 250, [AEZY_CODEX, CODEX_PROTOCOL], { spanNodeIds: ['dsh-tool-bridge'] }),
+      node('dsh-tool-bridge', 'tool', 'Map dsh.* dynamic tool', 'Aezy Codex adapter', 'Validate active Thread/Turn ownership and map the public dynamic-tool request to the current DSH tool registry.', 908, 344, [AEZY_CODEX, CODEX_PROTOCOL], { spanNodeIds: ['dsh-tool-bridge'] }),
+      node('dsh-security-approval', 'approval', 'DSH Security + approval', 'DSH tools / approval', 'DSH policy, monotonic guards, and approval retain authority over mutable actions.', 688, 500, [DSH_TOOLS, DSH_APPROVAL, AEZY_CODEX], { spanNodeIds: ['approval'] }),
+      node('dsh-tool-execution', 'tool', 'Execute DSH tool', 'DSH tools', 'Execute and finalize through the existing DSH tool pipeline; no second tool runtime is introduced.', 908, 500, [DSH_TOOLS, AEZY_CODEX], { spanNodeIds: ['dsh-tool-bridge'] }),
+      node('codex-tool-result', 'phase', 'Return dynamic tool result', 'Aezy Codex adapter / App Server', 'Append the DSH tool result with allowlisted Codex identity, then answer the pending App Server request.', 908, 656, [AEZY_CODEX, CODEX_PROTOCOL], { spanNodeIds: ['dsh-tool-bridge'], statuses: ['completed', 'failed', 'cancelled', 'interrupted'] }),
+      node('interrupt', 'boundary', 'Interrupt Codex Turn', 'Aezy Codex adapter / App Server', 'A DSH abort calls turn/interrupt and closes the DSH stream as aborted.', 468, 500, [AEZY_CODEX, CODEX_PROTOCOL], { spanNodeIds: ['codex-turn-stream'], statuses: ['cancelled', 'interrupted', 'failed'] }),
+      node('dsh-finalize', 'finalize', 'Finalize DSH Turn', 'DSH Agent / Session', 'turn/completed or interruption closes the provider stream; DSH appends its durable assistant/step/turn outcome.', 248, 656, [DSH_LOOP, AEZY_CODEX, CODEX_PROTOCOL], { spanNodeIds: ['turn'], statuses: ['completed', 'failed', 'cancelled', 'interrupted'] }),
+    ],
+    edges: [
+      edge('dsh-binds-thread', 'dsh-turn', 'thread-binding', 'normal', 'provider request', 'preset and route gate pass', [DSH_LOOP, AEZY_CODEX]),
+      edge('binding-starts-turn', 'thread-binding', 'codex-turn-start', 'normal', 'thread ready', 'binding matches cwd/model', [AEZY_CODEX, CODEX_PROTOCOL]),
+      edge('turn-enters-core', 'codex-turn-start', 'codex-agent-core', 'normal', 'turn/start', 'App Server accepts Turn', [CODEX_PROTOCOL]),
+      edge('core-emits-public', 'codex-agent-core', 'public-item-stream', 'normal', 'public events', 'protocol emits an item or request', [CODEX_PROTOCOL]),
+      edge('stream-projects-output', 'public-item-stream', 'assistant-projection', 'branch', 'message / completed', 'public assistant item or turn completes', [AEZY_CODEX, CODEX_PROTOCOL]),
+      edge('stream-requests-tool', 'public-item-stream', 'dsh-tool-bridge', 'branch', 'dsh.* dynamic tool', 'request targets an advertised DSH tool', [AEZY_CODEX, CODEX_PROTOCOL]),
+      edge('stream-requests-native', 'public-item-stream', 'native-permission', 'branch', 'native escalation', 'request would leave the DSH boundary', [AEZY_CODEX, CODEX_PROTOCOL]),
+      edge('native-declined', 'native-permission', 'codex-agent-core', 'loop-back', 'decline', 'fail-closed response returns to Codex', [AEZY_CODEX, CODEX_PROTOCOL]),
+      edge('bridge-enters-security', 'dsh-tool-bridge', 'dsh-security-approval', 'normal', 'pre-execute', 'active ownership and namespace validate', [AEZY_CODEX, DSH_TOOLS]),
+      edge('security-executes', 'dsh-security-approval', 'dsh-tool-execution', 'branch', 'allowed', 'DSH gate permits action', [DSH_TOOLS, DSH_APPROVAL]),
+      edge('security-denies', 'dsh-security-approval', 'codex-tool-result', 'branch', 'deny / cancel', 'DSH returns fail-closed outcome', [DSH_TOOLS, DSH_APPROVAL]),
+      edge('tool-returns-result', 'dsh-tool-execution', 'codex-tool-result', 'normal', 'frozen result', 'DSH tool settles', [DSH_TOOLS, AEZY_CODEX]),
+      edge('result-reenters-core', 'codex-tool-result', 'codex-agent-core', 'loop-back', 'JSON-RPC response', 'adapter still owns active Thread/Turn', [AEZY_CODEX, CODEX_PROTOCOL]),
+      edge('output-finalizes-dsh', 'assistant-projection', 'dsh-finalize', 'normal', 'turn/completed', 'provider stream closes', [AEZY_CODEX, CODEX_PROTOCOL, DSH_LOOP]),
+      edge('turn-interrupts', 'codex-agent-core', 'interrupt', 'cancel', 'abort', 'DSH signal aborts', [AEZY_CODEX, CODEX_PROTOCOL]),
+      edge('interrupt-finalizes', 'interrupt', 'dsh-finalize', 'normal', 'aborted', 'interrupt response or containment completes', [AEZY_CODEX, DSH_LOOP]),
+    ],
+    digest: 'sha256:78eb8734567de7cf00aa35899a817699a362fa327b329f98dd3c3317c6a9693b',
   }),
 })
 
@@ -153,6 +279,71 @@ function addUsage(left, right) {
   const total = { ...left }
   for (const [key, value] of Object.entries(right)) total[key] = (total[key] ?? 0) + value
   return total
+}
+
+function overlayStatus(spans) {
+  for (const status of ['active', 'failed', 'cancelled', 'interrupted', 'completed', 'unknown']) {
+    if (spans.some(span => span.status.value === status)) return status
+  }
+  return 'pending'
+}
+
+export function projectBlueprintOverlay(trace) {
+  const nodeOverlays = {}
+  for (const nodeValue of trace.blueprint.nodes) {
+    const binding = nodeValue.runtime
+    const spans = binding === undefined ? [] : trace.spans.filter(span =>
+      span.blueprintNodeId !== undefined
+      && binding.spanNodeIds.includes(span.blueprintNodeId)
+      && (binding.statuses === undefined || binding.statuses.includes(span.status.value)),
+    )
+    let usage = {}
+    let durationMs = 0
+    let activeSince = null
+    const sources = []
+    for (const span of spans) {
+      if (span.usage !== undefined) usage = addUsage(usage, span.usage.value)
+      if (span.durationMs !== undefined) durationMs += span.durationMs.value
+      if (span.status.value === 'active' && span.startedAt !== undefined) {
+        activeSince = activeSince === null ? span.startedAt.value : Math.min(activeSince, span.startedAt.value)
+      }
+      sources.push(...span.sources)
+    }
+    nodeOverlays[nodeValue.id] = Object.freeze({
+      nodeId: nodeValue.id,
+      visited: spans.length > 0,
+      active: spans.some(span => span.status.value === 'active'),
+      visits: spans.length,
+      status: overlayStatus(spans),
+      durationMs,
+      ...(activeSince === null ? {} : { activeSince }),
+      ...(Object.keys(usage).length === 0 ? {} : { usage: Object.freeze(usage) }),
+      sources: Object.freeze(uniqueSources(sources)),
+      evidence: EVIDENCE.derived,
+    })
+  }
+  const edgeOverlays = {}
+  for (const edgeValue of trace.blueprint.edges) {
+    const from = nodeOverlays[edgeValue.from]
+    const to = nodeOverlays[edgeValue.to]
+    const loopRequiresRepeat = edgeValue.kind === 'loop-back'
+      && !['retry-model', 'compaction-rebuilds', 'native-declined', 'result-reenters-core'].includes(edgeValue.id)
+    const traversed = from?.visited === true && to?.visited === true
+      && (!loopRequiresRepeat || to.visits > 1)
+    edgeOverlays[edgeValue.id] = Object.freeze({
+      edgeId: edgeValue.id,
+      traversed,
+      active: traversed && to.active,
+      traversals: traversed ? Math.max(1, Math.min(from.visits, to.visits)) : 0,
+      evidence: EVIDENCE.derived,
+    })
+  }
+  return Object.freeze({
+    blueprintId: trace.blueprint.id,
+    blueprintRevision: trace.blueprint.revision,
+    nodes: Object.freeze(nodeOverlays),
+    edges: Object.freeze(edgeOverlays),
+  })
 }
 
 function createBuilder(sessionId, backend, diagnostics) {
