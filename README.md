@@ -206,7 +206,7 @@ git -C .local/deepseek-harness checkout --detach cd5ef8148158c3a752a658978873241
 - 当前接手状态：[`HANDOFF.md`](HANDOFF.md)
 - 文档阅读顺序：[`doc/README.md`](doc/README.md)
 - 当前所有权与实施路线：[`doc/roadmap/aezy-upstream-ownership-roadmap.md`](doc/roadmap/aezy-upstream-ownership-roadmap.md)
-- 当前产品路线 E1–E3：[`doc/roadmap/loop-inspector-workflow-editor.md`](doc/roadmap/loop-inspector-workflow-editor.md)
+- 当前产品路线 E0 静态 logic graph 纠正：[`doc/roadmap/loop-inspector-workflow-editor.md`](doc/roadmap/loop-inspector-workflow-editor.md)
 
 **Codex-backed self-development loop 已完成**：固定 Relay 0.1.2 companion 已完成隔离
 门禁，但因真实 structured tool/approval 硬约束失败而不进入 Aezy profile。最小外置 runtime
@@ -224,11 +224,12 @@ tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原�
 gate；已完成闭环只按真实 dogfood 故障做 Worktree dependency bootstrap 与 App Server contract
 hardening。当前 DSH-owned `openai-codex` 已完成 OAuth、真实
 standard Turn、tool/approval/Security/Journal/usage 与 restart-resume gate。E0/CI.0 Loop Inspector
-也已从 durable Session events 证明 DSH-native 与 Codex App Server 的 live/cold/restart trace
-accuracy，并交付只读 Session header、timeline/runtime graph；App Server 缺失的 durable item usage
-明确显示为 partial。当前依次实施 E1–E3：内部 immutable LoopDefinition、模板式 Editor、受限
-control flow；不包含 E4。Inspector 不驱动 loop，且不得展示 reasoning、secret 或未脱敏 tool
-arguments。
+已有 durable Session event projector、只读 Session header、Timeline 与双 backend live/cold/restart
+trace accuracy；但原 Graph 只是同一 runtime span log 的树形缩略版，不满足静态 agent-loop 逻辑图
+目标，因此 E0 已重新打开。当前先把 backend-specific node/edge/guard/owner blueprint 作为主图，
+runtime trace 只叠加 active/visited/usage/duration；Codex App Server 不公开的内部控制流显示为
+opaque。E1–E3 的现有实现已 revert 且暂停，原 Git 历史保留；不包含 E4。Inspector 不驱动 loop，
+且不得展示 reasoning、secret 或未脱敏 tool arguments。
 
 已实现的 Activity dashboard 实验已经通过三笔独立 revert 全部撤销，不再作为后续基础。
 Traffic Board 与 Task Board 暂缓；Browser integration 暂停并默认使用外部浏览器。后续若实现

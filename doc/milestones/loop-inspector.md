@@ -1,7 +1,7 @@
 # E0 / CI.0 Loop Inspector
 
-> 状态：**Complete on alpha candidate**  
-> 签收日期：2026-08-30  
+> 状态：**Reopened — static backend logic graph pending**<br>
+> 原 runtime trace foundation 日期：2026-08-30<br>
 > Runtime：DSH `0.1.2-alpha.1` / `cd5ef8148158c3a752a658978873241fdf8e2bbc` / 3091
 
 ## 交付结果
@@ -9,7 +9,12 @@
 `@aezy/inspector` 是参考树外的只读 observability plugin。它把公开 DSH Session
 `eventSource`/Remote history page 投影为最小 `LoopTrace/Span/SourceRef/TraceFact` contract，
 并在 Session header 提供常驻 mode/backend/current span/elapsed/known usage 状态以及可展开的
-timeline/runtime graph。
+timeline。原 Graph 只是把 runtime span 按 parent 关系重新排版，与 Timeline 没有本质区别；它已
+被判定不能满足静态 agent-loop logic graph 的产品目标，E0 因此重新打开。
+
+纠正目标是让 backend blueprint 成为独立、静态、始终可见的 node/edge/guard/owner topology；
+runtime trace 只在其上叠加 active/visited/count/usage/duration。Codex App Server 未公开的 agent
+内部必须显示为 opaque，不得根据表面事件猜测内部 phase。
 
 Inspector 不注册 Turn hook，不写 Session event，不拥有 Agent、tool、approval、cancel、usage、
 history 或 restart 状态。projector/UI 失败只产生 `partial/unavailable` diagnostic，不进入执行路径。
@@ -74,8 +79,8 @@ fail-soft，以及 UI 不存在 Agent/control/storage/第二 transport 路径。
 brand、codex、inspector、mode、project、security、terminal。Host 继续使用隔离 alpha DSH_HOME/
 profile，没有修改 `.local/deepseek-harness/`。
 
-## 后续边界
+## 当前边界
 
-E0 已满足进入 E1 的先决条件。E1 只能增加内部、不可点击、版本化且 immutable 的声明式
-LoopDefinition/validator/capability resolver；不得把 Inspector 变为控制器，也不得在 parity gate
-之前开放 `codex-inspired`。E4 不在当前范围。
+上述自动与真实 gate 只签收 runtime trace foundation，不再代表 E0 整体完成。E1–E3 当前实现已
+revert 并暂停，原 Git 历史保留；静态 backend logic graph 重新验收前不继续 Editor/compiler。
+不得把 Inspector 变为控制器，也不得在 parity gate 前开放 `codex-inspired`。E4 不在当前范围。

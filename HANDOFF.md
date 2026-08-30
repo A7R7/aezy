@@ -4,7 +4,7 @@
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`alpha`<br>
 > 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
-> OpenAI/Codex provider（Complete）；E0/CI.0 Loop Inspector（Complete）
+> OpenAI/Codex provider（Complete）；E0/CI.0 Loop Inspector（Reopened：静态 backend logic graph）
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
@@ -219,14 +219,15 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
    structured tool、approval、Security、Journal/Review、usage 与 restart-resume 均通过。默认
    DeepSeek model 与 `codex-app-server`/`aezy-codex` 隔离未改变。证据见
    `doc/milestones/native-provider.md`。
-8. 已完成：E0/CI.0 只读 Loop Inspector。`@aezy/inspector` 从 durable Session events 投影
-   `LoopTrace/Span/SourceRef`，交付 header 与 timeline/runtime graph；DSH-native 与 App Server
-   live/cold/restart digest parity 通过。App Server 缺失 durable item lifecycle/usage 时明确为
-   partial，不建立第二账本。证据见 `doc/milestones/loop-inspector.md`。
+8. 正在纠正：E0/CI.0 只读 Loop Inspector。既有 `LoopTrace/Span/SourceRef` projector、header、
+   timeline 与双 backend live/cold/restart parity 继续作为 runtime evidence 基础；原 runtime span
+   tree 不是产品所需的静态 agent-loop 逻辑图，不能视为 E0 完成。E0 重新打开，先交付由 backend
+   owner/source contract 固定的静态 node/edge/guard 图，再把 durable trace 仅作为 active/visited/
+   usage/duration overlay。App Server 内核不可见部分必须显示为 opaque，不得推测。
 9. 完整 alpha parity gates 仍是 `alpha` 合回主线的 release gate；通过前不合并。
-10. 当前依次实施内部不可点击的 E1 LoopDefinition 与 `codex-inspired` system-authored dogfood；
-    E2–E3 依次为模板 Editor、受限 condition/parallel/Subagent/bounded retry。E4 与外置 node SDK
-    不在当前实施范围，也不为它预留抽象。完整路线见
+10. E1–E3 的当前实现已通过新增 revert 提交撤回，原提交完整保留供历史追溯；三个阶段均暂停，
+    直到静态 backend logic graph 版本的 E0 被重新验收。E4 与外置 node SDK 不在当前范围，也不
+    为它预留抽象。长期路线见
     `doc/roadmap/loop-inspector-workflow-editor.md`。
 11. 按真实 dogfood 故障 harden 已完成的两条 backend；Traffic Board 与 Task Board 继续暂缓。
 
@@ -305,11 +306,12 @@ Activity dashboard 的三笔原提交已经独立 revert，Browser integration �
 codex-app-server system preset、DSH-native openai-codex OAuth/Turn/tool/approval/Security/Journal/
 usage/restart 均已签收；codex-inspired 暂不提供选项。
 
-完整 alpha parity 仍是合回主线的 release gate；E0/CI.0 只读 Loop Inspector 已签收。先读
-doc/milestones/loop-inspector.md 与 doc/roadmap/loop-inspector-workflow-editor.md，从 E1 内部、
-不可点击、immutable LoopDefinition 继续，随后依次实施 E2 模板 Editor 与 E3 受限 control flow；
-不包含 E4。Inspector 失败只能降低可见性，不得影响 Turn，也不得展示 reasoning、credential、
-secret prompt 或未脱敏 tool arguments。`codex-inspired` 在完整 parity gate 前不可点击。不要读取
+完整 alpha parity 仍是合回主线的 release gate；E0/CI.0 因原 graph 只是 runtime span tree 而重新
+打开。先读 doc/milestones/loop-inspector.md 与 doc/roadmap/loop-inspector-workflow-editor.md，完成
+静态 backend logic graph：blueprint 是主体，runtime trace 只叠加 active/visited/usage/duration，
+Timeline 保留逐次证据；App Server 私有内核显示为 opaque。E1–E3 暂停，不包含 E4。Inspector
+失败只能降低可见性，不得影响 Turn，也不得展示 reasoning、credential、secret prompt 或未脱敏
+tool arguments。`codex-inspired` 在完整 parity gate 前不可点击。不要读取
 或管理 OAuth token，不修改 DSH 源码，不实现
 第二套 Session/Subagent/Task/PTY/compaction/approval/usage 内核，也不要捆绑 Browser、Boards、
 Cloud/Remote/PR、Side Chat 或 merge-back。

@@ -1,7 +1,7 @@
 # Loop Inspector 与 Custom Agent Workflow Editor 路线
 
-> 状态：**E0 / CI.0 Complete；E1 in progress**<br>
-> 当前优先级：**E1 internal LoopDefinition**<br>
+> 状态：**E0 / CI.0 Reopened；E1–E3 paused**<br>
+> 当前优先级：**静态 backend logic graph**<br>
 > 更新日期：2026-08-30
 
 本文定义 Aezy 从只读 Loop Inspector 演进到简易 Custom Agent Workflow Editor 的产品边界、
@@ -219,8 +219,9 @@ Inspector 只显示允许列表中的结构化摘要，禁止默认“先收集�
 
 ## 6. E0 / CI.0：开发者优先的只读 Inspector
 
-E0 已在 alpha candidate 签收；完整证据见
-[`../milestones/loop-inspector.md`](../milestones/loop-inspector.md)。完整 alpha parity 仍是分支
+E0 的 runtime trace foundation 曾完成 live/cold/restart 与脱敏门禁，证据见
+[`../milestones/loop-inspector.md`](../milestones/loop-inspector.md)；但既有 Graph 只是 Timeline span 的
+树形重排，没有静态 edge/guard/owner topology，因此 E0 已重新打开。完整 alpha parity 仍是分支
 合回主线的独立 release gate。E0 没有实现 Editor/compiler，也没有提供 `codex-inspired` 点击入口。
 
 ### E0-A：event/capability inventory
@@ -241,14 +242,18 @@ E0 已在 alpha candidate 签收；完整证据见
 - projector/adapter 不注册 Turn hook，不持有 cancel/retry 权限，不写 Session event；
 - 未知 event 和缺失配对以 diagnostic 降级，不能让 event stream 或 Session UI 崩溃。
 
-### E0-C：Session header + expandable timeline/graph
+### E0-C：Session header + static logic graph + evidence timeline
 
 第一版面向开发者，而不是替代 Traffic/Task Board：
 
 - Session header 常驻显示 mode/backend、coarse state、当前主节点、elapsed 和已知 usage；未知值留空，
   不显示伪精确数字；
-- header 入口展开 timeline/graph；timeline 是完整且可访问的默认视图，graph 用 blueprint edges
-  解释 nesting/parallel，并高亮全部 active span；
+- header 默认展开静态 logic graph：固定显示 backend 的 node/edge/guard/owner 与 loop-back，空闲或
+  尚无事件时也必须完整可见；runtime trace 只叠加 active/visited/count/usage/duration；
+- timeline 单独显示实际 occurrence 与 SourceRef；不得把同一组 runtime span 换一种树形布局后称为
+  graph；
+- DSH-native blueprint 只依据固定上游 source contract；Codex App Server 私有 loop 以 opaque core
+  表示，只画公开 protocol 与 DSH bridge，不推测 chain-of-thought 或隐藏 phase；
 - 节点详情显示 evidence badge 和 SourceRef cursor，不显示原始 payload；
 - 复用现有 layout/overlay seam，并与 Project/Review/Files/Terminal 的 `details` single slot 协商；
   E0 不重构 layout router，也不让 Inspector 永久抢占现有 panel；
@@ -281,9 +286,9 @@ E0 签收条件：
   Session persistence 不受影响；
 - 没有引入第二套 event bus、Session store、usage ledger、notification system 或 loop controller。
 
-## 7. E1：内部声明式 LoopDefinition 与 codex-inspired dogfood（当前）
+## 7. E1：内部声明式 LoopDefinition 与 codex-inspired dogfood（Paused）
 
-E1 只定义内部、不可点击、不可导入任意代码的 schema，并让 `codex-inspired` 成为第一个
+当前 E1–E3 实现已经撤回，Git 历史完整保留；本节仅保留未来路线定义。E1 只定义内部、不可点击、不可导入任意代码的 schema，并让 `codex-inspired` 成为第一个
 system-authored dogfood。只有 E0 已证明两条 backend 的观测准确性后，才确定 compiler 的具体 API。
 
 最小定义包含：
@@ -310,7 +315,7 @@ micro-loop。
 - backend/model 不满足 capability 时 fail-closed，不能用 Aezy compatibility shim 仿制 capability；
 - 如果 DSH 没有公开、durable 的 definition binding seam，E1 保持内部不可运行，先解决 owner seam。
 
-## 8. E2–E3：逐步开放编辑能力
+## 8. E2–E3：逐步开放编辑能力（Paused）
 
 ### E2：模板式 Editor
 

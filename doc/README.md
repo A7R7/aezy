@@ -32,8 +32,8 @@ milestone 阅读。
 ## 当前活动路线
 
 - [`roadmap/loop-inspector-workflow-editor.md`](roadmap/loop-inspector-workflow-editor.md)：
-  已签收 E0/CI.0 的只读 Loop Inspector；当前从 E1 内部 LoopDefinition 依次推进到 E3，
-  不包含 E4。
+  E0/CI.0 的 runtime trace 基础保留，但静态 backend logic graph 重新打开；E1–E3 已撤回当前
+  实现并暂停，原 Git 历史保留；不包含 E4。
 
 ## 长期参考
 

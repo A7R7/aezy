@@ -109,7 +109,7 @@ dsh plugin --profile <name> add <package-or-git-spec>
 | Codex-backed self-development loop | Complete | [`codex.md`](../milestones/codex.md) |
 | Agent modes / Codex App Server preset | Complete on alpha candidate | [`mode-presets.md`](../milestones/mode-presets.md) |
 | DSH-native Codex provider | Complete on alpha candidate | [`native-provider.md`](../milestones/native-provider.md) |
-| E0 / CI.0 Loop Inspector | Complete on alpha candidate | [`loop-inspector.md`](../milestones/loop-inspector.md) |
+| E0 / CI.0 Loop Inspector | Reopened: static backend logic graph | [`loop-inspector.md`](../milestones/loop-inspector.md) |
 
 ## 路线纠偏记录
 
@@ -191,11 +191,17 @@ audit、Journal/Review、usage 与 restart-resume 均通过。Node 24 env-proxy 
 这里完成的是 DSH 原生 agent loop 使用 OpenAI/Codex model，不是 Codex-inspired loop。后者若
 立项，仍作为同一 runtime contract 的独立 backend，并在 parity gate 通过前保持不可点击。
 
-### 5. E0 / CI.0：只读 Loop Inspector（Complete）
+### 5. E0 / CI.0：只读 Loop Inspector（Reopened）
 
-`@aezy/inspector` 已固定最小 `LoopTrace/Span/SourceRef` contract，并通过开发者优先的 Session
-header、timeline 与 runtime graph 消费 DSH cold history/live `eventSource`。它没有增加 event bus、
-usage ledger、第二日志或 loop control path。
+`@aezy/inspector` 已固定最小 `LoopTrace/Span/SourceRef` runtime evidence contract，并通过 Session
+header 与 timeline 消费 DSH cold history/live `eventSource`。既有 Graph 直接重排同一组 span，
+本质仍是调用日志，不能解释 backend 的静态控制流，因此不能作为 E0 完成证据。
+
+纠正后的 E0 以 backend-specific 静态 blueprint 为主体：明确 node、edge、guard、owner、SourceRef
+与 opaque boundary；runtime trace 只投影 active/visited/count/usage/duration overlay。DSH-native 图
+以固定上游 agent-loop/tool/approval/retry/compaction/Subagent contract 为权威；Codex App Server 只画
+公开协议和 Aezy/DSH bridge，私有 agent core 必须是 opaque 节点，不能推测内部步骤。Timeline 继续
+显示实际 occurrence，不再另设与它同源同构的 runtime Graph。
 
 当前 App Server adapter 只为部分 tool activity 持久保存 `threadId/turnId/itemId`；没有 durable
 correlation 的 App-specific span 必须保持 `partial/unavailable`，不能猜测为权威事实。E0 先证明
@@ -205,12 +211,13 @@ durable usage 时明确保持 partial。完整签收见 [`loop-inspector.md`](..
 详细路线见
 [`loop-inspector-workflow-editor.md`](loop-inspector-workflow-editor.md)。
 
-完整 alpha parity 仍是 `alpha` 合回主线的 release gate；它与当前 E1–E3 产品路线并行存在，
-不能因为 E0 已完成而降低或跳过。
+完整 alpha parity 仍是 `alpha` 合回主线的 release gate，不能因为既有 runtime trace gates 已通过
+而降低或跳过。
 
-### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（当前）
+### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（Paused）
 
-E1 先定义内部、不可点击、不可执行任意代码的 versioned/immutable LoopDefinition，让
+E1–E3 的当前实现已由后续 revert 提交撤回，原始提交完整保留供历史追溯。只有纠正后的 E0 静态
+logic graph 获得验收后才重新评估这些阶段。路线定义仍是：E1 定义内部、不可点击、不可执行任意代码的 versioned/immutable LoopDefinition，让
 `codex-inspired` 作为第一个 system-authored dogfood；E2 再开放模板式 Editor；E3 才增加
 structured condition、parallel、Subagent 与 bounded retry。外置 node plugin SDK 不在当前实施
 范围内，也不为它预留抽象。
