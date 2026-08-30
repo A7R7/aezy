@@ -56,6 +56,13 @@
     - id: aezy-brand
       name: '@aezy/brand'
 
+# Preserve the upstream AppFrame/slots/layout service while widening only its
+# existing desktop details drag range: Chat keeps at least 25% of the shared
+# content region and details may grow to 75%.
+- insert:
+    - id: aezy-layout
+      name: '@aezy/layout'
+
 # Aezy-owned M2 execution boundary. It must be registered before product
 # plugins so its pre-execute policy and shared audit service are available.
 - insert:

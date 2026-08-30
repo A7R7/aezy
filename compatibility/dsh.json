@@ -23,6 +23,8 @@
     "@aezy/project",
     "@aezy/terminal",
     "@aezy/codex",
+    "@aezy/inspector",
+    "@aezy/layout",
     "@aezy/mode"
   ],
   "upstreamReview": {

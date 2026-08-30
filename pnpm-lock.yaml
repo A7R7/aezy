@@ -114,6 +114,8 @@ importers:
 
   packages/aezy-inspector: {}
 
+  packages/aezy-layout: {}
+
   packages/aezy-mode: {}
 
   packages/aezy-project: {}
@@ -130,6 +132,9 @@ importers:
       '@aezy/inspector':
         specifier: workspace:*
         version: link:../aezy-inspector
+      '@aezy/layout':
+        specifier: workspace:*
+        version: link:../aezy-layout
       '@aezy/project':
         specifier: workspace:*
         version: link:../aezy-project

@@ -50,6 +50,9 @@ Node 24/CMake/pnpm store 和 checksum-pinned 本地 release tarball closure；�
 - `packages/aezy-inspector/`：从权威 durable Session events 纯投影 `LoopTrace`，提供 Session
   header、静态 backend logic graph 与独立 evidence timeline；不拥有 loop、history、usage 或
   控制状态。
+- `packages/aezy-layout/`：在保留 DSH AppFrame、slot 与 responsive owner 的前提下，薄扩展
+  既有 desktop details resize handle；Chat 最少保留共享内容区的 25%，side panel 最多可占
+  75%，窄屏继续使用原生 overlay。
 - `doc/`：按 milestone、roadmap、reference 和 archive 分层的项目文档；入口见
   [`doc/README.md`](doc/README.md)。
 
@@ -82,7 +85,7 @@ pnpm run alpha:profile:dump
 pnpm run alpha:web -- --host 127.0.0.1 --port 3091 --no-open
 ```
 
-selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打包 9 个 Aezy 外置包，再用
+selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打包 10 个 Aezy 外置包，再用
 全量本地 override 安装 workspace closure。只有依赖安装、受审 native scripts 和 alpha CLI
 版本验证全部成功才写 completion marker；本分支的 `profile:sync`/`profile:dump`/`aezy:web`
 直接指向该 alpha profile，`alpha:*` 只是等价的显式别名。
@@ -94,9 +97,11 @@ pnpm run test:alpha:runtime
 pnpm run test:alpha:native-provider
 pnpm run test:mode
 pnpm run test:inspector
+pnpm run test:layout
 # 已授权且 3091 正在运行时：
 AEZY_ALPHA_GATE_TOKEN=<launch-token> pnpm run test:alpha:native-turn
 AEZY_ALPHA_GATE_TOKEN=<launch-token> pnpm run test:alpha:inspector
+AEZY_ALPHA_GATE_TOKEN=<launch-token> pnpm run test:alpha:layout
 ```
 
 `standard` Session 已通过 DSH-owned OAuth、真实 `openai-codex/gpt-5.6-sol` Turn、structured
@@ -129,6 +134,8 @@ model 或 `codex-app-server` 的 `aezy-codex` route。证据见
   `partial/unobserved`。
 - Review/Files 和 Terminal 在桌面使用 DSH 原生、占据页面空间的 `details` 列，窄屏才降级
   为 overlay。Terminal 只在打开期间动态占用单槽位，关闭后释放，不永久遮蔽 Project panel。
+- 桌面 `details` 拖拽使用 Aezy 外置比例策略：以 Chat+details 的共享内容区计算，Chat 最小
+  25%、details 最大 75%；DSH 继续拥有 AppFrame、panel open/close 与窄屏 overlay。
 - Terminal transport 是 DSH 0.1.1 的 line-oriented contract，不是 raw browser TTY；Aezy
   不复制 VT/PTY/resize/ConPTY 生命周期。Linux 活动提示符会随 shell `cd` 更新实际 cwd。
 - M2 Network Policy 是 Agent tool boundary，不是操作系统防火墙。
@@ -140,12 +147,14 @@ pnpm run build:brand
 pnpm run build:codex
 pnpm run build:mode
 pnpm run build:inspector
+pnpm run build:layout
 pnpm run build:m1
 pnpm run build:m2
 pnpm run build:m3
 pnpm run build:terminal
 
 pnpm run test:brand
+pnpm run test:layout
 pnpm run test:m0
 pnpm run test:m1
 pnpm run test:m2

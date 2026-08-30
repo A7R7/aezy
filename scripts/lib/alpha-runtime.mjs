@@ -48,6 +48,7 @@ const aezyPackages = [
   ['@aezy/brand', 'packages/aezy-brand', true],
   ['@aezy/codex', 'packages/aezy-codex', true],
   ['@aezy/inspector', 'packages/aezy-inspector', true],
+  ['@aezy/layout', 'packages/aezy-layout', true],
   ['@aezy/mode', 'packages/aezy-mode', true],
   ['@aezy/project', 'packages/aezy-project', true],
   ['@aezy/security', 'packages/aezy-security', true],

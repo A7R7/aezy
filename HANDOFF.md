@@ -43,7 +43,7 @@
 1 个 Landlock entry tarball、逐文件 SHA-256 与官方 packed-install verification。本 `alpha` 分支
 只面向 `~/.aezy-alpha/dsh`、`aezy-alpha` profile 与 3091，不承诺 rc.2 runtime 兼容，也不能从
 reference 源码运行。隔离 selector、checksum-pinned consumer、composition、
-Web、Workspace、Session、mode/preset 与 7 个 Aezy Client bundle 已实机通过；完整证据见
+Web、Workspace、Session、mode/preset 与 8 个 Aezy Client bundle 已实机通过；完整证据见
 `doc/reference/dsh-alpha1-source-runtime.md`。alpha.1
 移除了 ApiProxy/client-runtime，新增 Remote controllers、package-owned shipped presets、PTC rename、
 provider-card slots、exact Turn usage、subagent model routing 与 experimental Agent Team；详细影响和
@@ -67,6 +67,8 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
 - `packages/aezy-inspector`：只读 Session event projector、LoopTrace contract、header 与
   静态 backend logic graph / runtime overlay / evidence timeline；不拥有 loop、history、usage 或
   控制状态。
+- `packages/aezy-layout`：只在 desktop 拖拽期间接管现有 details resize handle，将 Chat/details
+  共享内容区的下限/上限设为 25%/75%；不替换 AppFrame、slot、open/close 或窄屏 overlay。
 
 ## 3. 当前产品基线
 
@@ -160,6 +162,7 @@ pnpm run test:terminal
 pnpm run test:codex
 pnpm run test:codex:dsh
 pnpm run test:inspector
+pnpm run test:layout
 pnpm run test:alpha:runtime
 git diff --check
 ```
@@ -179,7 +182,10 @@ Worktree/Journal/Security HTTP 回归，以及 open/send/read、多 PTY、SIGINT
 fence 和 `cd /tmp` live cwd 均通过。
 浏览器验证确认 1440px 下 Terminal 是 359px 原生 details 列且 Chat 保持选中；680px 下
 只显示无溢出的 overlay；reopen、scrollback、双 Session 隔离与 `pageerror=[]` 通过。
-E0 自动门禁为 Inspector 10/10、alpha runtime 9/9、mode 4/4、Codex 20/20；真实 3091 双 backend
+E0 自动门禁为 Inspector 10/10、alpha runtime 10/10、mode 4/4、Codex 20/20；布局单元/Client
+门禁 6/6。真实 3091 在 1416px AppFrame 下通过既有 drag handle 将 Chat/details 固定到共享区
+25%/75%（284px/852px），details 超过完整 frame 的一半与上游 520px ceiling；680px 下仍为
+原生 overlay。真实 3091 双 backend
 live/cold trace 与 Host restart exact-prefix digest parity 通过。其他里程碑的完整测试矩阵只在对应
 milestone 中维护。
 
@@ -263,6 +269,7 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 | Project、Turn、Worktree、Handoff、M4 client | `packages/aezy-project/` |
 | Security policy/store/client | `packages/aezy-security/` |
 | Integrated Terminal Host/client | `packages/aezy-terminal/` |
+| Desktop Chat/details 比例布局 | `packages/aezy-layout/` |
 | Codex App Server、managed account Host/client 与完成证据 | `packages/aezy-codex/`、`doc/milestones/codex.md` |
 | Loop Inspector 与完成证据 | `packages/aezy-inspector/`、`doc/milestones/loop-inspector.md` |
 | Profile 同步与启动 | `scripts/sync-profile.mjs`、`scripts/run-profile.mjs` |

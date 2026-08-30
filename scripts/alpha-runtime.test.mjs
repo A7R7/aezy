@@ -124,3 +124,22 @@ test('Loop Inspector gate consumes only authenticated Session follow/page truth'
   assert.match(gate, /AEZY_INSPECTOR_RESTART/)
   assert.doesNotMatch(gate, /readRecord\(|ctx\.credentials|credentialStore/i)
 })
+
+test('alpha Web mounts the proportional layout policy without replacing DSH AppFrame', async () => {
+  const [patch, runtime, policy, gate] = await Promise.all([
+    readFile(new URL('../packages/aezy-web/cordis.patch.yml', import.meta.url), 'utf8'),
+    readFile(new URL('./lib/alpha-runtime.mjs', import.meta.url), 'utf8'),
+    readFile(new URL('../packages/aezy-layout/src/policy.js', import.meta.url), 'utf8'),
+    readFile(new URL('./verify-layout-policy.mjs', import.meta.url), 'utf8'),
+  ])
+  assert.match(patch, /- id: aezy-layout\n      name: '@aezy\/layout'/)
+  assert.doesNotMatch(patch, /- id: ui-layout\n  disabled: true/)
+  assert.match(runtime, /\['@aezy\/layout', 'packages\/aezy-layout', true\]/)
+  assert.match(policy, /CHAT_MIN_RATIO = 0\.25/)
+  assert.match(policy, /DETAILS_MAX_RATIO = 1 - CHAT_MIN_RATIO/)
+  assert.match(gate, /AEZY_ALPHA_GATE_TOKEN/)
+  assert.match(gate, /Input\.dispatchMouseEvent/)
+  assert.match(gate, /detailsRatio/)
+  assert.match(gate, /Emulation\.setDeviceMetricsOverride/)
+  assert.doesNotMatch(gate, /localStorage|indexedDB|access[_-]?token|refresh[_-]?token/i)
+})

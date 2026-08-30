@@ -71,13 +71,14 @@
     "releaseFamily": "241 members at 0.1.2-alpha.1; publish order resolved",
     "officialClientBuildRecord": "218 client artifacts with 4 public values",
     "packedInstall": "installed @deepseek-ai/dsh reports 0.1.2-alpha.1",
-    "isolatedConsumer": "pnpm 11.7.0 installed 251 checksum-pinned DSH/vendor/Landlock tarballs and 9 packed Aezy plugins through local overrides; Node 24.20.0 rebuilt koffi and loaded the Linux optional closure",
-    "compositionDump": "DSH alpha Base/Web plus all 9 Aezy out-of-tree packages composed successfully; native ui-agent-preset is enabled, the Host-global ui-model-selection is replaced by the mode projection, and @aezy/inspector remains a read-only Session event consumer",
-    "host": "127.0.0.1:3091 served an authenticated 22014-byte Web index with all 7 Aezy Client bundles, including @aezy/inspector, @aezy/mode, and native ui-agent-preset",
+    "isolatedConsumer": "pnpm 11.7.0 installed 251 checksum-pinned DSH/vendor/Landlock tarballs and 10 packed Aezy plugins through local overrides; Node 24.20.0 rebuilt koffi and loaded the Linux optional closure",
+    "compositionDump": "DSH alpha Base/Web plus all 10 Aezy out-of-tree packages composed successfully; native ui-agent-preset is enabled, the Host-global ui-model-selection is replaced by the mode projection, @aezy/inspector remains a read-only Session event consumer, and @aezy/layout preserves the upstream AppFrame owner",
+    "host": "127.0.0.1:3091 served an authenticated Web index with all 8 Aezy Client bundles, including @aezy/inspector, @aezy/layout, @aezy/mode, and native ui-agent-preset",
     "remoteControllers": "workspace/create and session/create/list/modelCatalog succeeded through the alpha /api Remote controller transport",
     "modePreset": "agentPresets/list returned standard, ptc, minimal, cordis, legacy aezy, and codex-app-server only; standard/codex-app-server/aezy Session creation and durable agentPreset projections succeeded; catalog UI and Host adapter fences are covered by 4/4 mode and 20/20 Codex tests",
     "stableBaseline": "127.0.0.1:3090 remained HTTP 200 and the stable CLI/profile remained 0.1.1-rc.2",
     "loopInspector": "Corrected E0 candidate uses revision-2 static backend logic blueprints with explicit nodes, edges, guards, owners and source refs; DSH-native follows pinned upstream owner contracts while the App Server graph has one explicit opaque official core and only public protocol/DSH bridge structure. Durable traces are overlay-only and Timeline remains the occurrence log. At throughSeq 207/861, DSH-native and Codex App Server live traces equaled cold reconstruction and rebuilt to identical semantic digests after a 3091 restart; native was complete and App Server remained explicitly partial.",
+    "proportionalLayout": "A real existing details-handle drag at a 1416px AppFrame produced a 284px Chat column and 852px details column: exactly 25%/75% of the 1136px shared content region, with details exceeding both the upstream 520px ceiling and half of the full frame. At 680px the existing Inspector overlay remained authoritative and proportional facts were absent.",
     "verifiedAt": "2026-08-30"
   },
   "selector": {
