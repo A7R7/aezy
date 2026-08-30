@@ -49,8 +49,6 @@ Node 24/CMake/pnpm store 和 checksum-pinned 本地 release tarball closure；�
   per-preset model directory 与 Host provider fence；不拥有 Agent/Session/tool loop。
 - `packages/aezy-inspector/`：从权威 durable Session events 纯投影 `LoopTrace`，提供 Session
   header、timeline/runtime graph；不拥有 loop、history、usage 或控制状态。
-- `packages/aezy-workflow/`：内部 immutable LoopDefinition、validator/capability resolver 与
-  system-authored `codex-inspired` 定义；当前无运行入口，也不在 preset selector 中。
 - `doc/`：按 milestone、roadmap、reference 和 archive 分层的项目文档；入口见
   [`doc/README.md`](doc/README.md)。
 
@@ -83,7 +81,7 @@ pnpm run alpha:profile:dump
 pnpm run alpha:web -- --host 127.0.0.1 --port 3091 --no-open
 ```
 
-selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打包 10 个 Aezy 外置包，再用
+selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打包 9 个 Aezy 外置包，再用
 全量本地 override 安装 workspace closure。只有依赖安装、受审 native scripts 和 alpha CLI
 版本验证全部成功才写 completion marker；本分支的 `profile:sync`/`profile:dump`/`aezy:web`
 直接指向该 alpha profile，`alpha:*` 只是等价的显式别名。
@@ -95,11 +93,9 @@ pnpm run test:alpha:runtime
 pnpm run test:alpha:native-provider
 pnpm run test:mode
 pnpm run test:inspector
-pnpm run test:workflow
 # 已授权且 3091 正在运行时：
 AEZY_ALPHA_GATE_TOKEN=<launch-token> pnpm run test:alpha:native-turn
 AEZY_ALPHA_GATE_TOKEN=<launch-token> pnpm run test:alpha:inspector
-AEZY_ALPHA_GATE_TOKEN=<launch-token> pnpm run test:alpha:workflow-definition
 ```
 
 `standard` Session 已通过 DSH-owned OAuth、真实 `openai-codex/gpt-5.6-sol` Turn、structured
@@ -123,7 +119,6 @@ model 或 `codex-app-server` 的 `aezy-codex` route。证据见
 | Agent modes | 原生四模式、legacy `aezy`、Codex App Server preset 与双门禁 | [`mode-presets.md`](doc/milestones/mode-presets.md) |
 | Native provider | DSH-owned OAuth、OpenAI/Codex models 与原生 agent loop parity | [`native-provider.md`](doc/milestones/native-provider.md) |
 | Loop Inspector | 双 backend durable trace、Session header、timeline/graph 与 restart rebuild | [`loop-inspector.md`](doc/milestones/loop-inspector.md) |
-| LoopDefinition | immutable revision/digest、strict validator、capability resolver、non-clickable codex-inspired | [`loop-definition.md`](doc/milestones/loop-definition.md) |
 
 关键语义：
 
@@ -158,7 +153,6 @@ pnpm run test:terminal
 pnpm run test:codex
 pnpm run test:mode
 pnpm run test:inspector
-pnpm run test:workflow
 pnpm run test:codex:dsh
 pnpm peers check
 ```
@@ -212,7 +206,7 @@ git -C .local/deepseek-harness checkout --detach cd5ef8148158c3a752a658978873241
 - 当前接手状态：[`HANDOFF.md`](HANDOFF.md)
 - 文档阅读顺序：[`doc/README.md`](doc/README.md)
 - 当前所有权与实施路线：[`doc/roadmap/aezy-upstream-ownership-roadmap.md`](doc/roadmap/aezy-upstream-ownership-roadmap.md)
-- 当前产品路线 E2–E3：[`doc/roadmap/loop-inspector-workflow-editor.md`](doc/roadmap/loop-inspector-workflow-editor.md)
+- 当前产品路线 E1–E3：[`doc/roadmap/loop-inspector-workflow-editor.md`](doc/roadmap/loop-inspector-workflow-editor.md)
 
 **Codex-backed self-development loop 已完成**：固定 Relay 0.1.2 companion 已完成隔离
 门禁，但因真实 structured tool/approval 硬约束失败而不进入 Aezy profile。最小外置 runtime
@@ -232,10 +226,9 @@ hardening。当前 DSH-owned `openai-codex` 已完成 OAuth、真实
 standard Turn、tool/approval/Security/Journal/usage 与 restart-resume gate。E0/CI.0 Loop Inspector
 也已从 durable Session events 证明 DSH-native 与 Codex App Server 的 live/cold/restart trace
 accuracy，并交付只读 Session header、timeline/runtime graph；App Server 缺失的 durable item usage
-明确显示为 partial。E1 内部 immutable LoopDefinition 已完成；`codex-inspired@1` 因缺少 durable
-definition binding 而 fail-closed，未进入 preset roster。当前依次实施 E2 模板式 Editor 与 E3
-受限 control flow；不包含 E4。Inspector 不驱动 loop，且不得展示 reasoning、secret 或未脱敏
-tool arguments。
+明确显示为 partial。当前依次实施 E1–E3：内部 immutable LoopDefinition、模板式 Editor、受限
+control flow；不包含 E4。Inspector 不驱动 loop，且不得展示 reasoning、secret 或未脱敏 tool
+arguments。
 
 已实现的 Activity dashboard 实验已经通过三笔独立 revert 全部撤销，不再作为后续基础。
 Traffic Board 与 Task Board 暂缓；Browser integration 暂停并默认使用外部浏览器。后续若实现

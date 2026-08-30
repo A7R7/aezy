@@ -124,16 +124,3 @@ test('Loop Inspector gate consumes only authenticated Session follow/page truth'
   assert.match(gate, /AEZY_INSPECTOR_RESTART/)
   assert.doesNotMatch(gate, /readRecord\(|ctx\.credentials|credentialStore/i)
 })
-
-test('E1 definition gate proves the installed artifact remains non-clickable and non-executable', async () => {
-  const gate = await readFile(
-    new URL('./verify-alpha-loop-definition.mjs', import.meta.url),
-    'utf8',
-  )
-  assert.match(gate, /@aezy\/workflow/)
-  assert.match(gate, /durable-definition-binding/)
-  assert.match(gate, /agentPresets\/list/)
-  assert.match(gate, /codex-inspired/)
-  assert.match(gate, /executable, false/)
-  assert.doesNotMatch(gate, /session\/prompt|session\.append|workflowEngine\.start|readRecord\(/)
-})
