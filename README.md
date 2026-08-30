@@ -48,8 +48,8 @@ Node 24/CMake/pnpm store 和 checksum-pinned 本地 release tarball closure；�
 - `packages/aezy-mode/`：alpha-only 的原生 preset 装配、Codex system preset overlay、
   per-preset model directory 与 Host provider fence；不拥有 Agent/Session/tool loop。
 - `packages/aezy-inspector/`：从权威 durable Session events 纯投影 `LoopTrace`，提供 Session
-  header、静态 backend logic graph 与独立 evidence timeline；不拥有 loop、history、usage 或
-  控制状态。
+  header、revision 3 双 backend full logic graph（owner lanes、可选择 guard/source）与独立
+  evidence timeline；不拥有 loop、history、usage 或控制状态。
 - `packages/aezy-layout/`：在保留 DSH AppFrame、slot 与 responsive owner 的前提下，薄扩展
   既有 desktop details resize handle；Chat 最少保留共享内容区的 25%，side panel 最多可占
   75%，窄屏继续使用原生 overlay。

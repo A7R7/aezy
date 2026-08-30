@@ -8,10 +8,12 @@ The default Inspector view is a static, revisioned backend logic graph. Its
 nodes, edges, guards, owners, and source references describe the backend even
 when a Session is idle. Durable runtime spans only add active/visited/count/
 usage/duration highlights; the Timeline remains the separate occurrence log.
-The DSH-native blueprint follows the pinned upstream Agent and composed service
-contracts. The Codex App Server blueprint deliberately renders the official
-agent core as opaque and shows only public protocol plus the Aezy/DSH security
-bridge.
+Revision 3 renders five owner lanes for each backend. The DSH-native full graph
+follows the pinned Agent, scheduler, ToolRuntime, approval, compaction, and
+Subagent source contracts. The Codex graph follows official
+`rust-v0.149.0@758ef40f` Turn, sampling, retry, tool, compaction, and Subagent
+source plus the public App Server and Aezy/DSH bridge. Only private model
+inference remains opaque; source topology never substitutes for runtime facts.
 
 The projector deliberately discards transcript text, reasoning, prompts,
 credentials, raw tool arguments, tool results, approval reasons, and opaque

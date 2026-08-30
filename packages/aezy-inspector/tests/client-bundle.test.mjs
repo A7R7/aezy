@@ -90,10 +90,13 @@ test('built inspector exposes a static backend logic graph plus evidence timelin
   for (const marker of [
     'data-aezy-loop-inspector', 'data-aezy-loop-inspector-panel',
     'data-aezy-loop-timeline', 'data-aezy-loop-logic-graph',
-    'data-aezy-loop-blueprint-node', 'data-aezy-loop-blueprint-edge',
+    'data-aezy-loop-blueprint-lane', 'data-aezy-loop-blueprint-node', 'data-aezy-loop-blueprint-edge',
   ]) assert.match(bundle, new RegExp(marker))
   assert.match(bundle, /Backend Logic/)
   assert.match(bundle, /Static blueprint/)
+  assert.match(bundle, /nodes/)
+  assert.match(bundle, /edges/)
+  assert.match(bundle, /80%/)
   assert.match(bundle, /OPAQUE/)
   assert.doesNotMatch(sourceText, /function GraphNode/)
   assert.match(sourceText, /binding\.eventSource/)

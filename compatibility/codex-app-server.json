@@ -1,9 +1,12 @@
 {
   "schemaVersion": 1,
-  "checkedAt": "2026-08-28",
+  "checkedAt": "2026-08-30",
   "runtime": {
     "package": "@openai/codex",
     "version": "0.149.0",
+    "sourceTag": "rust-v0.149.0",
+    "sourceCommit": "758ef40f50c1a458425c7cfbf1eb12cbc07af0b0",
+    "sourceTree": "0f7a27df60e01dccf918f3203235266a0d6e3258",
     "analyticsDefaultEnabled": false
   },
   "account": {

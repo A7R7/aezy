@@ -4,7 +4,7 @@
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`alpha`<br>
 > 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
-> OpenAI/Codex provider（Complete）；E0/CI.0 Loop Inspector（Corrected candidate：等待产品验收）
+> OpenAI/Codex provider（Complete）；E0.1 Loop Inspector revision 3（Candidate：等待产品验收）
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
@@ -65,8 +65,8 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
 - `packages/aezy-mode`：alpha-only 原生 preset 装配、`codex-app-server` system overlay、
   per-preset catalog UI 与 Host provider fence。
 - `packages/aezy-inspector`：只读 Session event projector、LoopTrace contract、header 与
-  静态 backend logic graph / runtime overlay / evidence timeline；不拥有 loop、history、usage 或
-  控制状态。
+  revision 3 双 backend full logic graph / runtime overlay / evidence timeline；40/59 与 41/54
+  topology 按 owner lane 呈现，不拥有 loop、history、usage 或控制状态。
 - `packages/aezy-layout`：只在 desktop 拖拽期间接管现有 details resize handle，将 Chat/details
   共享内容区的下限/上限设为 25%/75%；不替换 AppFrame、slot、open/close 或窄屏 overlay。
 
@@ -88,7 +88,7 @@ provider-card slots、exact Turn usage、subagent model routing 与 experimental
 | Codex loop | Managed ChatGPT、DSH dynamic tools、真实 Aezy 自开发闭环 | `doc/milestones/codex.md` |
 | Agent modes | standard/PTC/minimal/creative、legacy aezy、Codex App Server preset | `doc/milestones/mode-presets.md` |
 | Native provider | DSH-owned OAuth、OpenAI/Codex model、原生 tool/approval/Security/Journal/restart | `doc/milestones/native-provider.md` |
-| E0 / CI.0 | 静态双 backend logic graph、durable overlay、Timeline、live/cold/restart parity（corrected candidate） | `doc/milestones/loop-inspector.md` |
+| E0.1 | revision 3 双 backend full logic graph、durable overlay、Timeline、live/cold/restart parity（candidate） | `doc/milestones/loop-inspector.md` |
 
 `openai-codex` 是 standard/PTC/minimal/creative 可用的 DSH-native provider；
 `codex-app-server` 仍只使用 `aezy-codex`。两者的模型可能同名，但 agent loop owner 不同。
@@ -189,6 +189,11 @@ E0 自动门禁为 Inspector 10/10、alpha runtime 10/10、mode 4/4、Codex 20/2
 live/cold trace 与 Host restart exact-prefix digest parity 通过。其他里程碑的完整测试矩阵只在对应
 milestone 中维护。
 
+E0.1 revision 3 浏览器门禁：DSH-native 为 5 lanes / 40 nodes / 59 edges，digest
+`dc8900a001b6…`；Codex App Server 为 5 / 41 / 54，digest `c3a0b8b2ebab…`。Codex 静态图固定
+官方 `rust-v0.149.0@758ef40f` 源码，不再把整个 core 标为 opaque；两条 backend 都只有模型推理
+保持 OPAQUE。80%/100%、edge Guard、两 workspace/Session、Host restart 与 `pageErrors=[]` 通过。
+
 ## 6. 下一步与所有权
 
 近期目标已达成：让 Aezy 能用官方 managed ChatGPT 账户完成真实 coding agent Turn，并能
@@ -227,12 +232,11 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
    structured tool、approval、Security、Journal/Review、usage 与 restart-resume 均通过。默认
    DeepSeek model 与 `codex-app-server`/`aezy-codex` 隔离未改变。证据见
    `doc/milestones/native-provider.md`。
-8. Corrected candidate：E0/CI.0 只读 Loop Inspector。原 runtime span tree 已移除；默认
-   `Backend Logic` 现在由 revisioned backend blueprint 固定 node/edge/guard/owner/source topology，
-   durable trace 只叠加 active/visited/count/usage/duration，Timeline 单独保留 occurrence。DSH-native
-   图依据固定上游 owner contract；App Server 只画公开协议与 DSH bridge，私有 core 明确为
-   opaque。Inspector 10/10 与真实双 backend live/cold/restart gate 通过，等待产品验收后再决定
-   是否恢复 E0 Complete。
+8. E0.1 revision 3 candidate：原 runtime span tree 已移除；默认 `Backend Logic` 是 5-lane full
+   static topology，durable trace 只叠加可证明的 active/visited/count/usage/duration，Timeline 单独
+   保留 occurrence。DSH 图固定 alpha.1 源码 owner；Codex 图固定官方 rust-v0.149.0 source 并接入
+   public protocol/DSH bridge，只有模型推理 opaque。Inspector 10/10 与真实双 backend DOM/digest/
+   live/cold/restart gate 通过，等待产品验收后再决定是否恢复 E0 Complete。
 9. 完整 alpha parity gates 仍是 `alpha` 合回主线的 release gate；通过前不合并。
 10. E1–E3 的当前实现已通过新增 revert 提交撤回，原提交完整保留供历史追溯；三个阶段均暂停，
     直到静态 backend logic graph 版本的 E0 被重新验收。E4 与外置 node SDK 不在当前范围，也不

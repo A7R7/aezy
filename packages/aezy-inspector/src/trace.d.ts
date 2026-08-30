@@ -48,7 +48,7 @@ export interface Span {
 }
 
 export type BlueprintNodeKind = 'boundary' | 'phase' | 'decision' | 'model' |
-  'retry' | 'tool' | 'approval' | 'subagent' | 'compaction' | 'finalize' | 'opaque'
+  'retry' | 'tool' | 'approval' | 'subagent' | 'compaction' | 'cancel' | 'finalize' | 'opaque'
 export type BlueprintEdgeKind = 'normal' | 'branch' | 'loop-back' | 'retry' | 'cancel'
 
 export interface BlueprintSourceRef {
@@ -66,6 +66,7 @@ export interface BlueprintRuntimeBinding {
 
 export interface BlueprintNode {
   readonly id: string
+  readonly laneId: string
   readonly kind: BlueprintNodeKind
   readonly label: string
   readonly owner: string
@@ -74,6 +75,14 @@ export interface BlueprintNode {
   readonly sourceRefs: readonly BlueprintSourceRef[]
   readonly runtime?: BlueprintRuntimeBinding
   readonly opaque?: true
+}
+
+export interface BlueprintLane {
+  readonly id: string
+  readonly label: string
+  readonly owner: string
+  readonly bounds: Readonly<{ x: number; y: number; width: number; height: number }>
+  readonly sourceRefs: readonly BlueprintSourceRef[]
 }
 
 export interface BlueprintEdge {
@@ -92,6 +101,7 @@ export interface LoopBlueprint {
   readonly title: string
   readonly description: string
   readonly canvas: Readonly<{ width: number; height: number; nodeWidth: number; nodeHeight: number }>
+  readonly lanes: readonly BlueprintLane[]
   readonly nodes: readonly BlueprintNode[]
   readonly edges: readonly BlueprintEdge[]
   readonly digest: string

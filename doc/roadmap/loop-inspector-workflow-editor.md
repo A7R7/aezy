@@ -1,6 +1,6 @@
 # Loop Inspector 与 Custom Agent Workflow Editor 路线
 
-> 状态：**E0 / CI.0 corrected candidate；E1–E3 paused**<br>
+> 状态：**E0.1 revision 3 candidate；E1–E3 paused**<br>
 > 当前优先级：**静态 backend logic graph**<br>
 > 更新日期：2026-08-30
 
@@ -220,14 +220,16 @@ Inspector 只显示允许列表中的结构化摘要，禁止默认“先收集�
 ## 6. E0 / CI.0：开发者优先的只读 Inspector
 
 E0 的 runtime trace foundation 曾完成 live/cold/restart 与脱敏门禁；随后已移除只是 Timeline span
-树形重排的旧 Graph，并交付 revisioned static backend topology、runtime overlay 与独立 Timeline。
+树形重排的旧 Graph。E0.1 revision 3 已交付五条 owner lane 的 full static backend topology、
+runtime overlay 与独立 Timeline。
 实现和 restart gate 已通过，当前等待产品验收；完整证据见
 [`../milestones/loop-inspector.md`](../milestones/loop-inspector.md)。完整 alpha parity 仍是分支合回
 主线的独立 release gate。E0 没有实现 Editor/compiler，也没有提供 `codex-inspired` 点击入口。
 
 ### E0-A：event/capability inventory
 
-- 固定 DSH tag/commit、Codex App Server protocol/runtime version 和 Aezy adapter revision；
+- 固定 DSH tag/commit、Codex App Server protocol/runtime version、对应官方 Codex source
+  tag/commit/tree 和 Aezy adapter revision；
 - 枚举两条 backend 的 durable/live event、关联键、usage、cancel、approval、compaction、Subagent
   与 restart 语义；
 - 为每类节点写 `authoritative / derived / inferred / unavailable` 矩阵；
@@ -253,8 +255,10 @@ E0 的 runtime trace foundation 曾完成 live/cold/restart 与脱敏门禁；�
   尚无事件时也必须完整可见；runtime trace 只叠加 active/visited/count/usage/duration；
 - timeline 单独显示实际 occurrence 与 SourceRef；不得把同一组 runtime span 换一种树形布局后称为
   graph；
-- DSH-native blueprint 只依据固定上游 source contract；Codex App Server 私有 loop 以 opaque core
-  表示，只画公开 protocol 与 DSH bridge，不推测 chain-of-thought 或隐藏 phase；
+- DSH-native blueprint 只依据固定上游 source contract；Codex App Server blueprint 依据与 runtime
+  精确对应的固定官方 Codex source revision，并接入公开 protocol 与 DSH bridge。静态源码结构不
+  等于 runtime visited；只有已有 durable/public event 可以高亮。两条 backend 都只把模型私有推理
+  标为 opaque，不推测或展示 chain-of-thought；
 - 节点详情显示 evidence badge 和 SourceRef cursor，不显示原始 payload；
 - 复用现有 layout/overlay seam，并与 Project/Review/Files/Terminal 的 `details` single slot 协商；
   E0 不重构 layout router，也不让 Inspector 永久抢占现有 panel；

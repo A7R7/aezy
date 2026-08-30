@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import type { Context } from '@deepseek-ai/cordis'
 import { projectBlueprintOverlay, projectLoopTrace } from '../trace.js'
 import type {
-  BlueprintEdge, BlueprintNode, BlueprintSourceRef, LoopTrace, Span, TraceUsage,
+  BlueprintEdge, BlueprintLane, BlueprintNode, BlueprintSourceRef, LoopTrace, Span, TraceUsage,
 } from '../trace.js'
 
 type Observable<T> = {
@@ -350,7 +350,7 @@ function LogicGraph({ trace, now }: { trace: LoopTrace; now: number }) {
   const overlay = useMemo(() => projectBlueprintOverlay(trace), [trace])
   const nodes = useMemo(() => new Map(blueprint.nodes.map(nodeValue => [nodeValue.id, nodeValue])), [blueprint])
   const [selection, setSelection] = useState<BlueprintSelection | null>(null)
-  const [fit, setFit] = useState(true)
+  const [zoom, setZoom] = useState<'fit' | .8 | 1>(.8)
   const [availableWidth, setAvailableWidth] = useState(blueprint.canvas.width)
   const frame = useRef<HTMLDivElement>(null)
   const { width, height, nodeWidth, nodeHeight } = blueprint.canvas
@@ -365,17 +365,20 @@ function LogicGraph({ trace, now }: { trace: LoopTrace; now: number }) {
     return () => { observer.disconnect() }
   }, [blueprint])
 
-  const scale = fit ? Math.min(1, availableWidth / width) : 1
+  const scale = zoom === 'fit' ? Math.min(1, availableWidth / width) : zoom
+  const laneById = useMemo(() => new Map(blueprint.lanes.map(laneValue => [laneValue.id, laneValue])), [blueprint])
 
-  return <section data-aezy-loop-logic-graph data-blueprint={blueprint.id} style={{ padding: 12 }}>
+  return <section data-aezy-loop-logic-graph data-blueprint={blueprint.id} data-blueprint-revision={blueprint.revision} data-blueprint-digest={blueprint.digest} style={{ padding: 12 }}>
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, marginBottom: 10 }}>
       <div>
         <strong style={{ display: 'block', fontSize: 13 }}>{blueprint.title}</strong>
         <span style={{ display: 'block', maxWidth: 760, marginTop: 3, color: colors.muted, fontSize: 10 }}>{blueprint.description}</span>
       </div>
       <div style={{ marginLeft: 'auto', color: colors.muted, fontSize: 9, textAlign: 'right' }}>
-        Static blueprint v{String(blueprint.revision)}<br />{blueprint.digest.slice(0, 24)}…<br />
-        <button type="button" onClick={() => { setFit(value => !value) }} style={{ marginTop: 4, padding: 0, border: 0, background: 'transparent', color: colors.active, cursor: 'pointer', fontSize: 9 }}>{fit ? 'Open at 100%' : 'Fit overview'}</button>
+        Static blueprint v{String(blueprint.revision)} · {String(blueprint.nodes.length)} nodes / {String(blueprint.edges.length)} edges<br />{blueprint.digest.slice(0, 24)}…<br />
+        <span style={{ display: 'inline-flex', gap: 7, marginTop: 4 }}>
+          {([['fit', 'Fit'], [.8, '80%'], [1, '100%']] as const).map(([value, label]) => <button key={label} type="button" onClick={() => { setZoom(value) }} aria-pressed={zoom === value} style={{ padding: 0, border: 0, background: 'transparent', color: zoom === value ? colors.active : colors.muted, cursor: 'pointer', fontSize: 9 }}>{label}</button>)}
+        </span>
       </div>
     </div>
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8, color: colors.muted, fontSize: 9 }}>
@@ -386,7 +389,19 @@ function LogicGraph({ trace, now }: { trace: LoopTrace; now: number }) {
     <div ref={frame} style={{ width: '100%', overflow: 'auto' }}>
       <div style={{ position: 'relative', width: width * scale, height: height * scale }}>
         <div style={{ position: 'absolute', left: 0, top: 0, width, height, transform: `scale(${String(scale)})`, transformOrigin: 'top left', border: `1px solid ${colors.border}`, borderRadius: 10, background: colors.raised, overflow: 'hidden' }}>
-      <svg aria-label={`${blueprint.title} edges`} width={width} height={height} style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      {blueprint.lanes.map((laneValue: BlueprintLane) => <div
+        key={laneValue.id}
+        data-aezy-loop-blueprint-lane={laneValue.id}
+        style={{
+          position: 'absolute', left: laneValue.bounds.x, top: laneValue.bounds.y,
+          width: laneValue.bounds.width, height: laneValue.bounds.height,
+          border: `1px solid color-mix(in srgb, ${colors.border} 76%, transparent)`,
+          borderRadius: 10, background: `color-mix(in srgb, ${colors.soft} 42%, transparent)`,
+        }}
+      >
+        <span style={{ position: 'absolute', left: 12, top: 7, color: colors.muted, fontSize: 9, letterSpacing: '.04em', textTransform: 'uppercase' }}>{laneValue.label} · {laneValue.owner}</span>
+      </div>)}
+      <svg aria-label={`${blueprint.title} edges`} width={width} height={height} style={{ position: 'absolute', inset: 0 }}>
         <defs>
           <marker id="aezy-loop-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
@@ -400,9 +415,22 @@ function LogicGraph({ trace, now }: { trace: LoopTrace; now: number }) {
           const labelX = (from.position.x + to.position.x + nodeWidth) / 2
           const labelY = (from.position.y + to.position.y + nodeHeight) / 2 - 5
           const stroke = state.active ? colors.active : state.traversed ? colors.done : colors.muted
-          return <g key={edgeValue.id} data-aezy-loop-blueprint-edge={edgeValue.id} data-edge-kind={edgeValue.kind} data-traversed={String(state.traversed)}>
-            <path d={blueprintPath(edgeValue, nodes, nodeWidth, nodeHeight)} fill="none" stroke={stroke} strokeOpacity={state.traversed ? .9 : .34} strokeWidth={state.active ? 2.4 : edgeValue.kind === 'loop-back' ? 1.7 : 1.3} strokeDasharray={edgeValue.kind === 'loop-back' || edgeValue.kind === 'retry' ? '5 4' : undefined} markerEnd="url(#aezy-loop-arrow)" />
-            <text x={labelX} y={labelY} textAnchor="middle" fill={state.traversed ? colors.text : colors.muted} stroke={colors.raised} strokeWidth="4" paintOrder="stroke" fontSize="9">{edgeValue.label}</text>
+          const path = blueprintPath(edgeValue, nodes, nodeWidth, nodeHeight)
+          return <g
+            key={edgeValue.id}
+            data-aezy-loop-blueprint-edge={edgeValue.id}
+            data-edge-kind={edgeValue.kind}
+            data-traversed={String(state.traversed)}
+            role="button"
+            tabIndex={0}
+            aria-label={`${edgeValue.label}; guard ${edgeValue.guard}`}
+            onClick={() => { setSelection({ kind: 'edge', value: edgeValue }) }}
+            onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') setSelection({ kind: 'edge', value: edgeValue }) }}
+            style={{ cursor: 'pointer' }}
+          >
+            <path d={path} fill="none" stroke="transparent" strokeWidth="12" pointerEvents="stroke" />
+            <path d={path} fill="none" stroke={stroke} strokeOpacity={state.traversed ? .9 : .34} strokeWidth={state.active ? 2.4 : edgeValue.kind === 'loop-back' ? 1.7 : 1.3} strokeDasharray={edgeValue.kind === 'loop-back' || edgeValue.kind === 'retry' ? '5 4' : undefined} markerEnd="url(#aezy-loop-arrow)" pointerEvents="none" />
+            <text x={labelX} y={labelY} textAnchor="middle" fill={state.traversed ? colors.text : colors.muted} stroke={colors.raised} strokeWidth="4" paintOrder="stroke" fontSize="9" pointerEvents="none">{edgeValue.label}</text>
           </g>
         })}
       </svg>
@@ -434,7 +462,7 @@ function LogicGraph({ trace, now }: { trace: LoopTrace; now: number }) {
             <strong style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11 }}>{nodeValue.label}</strong>
             {nodeValue.opaque ? <small style={{ marginLeft: 'auto', color: colors.warning, fontSize: 8 }}>OPAQUE</small> : null}
           </span>
-          <span style={{ display: 'block', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: colors.muted, fontSize: 9 }}>{nodeValue.owner}</span>
+          <span style={{ display: 'block', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: colors.muted, fontSize: 9 }}>{laneById.get(nodeValue.laneId)?.label ?? nodeValue.owner}</span>
           <span style={{ display: 'block', marginTop: 7, color: state.visited ? colors.text : colors.muted, fontSize: 9 }}>
             {state.visited ? `${String(state.visits)} visit${state.visits === 1 ? '' : 's'}` : 'static'}
             {elapsed > 0 ? ` · ${durationText(elapsed)}` : ''}{tokens === null ? '' : ` · ${shortNumber(tokens)} tok`}
@@ -448,7 +476,7 @@ function LogicGraph({ trace, now }: { trace: LoopTrace; now: number }) {
       {selection === null ? <span style={{ color: colors.muted, fontSize: 10 }}>Select a node to inspect its static owner and source contract. Edge labels show the branch or loop guard.</span>
         : selection.kind === 'node' ? <>
           <strong style={{ fontSize: 11 }}>{selection.value.label}</strong>
-          <span style={{ marginLeft: 7, color: colors.muted, fontSize: 9 }}>{selection.value.kind} · {selection.value.owner}{selection.value.opaque ? ' · opaque boundary' : ''}</span>
+          <span style={{ marginLeft: 7, color: colors.muted, fontSize: 9 }}>{selection.value.kind} · {selection.value.owner} · {laneById.get(selection.value.laneId)?.label ?? selection.value.laneId}{selection.value.opaque ? ' · opaque boundary' : ''}</span>
           <p style={{ margin: '5px 0 0', color: colors.muted, fontSize: 10 }}>{selection.value.description}</p>
           <BlueprintRefs refs={selection.value.sourceRefs} />
         </> : <>
