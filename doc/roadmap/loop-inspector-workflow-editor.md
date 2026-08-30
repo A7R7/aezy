@@ -1,7 +1,7 @@
 # Loop Inspector 与 Custom Agent Workflow Editor 路线
 
-> 状态：**E0 / CI.0、E1、E2 Complete；E3 in progress**<br>
-> 当前优先级：**E3 bounded control-flow authoring**<br>
+> 状态：**E0 / CI.0、E1 Complete；E2 in progress**<br>
+> 当前优先级：**E2 template Editor**<br>
 > 更新日期：2026-08-30
 
 本文定义 Aezy 从只读 Loop Inspector 演进到简易 Custom Agent Workflow Editor 的产品边界、
@@ -317,18 +317,14 @@ micro-loop。
 
 ## 8. E2–E3：逐步开放编辑能力
 
-### E2：模板式 Editor（Complete）
+### E2：模板式 Editor（当前）
 
 - 只从已签名/内建模板创建、复制和参数化定义；
 - 表单/图形编辑都落到相同声明式 schema，预览 validator 和 capability resolution；
 - 发布产生新 immutable revision，已有 Session 不受影响；
 - 不开放任意节点、脚本、prompt secret 或 package import。
 
-E2 已按上述边界签收，证据见
-[`../milestones/workflow-editor.md`](../milestones/workflow-editor.md)。发布的 revision durable，
-但没有 runtime binding/compiler，因而不会出现在 preset roster，也不能执行。
-
-### E3：受限控制流（当前）
+### E3：受限控制流
 
 - 在真实 parity gates 覆盖后才开放 structured condition、parallel、Subagent 和 bounded retry；
 - UI 必须可见地显示每个 budget、取消传播、join policy 和失败策略；

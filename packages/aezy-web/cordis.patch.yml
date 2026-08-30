@@ -74,12 +74,6 @@
     - id: aezy-inspector
       name: '@aezy/inspector'
 
-# Immutable macro-definition template editor. It owns only definition revisions;
-# publishing does not create a Session or run a workflow.
-- insert:
-    - id: aezy-workflow
-      name: '@aezy/workflow'
-
 # Aezy-owned M1 vertical slice. Its Node half exposes a bounded same-origin
 # repository read API; its browser half contributes the Changes view through
 # the existing DSH client-module and conversation-slot seams.
