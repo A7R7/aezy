@@ -1,8 +1,8 @@
 # Agent mode 与 Codex App Server preset
 
 > 状态：**Complete on `alpha` branch runtime；尚未合回主线**<br>
-> 日期：2026-08-28<br>
-> Runtime：DSH `0.1.2-alpha.1` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
+> 日期：2026-09-01<br>
+> Runtime：DSH `0.1.2-alpha.3` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
 
 ## 产品结果
 
@@ -29,7 +29,7 @@ Session header 的模式名称由原生 `ui-agent-preset` 读取 durable `agentP
 - `@aezy/codex` adapter 在 App Server turn/thread I/O 前再次按 Session header 拒绝越界执行；
   `codex-app-server` 是正常入口，`aezy` 仅是历史 Session 兼容例外；该包不声明 rc.2 runtime 兼容。
 
-catalog 仍由 DSH Host 统一生成，这是 alpha.1 的公开 seam；因此 Remote
+catalog 仍由 DSH Host 统一生成，这是 alpha.3 的公开 seam；因此 Remote
 `session/modelCatalog` 会包含 DeepSeek 与 Codex。隔离策略不伪造第二份 Host catalog，而在 UI
 目录和最终执行边界做双门禁。
 
@@ -55,6 +55,12 @@ aezy-alpha-codex-mode-proof    → agentPreset=codex-app-server
 确认上游 global `ui-model-selection` 被禁用、Aezy replacement 已装载。真实 Codex preset 首次
 暴露 alpha `dsh-plan-mode.section` 新约束后，selector 改为派生官方 standard composition，复验
 创建成功；没有用 rc.2 仿制层绕过该约束。
+
+alpha.3 migration 复验确认 shipped `standard/agent.cordis.yml` 与 alpha.1 byte-identical，虽然
+preset manager UI 已把默认选择 owner 调整到 roster section，Aezy 的 package-owned composition
+与 durable header seam 无需 shim。隔离 3193 与提升后 3091 都成功创建 standard、
+`codex-app-server` 和 exact revision 1 Session；最终普通 sync 后 roster/system root 仍不包含
+codex-inspired dogfood preset。
 
 自动门禁：
 

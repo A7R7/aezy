@@ -1,8 +1,8 @@
 # Codex-inspired Agent Loop
 
 > 状态：**E1 internal dogfood slice verified；完整 parity pending；不可点击**<br>
-> 日期：2026-08-30<br>
-> Runtime：DSH `0.1.2-alpha.1` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
+> 日期：2026-09-01<br>
+> Runtime：DSH `0.1.2-alpha.3` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
 
 ## 当前产品结果
 
@@ -54,7 +54,7 @@ import、prompt eval、未知字段、无界 cycle 和不可达节点。
 
 ## 公共 seam 与所有权
 
-runtime controller 只使用固定 alpha.1 的公开 seam：
+runtime controller 只使用固定 alpha.3 的公开 seam：
 
 - `agent/pre-step`、`agent/request`、`agent/turn-stopping`：检查 durable Turn facts 与硬预算；
 - `tools/pre-execute`：在调用已经进入 DSH durable log 后执行 tool-call budget，允许时继续委托
@@ -93,6 +93,12 @@ usage after T2 8940 uncached input / 16896 cache read / 72 output
 
 gate 不读取 OAuth token；只使用 3091 的短期 launch token 建立签名 Web cookie。fixture 已删除。
 最后以普通环境重启 3091，system root 只包含 `aezy` 与 `codex-app-server`，未残留 dogfood preset。
+
+2026-09-01 的 alpha.1 → alpha.3 migration 没有修改 revision 1。隔离 3193 先证明 exact preset
+Session 的 durable projection 与 restart；提升后的 3091 再用 Session
+`aezy-codex-inspired-mti3coyf` 完成真实 structured read Turn，definition digest、policy header、
+tool call/result 与 usage 均保持。新增 parity 功能仍暂停；完整升级证据见
+[`../reference/dsh-0.1.2-alpha3-impact.md`](../reference/dsh-0.1.2-alpha3-impact.md)。
 
 ## 尚未签收
 

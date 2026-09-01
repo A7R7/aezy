@@ -1,13 +1,23 @@
 {
-  "schemaVersion": 1,
-  "packageVersion": "0.1.2-alpha.1",
-  "tag": "dsh-v0.1.2-alpha.1",
-  "commit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
-  "tree": "a712eec535b48badc4fefb4df5176a7002e4280b",
+  "schemaVersion": 2,
+  "packageVersion": "0.1.2-alpha.3",
+  "tag": "dsh-v0.1.2-alpha.3",
+  "commit": "dd6322d604e00eec1ba5e0c8541159906a21094a",
+  "tree": "86be9091c78528b5ef0866ae6d58b01d4a53582e",
+  "runtimeSource": {
+    "kind": "official-npm-family",
+    "registry": "https://registry.npmjs.org/",
+    "familyPackages": 244,
+    "familyManifest": "reference/dsh-alpha3-npm-family.json",
+    "familyManifestDigest": "ed7f64c9b5c2b1f2a82f6a53148361ad2825aac69aad268eefce1d10488626f6"
+  },
   "reference": {
+    "status": "historical-read-only-alpha1-snapshot",
     "tag": "dsh-v0.1.2-alpha.1",
     "commit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
-    "tree": "a712eec535b48badc4fefb4df5176a7002e4280b"
+    "tree": "a712eec535b48badc4fefb4df5176a7002e4280b",
+    "lock": "reference/dsh.lock.json",
+    "note": "The local .local snapshot remains alpha.1 and was not edited or used as the alpha.3 runtime. Alpha.3 source audit used an external cleanable checkout."
   },
   "profile": "aezy-alpha",
   "bundles": [
@@ -28,29 +38,33 @@
     "@aezy/mode"
   ],
   "upstreamReview": {
-    "checkedAt": "2026-08-28",
-    "latestObservedTag": "dsh-v0.1.2-alpha.1",
-    "latestObservedCommit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
-    "latestObservedTree": "a712eec535b48badc4fefb4df5176a7002e4280b",
-    "runtimeDecision": "the alpha branch targets only the source-built 0.1.2-alpha.1 runtime; isolated 3091 composition/Web/Workspace/Session/Aezy-plugin and mode/preset gates pass, while full parity gates still block merging the branch to main",
-    "ownershipImpact": "alpha.1 moves shipped Agent presets into the preset package with includeShippedRoot, renames code mode to ptc, adds durable preset/tool-change and model-selection projections, replaces ApiProxy with Remote gateway/controllers, splits the client runtime, adds Models provider-card slots, exact per-turn usage, configurable subagent models, experimental Agent Teams, packed Session transport, Web auth, SSRF-safe public WebFetch, and terminal/process fixes. Aezy now consumes the shipped standard preset as authority, adds only an external codex-app-server overlay, filters the Host-wide catalog in the current Session UI, and enforces the provider at preset and adapter execution boundaries. The remaining adoption gap is full M0-M4.2/Terminal/Security/Codex/self-development parity, not another Session, tool, preset, or agent-loop kernel."
+    "checkedAt": "2026-09-01",
+    "latestObservedTag": "dsh-v0.1.2-alpha.3",
+    "latestObservedCommit": "dd6322d604e00eec1ba5e0c8541159906a21094a",
+    "latestObservedTree": "86be9091c78528b5ef0866ae6d58b01d4a53582e",
+    "runtimeDecision": "alpha.3 is the sole alpha-branch development runtime. The official 244-package npm family is exact-version and integrity pinned; the alpha.1 source-artifact selector is retired, not retained as a compatibility path.",
+    "ownershipImpact": "Agent hooks, llm/stream, tools/pre-execute, shipped standard preset, Inspector eventSource and AppFrame/details seams remain compatible. Alpha.3 makes Session projections mandatory for Agent, usage and Subagent state; converges unary Remote calls on RemoteResult/RemoteError; adds SessionEvent.ignorable for unknown external events; keeps JSONL persistence; expands history load-through pagination; and tightens cancel/Subagent projection behavior. Aezy consumes these owners without copying their kernels."
   },
   "releaseAvailability": {
-    "githubRelease": "https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.2-alpha.1",
+    "githubRelease": "https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.2-alpha.3",
     "immutable": true,
-    "npmPackageVersion": "0.1.2-alpha.1",
-    "npmPublishedAtCheck": false,
-    "checkedAt": "2026-08-28",
-    "runtimeBlockedReason": "The official npm registry still has no @deepseek-ai/dsh@0.1.2-alpha.1. The isolated alpha composition and mode/preset gates are complete, but the full M0-M4.2/Terminal/Security/Codex/self-development parity gates are not complete.",
-    "sourceReleaseArtifactVerified": true,
+    "npmPackageVersion": "0.1.2-alpha.3",
+    "npmPublishedAt": "2026-08-31T16:20:52.856Z",
+    "npmPublishedAtCheck": true,
+    "sourceReleaseArtifactVerified": false,
+    "officialNpmFamilyVerified": true,
     "alphaCompositionVerified": true,
     "alphaModePresetVerified": true,
-    "sourceReleaseArtifactMetadata": "compatibility/dsh-alpha-runtime.json"
+    "alphaRestartVerified": true,
+    "metadata": "compatibility/dsh-alpha-runtime.json"
   },
   "policy": {
     "referenceTree": "read-only",
     "preferOfficialRegistryPackages": true,
-    "allowVerifiedSourceReleaseArtifacts": true,
-    "outOfTreeExtensionsOnly": true
+    "allowVerifiedSourceReleaseArtifactsOnlyWhenRegistryVersionIsMissing": true,
+    "requireSameVersionDshFamily": true,
+    "requireRegistryIntegrity": true,
+    "outOfTreeExtensionsOnly": true,
+    "longTermDualRuntimeCompatibility": false
   }
 }

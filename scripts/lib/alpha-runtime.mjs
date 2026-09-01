@@ -12,8 +12,8 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join, relative, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { dirname, join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { repoRoot } from './profile.mjs'
 import {
   CODEX_INSPIRED_LOOP,
@@ -33,9 +33,9 @@ export const alphaArtifactRoot = resolve(expandHome(
   process.env.AEZY_ALPHA_ARTIFACT_ROOT || alphaMetadata.artifacts.cacheRoot,
 ))
 export const alphaDshHome = resolve(expandHome(
-  process.env.AEZY_ALPHA_DSH_HOME || alphaMetadata.isolation.alphaDshHome,
+  process.env.AEZY_ALPHA_DSH_HOME || alphaMetadata.isolation.developmentDshHome,
 ))
-export const alphaProfileName = alphaMetadata.isolation.alphaProfile
+export const alphaProfileName = process.env.AEZY_ALPHA_PROFILE || alphaMetadata.isolation.developmentProfile
 export const alphaProfileDir = join(alphaDshHome, 'profiles', alphaProfileName)
 export const alphaSystemPresetRoot = join(alphaDshHome, '.system-agent-presets')
 export const alphaNodeBin = resolve(expandHome(
@@ -44,9 +44,16 @@ export const alphaNodeBin = resolve(expandHome(
 export const alphaCmakeRoot = resolve(expandHome(
   process.env.AEZY_ALPHA_CMAKE_ROOT || '~/.cache/aezy/toolchains/cmake/root',
 ))
+export const alphaPnpmStore = resolve(expandHome(
+  process.env.AEZY_ALPHA_PNPM_STORE || '~/.cache/aezy/pnpm-alpha3-store',
+))
+export const alphaNpmCache = resolve(expandHome(
+  process.env.AEZY_ALPHA_NPM_CACHE || '~/.cache/aezy/npm-alpha3',
+))
 export const alphaDshBin = join(alphaProfileDir, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
 
-const alphaManifestPath = join(repoRoot, alphaMetadata.artifacts.sha256Manifest)
+const alphaFamilyManifestPath = join(repoRoot, alphaMetadata.publication.familyManifest)
+const alphaVersion = alphaMetadata.source.tag.replace('dsh-v', '')
 const aezyPackages = [
   ['@aezy/base', 'packages/aezy-base', false],
   ['@aezy/brand', 'packages/aezy-brand', true],
@@ -67,6 +74,10 @@ const alphaAllowedBuilds = {
   'node-addon-require-builtin': false,
   'node-pty': true,
   protobufjs: false,
+}
+const pinnedRuntimePeers = {
+  react: '18.3.1',
+  'react-dom': '18.3.1',
 }
 
 function sha256(path) {
@@ -91,20 +102,6 @@ function run(command, args, options = {}) {
   return result
 }
 
-export function parseSha256Manifest(text) {
-  const entries = []
-  let previous = ''
-  for (const [index, line] of text.trimEnd().split('\n').entries()) {
-    const match = /^([0-9a-f]{64})  ((?:dsh|vendor|landlock)\/[^/]+\.tgz)$/.exec(line)
-    if (match === null) throw new Error(`Invalid alpha artifact manifest line ${String(index + 1)}`)
-    const [, digest, relativePath] = match
-    if (relativePath <= previous) throw new Error('Alpha artifact manifest paths must be unique and sorted')
-    entries.push({ digest, relativePath })
-    previous = relativePath
-  }
-  return entries
-}
-
 function tarballIdentity(path) {
   const result = run('tar', ['-xOf', path, 'package/package.json'])
   const manifest = JSON.parse(result.stdout)
@@ -114,33 +111,47 @@ function tarballIdentity(path) {
   return { name: manifest.name, version: manifest.version }
 }
 
-export function verifyAlphaArtifacts() {
-  const manifestDigest = sha256(alphaManifestPath)
-  if (manifestDigest !== alphaMetadata.artifacts.sha256ManifestDigest) {
-    throw new Error(`Alpha SHA manifest digest mismatch: ${manifestDigest}`)
+export function validateOfficialFamilyManifest(manifest, manifestDigest) {
+  if (manifestDigest !== alphaMetadata.publication.familyManifestDigest) {
+    throw new Error(`Alpha npm family manifest digest mismatch: ${manifestDigest}`)
   }
-
-  const entries = parseSha256Manifest(readFileSync(alphaManifestPath, 'utf8'))
-  if (entries.length !== alphaMetadata.artifacts.totalTarballs) {
-    throw new Error(`Expected ${String(alphaMetadata.artifacts.totalTarballs)} alpha tarballs, found ${String(entries.length)}`)
+  if (manifest.source?.tag !== alphaMetadata.source.tag
+    || manifest.source?.commit !== alphaMetadata.source.commit
+    || manifest.source?.tree !== alphaMetadata.source.tree
+    || manifest.registry !== alphaMetadata.publication.registry
+    || manifest.version !== alphaVersion) {
+    throw new Error('Alpha npm family manifest does not match the pinned official release')
   }
-
+  if (!Array.isArray(manifest.packages)
+    || manifest.packageCount !== alphaMetadata.publication.familyPackages
+    || manifest.packages.length !== manifest.packageCount) {
+    throw new Error('Alpha npm family manifest has an unexpected package count')
+  }
+  let previous = ''
   const packages = new Map()
-  for (const entry of entries) {
-    const path = join(alphaArtifactRoot, entry.relativePath)
-    if (!existsSync(path)) throw new Error(`Missing alpha artifact: ${path}`)
-    const digest = sha256(path)
-    if (digest !== entry.digest) throw new Error(`Alpha artifact digest mismatch: ${entry.relativePath}`)
-    const identity = tarballIdentity(path)
-    if (packages.has(identity.name)) throw new Error(`Duplicate alpha package: ${identity.name}`)
-    packages.set(identity.name, { ...identity, path, digest, relativePath: entry.relativePath })
+  for (const entry of manifest.packages) {
+    if (typeof entry.name !== 'string' || !entry.name.startsWith('@deepseek-ai/dsh')
+      || typeof entry.integrity !== 'string' || !entry.integrity.startsWith('sha512-')
+      || entry.name <= previous) {
+      throw new Error('Alpha npm family packages must be unique, sorted DSH names with SHA-512 integrity')
+    }
+    packages.set(entry.name, { ...entry, version: alphaVersion })
+    previous = entry.name
   }
+  if (packages.get('@deepseek-ai/dsh')?.integrity !== alphaMetadata.publication.rootIntegrity) {
+    throw new Error('Alpha npm family root integrity does not match the release pin')
+  }
+  return packages
+}
 
-  const cli = packages.get('@deepseek-ai/dsh')
-  if (cli?.version !== alphaMetadata.source.tag.replace('dsh-v', '')) {
-    throw new Error(`Alpha CLI tarball has unexpected version ${cli?.version ?? 'missing'}`)
+export function verifyOfficialFamilyManifest() {
+  const manifestDigest = sha256(alphaFamilyManifestPath)
+  const manifest = JSON.parse(readFileSync(alphaFamilyManifestPath, 'utf8'))
+  return {
+    manifest,
+    manifestDigest,
+    packages: validateOfficialFamilyManifest(manifest, manifestDigest),
   }
-  return { entries, packages, manifestDigest }
 }
 
 function buildAezyClients() {
@@ -198,6 +209,11 @@ export function alphaRuntimeEnv(extra = {}) {
   const environment = { ...process.env }
   delete environment.NODE_OPTIONS
   delete environment.NODE_PATH
+  const proxy = environment.HTTPS_PROXY
+    || environment.https_proxy
+    || environment.HTTP_PROXY
+    || environment.http_proxy
+    || 'http://127.0.0.1:7890'
   const nodeDirectory = dirname(alphaNodeBin)
   const cmakeBin = join(alphaCmakeRoot, 'usr', 'bin')
   const cmakeLib = join(alphaCmakeRoot, 'usr', 'lib', 'x86_64-linux-gnu')
@@ -210,7 +226,13 @@ export function alphaRuntimeEnv(extra = {}) {
     TMPDIR: '/tmp',
     TMP: '/tmp',
     TEMP: '/tmp',
-    npm_config_cache: join(homedir(), '.cache', 'aezy', 'npm-alpha'),
+    npm_config_cache: alphaNpmCache,
+    HTTP_PROXY: environment.HTTP_PROXY || proxy,
+    HTTPS_PROXY: environment.HTTPS_PROXY || proxy,
+    ALL_PROXY: environment.ALL_PROXY || proxy,
+    http_proxy: environment.http_proxy || proxy,
+    https_proxy: environment.https_proxy || proxy,
+    all_proxy: environment.all_proxy || proxy,
     AEZY_SYSTEM_PRESET_ROOT: alphaSystemPresetRoot,
     ...extra,
     // Node 24 fetch ignores HTTP(S)_PROXY unless this is explicitly enabled.
@@ -221,15 +243,24 @@ export function alphaRuntimeEnv(extra = {}) {
 }
 
 export function profileManifest(dshPackages, aezyPacked) {
-  const all = [...dshPackages.values(), ...aezyPacked.values()]
+  const dshDependencies = Object.fromEntries([...dshPackages.values()]
     .sort((left, right) => left.name.localeCompare(right.name))
-  const dependencies = Object.fromEntries(all.map(entry => [entry.name, pathToFileURL(entry.path).href]))
+    .map(entry => [entry.name, entry.version]))
+  const aezyDependencies = Object.fromEntries([...aezyPacked.values()]
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .map(entry => [entry.name, pathToFileURL(entry.path).href]))
+  const dependencies = {
+    ...dshDependencies,
+    ...aezyDependencies,
+    ...pinnedRuntimePeers,
+  }
   const aezyDigests = Object.fromEntries([...aezyPacked.values()]
     .sort((left, right) => left.name.localeCompare(right.name))
     .map(entry => [entry.name, entry.digest]))
   const signature = createHash('sha256').update(JSON.stringify({
-    dsh: alphaMetadata.artifacts.sha256ManifestDigest,
+    dsh: alphaMetadata.publication.familyManifestDigest,
     aezy: aezyDigests,
+    peers: pinnedRuntimePeers,
     installer: {
       name: 'pnpm',
       optionalDependencies: true,
@@ -255,24 +286,31 @@ export function profileManifest(dshPackages, aezyPacked) {
     },
     aezyAlpha: {
       sourceCommit: alphaMetadata.source.commit,
-      artifactManifestDigest: alphaMetadata.artifacts.sha256ManifestDigest,
+      npmFamilyManifestDigest: alphaMetadata.publication.familyManifestDigest,
       aezyDigests,
       signature,
     },
   }
 }
 
-export function workspaceSettings(dependencies) {
-  const allowBuilds = { ...alphaAllowedBuilds }
-  const subprocessLocal = dependencies['@deepseek-ai/dsh-subprocess-local']
-  if (subprocessLocal !== undefined) {
-    const relativeTarball = relative(alphaProfileDir, fileURLToPath(subprocessLocal)).replaceAll('\\', '/')
-    allowBuilds[`@deepseek-ai/dsh-subprocess-local@file:${relativeTarball}`] = true
-  }
+export function workspaceSettings(dshPackages, aezyPacked = new Map()) {
+  const exactDsh = Object.fromEntries([...dshPackages.keys()].map(name => [name, alphaVersion]))
+  const localAezy = Object.fromEntries([...aezyPacked.values()].map(entry => [
+    entry.name,
+    pathToFileURL(entry.path).href,
+  ]))
   return {
     packages: ['.'],
-    overrides: dependencies,
-    allowBuilds,
+    overrides: {
+      ...exactDsh,
+      ...localAezy,
+      ...pinnedRuntimePeers,
+    },
+    allowBuilds: {
+      ...alphaAllowedBuilds,
+      [`@deepseek-ai/dsh-subprocess-local@${alphaVersion}`]: true,
+    },
+    minimumReleaseAgeExclude: [...dshPackages.keys()].map(name => `${name}@${alphaVersion}`),
   }
 }
 
@@ -350,10 +388,31 @@ export function composeCodexPreset(shippedStandard, codexOverlay) {
   return `${shippedStandard.trimEnd()}\n\n${codexOverlay.trim()}\n`
 }
 
+export function verifyInstalledRegistryFamily(dshPackages, profileDirectory = alphaProfileDir) {
+  const lockPath = join(profileDirectory, 'pnpm-lock.yaml')
+  if (!existsSync(lockPath)) throw new Error(`Alpha profile lockfile is missing: ${lockPath}`)
+  const lock = readFileSync(lockPath, 'utf8')
+  if (/(@deepseek-ai\/dsh[^\s]*:|@deepseek-ai%2Fdsh).*?(?:file:|\.tgz)/i.test(lock)) {
+    throw new Error('Alpha profile lockfile contains a local DSH package source')
+  }
+  for (const entry of dshPackages.values()) {
+    const installedManifest = join(profileDirectory, 'node_modules', ...entry.name.split('/'), 'package.json')
+    if (!existsSync(installedManifest)) throw new Error(`Missing installed alpha package: ${entry.name}`)
+    const installed = JSON.parse(readFileSync(installedManifest, 'utf8'))
+    if (installed.name !== entry.name || installed.version !== entry.version) {
+      throw new Error(`Mixed alpha family version: ${entry.name}@${installed.version ?? 'missing'}`)
+    }
+    if (!lock.includes(entry.integrity)) {
+      throw new Error(`Alpha profile lockfile is missing pinned integrity for ${entry.name}`)
+    }
+  }
+  return { packageCount: dshPackages.size, version: alphaVersion }
+}
+
 export function syncAlphaProfile() {
   if (!existsSync(alphaNodeBin)) throw new Error(`Alpha Node runtime is missing at ${alphaNodeBin}`)
   prepareAlphaHome()
-  const { packages: dshPackages } = verifyAlphaArtifacts()
+  const { packages: dshPackages } = verifyOfficialFamilyManifest()
   const aezyPacked = packAezyAlphaArtifacts()
   const next = profileManifest(dshPackages, aezyPacked)
   const manifestPath = join(alphaProfileDir, 'package.json')
@@ -365,7 +424,7 @@ export function syncAlphaProfile() {
   writeFileSync(manifestPath, `${JSON.stringify(next, null, 2)}\n`)
   writeFileSync(
     join(alphaProfileDir, 'pnpm-workspace.yaml'),
-    `${JSON.stringify(workspaceSettings(next.dependencies), null, 2)}\n`,
+    `${JSON.stringify(workspaceSettings(dshPackages, aezyPacked), null, 2)}\n`,
   )
 
   if (install) {
@@ -375,7 +434,7 @@ export function syncAlphaProfile() {
       'install',
       '--no-frozen-lockfile',
       '--prefer-offline',
-      '--store-dir', join(homedir(), '.cache', 'aezy', 'pnpm-alpha-store'),
+      '--store-dir', alphaPnpmStore,
     ], {
       cwd: alphaProfileDir,
       env: alphaRuntimeEnv(),
@@ -383,13 +442,16 @@ export function syncAlphaProfile() {
     })
   }
 
+  const family = verifyInstalledRegistryFamily(dshPackages)
   const version = run(alphaNodeBin, [alphaDshBin, '--version'], { env: alphaRuntimeEnv() }).stdout.trim()
-  if (version !== alphaMetadata.source.tag.replace('dsh-v', '')) {
+  if (version !== alphaVersion) {
     throw new Error(`Expected alpha DSH ${alphaMetadata.source.tag}, installed CLI reports ${version}`)
   }
   writeFileSync(installMarkerPath, `${JSON.stringify({
     signature: next.aezyAlpha.signature,
     version,
+    family,
+    npmFamilyManifestDigest: alphaMetadata.publication.familyManifestDigest,
   }, null, 2)}\n`)
 
   const presetTarget = syncSystemPresets()

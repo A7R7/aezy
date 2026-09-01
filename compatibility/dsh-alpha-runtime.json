@@ -1,86 +1,48 @@
 {
-  "schemaVersion": 1,
-  "id": "dsh-v0.1.2-alpha.1-cd5ef814",
-  "status": "verified-isolated-alpha-mode-runtime",
+  "schemaVersion": 2,
+  "id": "dsh-v0.1.2-alpha.3-dd6322d",
+  "status": "verified-official-npm-family-runtime",
   "defaultRuntime": true,
   "source": {
     "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
-    "tag": "dsh-v0.1.2-alpha.1",
-    "commit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
-    "tree": "a712eec535b48badc4fefb4df5176a7002e4280b",
+    "tag": "dsh-v0.1.2-alpha.3",
+    "commit": "dd6322d604e00eec1ba5e0c8541159906a21094a",
+    "tree": "86be9091c78528b5ef0866ae6d58b01d4a53582e",
     "immutable": true,
-    "checkoutPolicy": "external-cleanable-cache-only",
-    "checkoutCache": "~/.cache/aezy/runtime-sources/dsh-v0.1.2-alpha.1-cd5ef814"
+    "auditCheckoutPolicy": "external-cleanable-cache-only"
+  },
+  "publication": {
+    "registry": "https://registry.npmjs.org/",
+    "publishedAt": "2026-08-31T16:20:52.856Z",
+    "family": "dsh",
+    "familyPackages": 244,
+    "familyManifest": "reference/dsh-alpha3-npm-family.json",
+    "familyManifestDigest": "ed7f64c9b5c2b1f2a82f6a53148361ad2825aac69aad268eefce1d10488626f6",
+    "rootIntegrity": "sha512-VvATzYmQ4LMJREJ9e2POKksSHRfqP3y9pghplLBaQBuw2BqfbC0mQUVsaPwxe4wlcpj+riEgn8OJB01YnpF+3A=="
   },
   "toolchain": {
-    "frozenInstall": {
-      "node": "22.22.1",
-      "pnpm": "11.7.0",
-      "note": "Engine-compatible install completed before the release workflow was rerun with its Node 24 primary toolchain."
-    },
-    "releaseBuildAndPack": {
+    "runtime": {
       "node": "24.20.0",
       "pnpm": "11.7.0",
       "tmpdir": "/tmp"
     },
     "packedInstallNativeFallback": {
       "cmake": "4.2.3",
-      "reason": "koffi did not provide a matching Node 24 prebuild and rebuilt from source in the throwaway consumer."
+      "reason": "koffi may rebuild when no matching Node 24 prebuild is available"
     }
   },
   "artifacts": {
-    "cacheRoot": "~/.cache/aezy/runtime-artifacts/dsh-v0.1.2-alpha.1-cd5ef814",
-    "families": {
-      "dsh": {
-        "tarballs": 241,
-        "approximateSize": "8.0 MiB"
-      },
-      "vendor": {
-        "tarballs": 9,
-        "approximateSize": "180 KiB"
-      },
-      "landlockEntry": {
-        "tarballs": 1,
-        "approximateSize": "16 KiB",
-        "platformPackages": "omitted-as-optional-by-official-workflow"
-      }
-    },
-    "totalTarballs": 251,
-    "sha256Manifest": "reference/dsh-alpha1-runtime.sha256",
-    "sha256ManifestDigest": "0a40b1b7a7ad17c3c7acd18d167321e544b2fb3db2635702f9a4032d40168706",
-    "cliTarball": {
-      "path": "dsh/deepseek-ai-dsh-0.1.2-alpha.1.tgz",
-      "sha256": "7d25b50db364d4f01c79a0ac7d5cef36f38bd27052aa14e98310646780f0e5ed"
-    },
-    "agentPresetsTarball": {
-      "path": "dsh/deepseek-ai-dsh-agent-presets-0.1.2-alpha.1.tgz",
-      "sha256": "410e470690a055b507dc13b7af943113e9861f8732c1ebd53255a94b4af2ba59"
-    }
+    "cacheRoot": "~/.cache/aezy/runtime-artifacts/dsh-v0.1.2-alpha.3-dd6322d",
+    "sourceReleaseTarballs": 0,
+    "registryPackages": 244,
+    "aezyPackages": 11
   },
-  "officialReleasePath": [
-    "pnpm install --frozen-lockfile",
-    "pnpm run release:verify --family dsh",
-    "pnpm run build:official",
-    "pnpm run release:pack --family dsh",
-    "pnpm run release:pack --family vendor",
-    "pnpm --dir native/landlock-run run build:ts",
-    "pnpm --dir native/landlock-run/packages/entry pack",
-    "pnpm run release:verify-packed-install --family dsh"
-  ],
   "verification": {
-    "releaseFamily": "241 members at 0.1.2-alpha.1; publish order resolved",
-    "officialClientBuildRecord": "218 client artifacts with 4 public values",
-    "packedInstall": "installed @deepseek-ai/dsh reports 0.1.2-alpha.1",
-    "isolatedConsumer": "pnpm 11.7.0 installed 251 checksum-pinned DSH/vendor/Landlock tarballs and 11 packed Aezy plugins through local overrides; Node 24.20.0 rebuilt koffi and loaded the Linux optional closure",
-    "compositionDump": "DSH alpha Base/Web plus all 10 Aezy out-of-tree packages composed successfully; native ui-agent-preset is enabled, the Host-global ui-model-selection is replaced by the mode projection, @aezy/inspector remains a read-only Session event consumer, and @aezy/layout preserves the upstream AppFrame owner",
-    "host": "127.0.0.1:3091 served an authenticated Web index with all 8 Aezy Client bundles, including @aezy/inspector, @aezy/layout, @aezy/mode, and native ui-agent-preset",
-    "remoteControllers": "workspace/create and session/create/list/modelCatalog succeeded through the alpha /api Remote controller transport",
-    "modePreset": "agentPresets/list returned standard, ptc, minimal, cordis, legacy aezy, and codex-app-server only; standard/codex-app-server/aezy Session creation and durable agentPreset projections succeeded; catalog UI and Host adapter fences are covered by 4/4 mode and 20/20 Codex tests",
-    "stableBaseline": "127.0.0.1:3090 remained HTTP 200 and the stable CLI/profile remained 0.1.1-rc.2",
-    "loopInspector": "E0.1 revision-3 full logic blueprints use five owner lanes per backend. DSH-native has 40 nodes/59 edges at digest dc8900a001b6...; Codex App Server has 41 nodes/54 edges at digest c3a0b8b2ebab... and is source-pinned to official rust-v0.149.0 commit 758ef40f50c1a458425c7cfbf1eb12cbc07af0b0/tree 0f7a27df60e01dccf918f3203235266a0d6e3258. Only model inference is opaque. Runtime traces remain overlay-only and Timeline remains the occurrence log. Live/cold trace reconstruction at throughSeq 207/861 and the revision-3 DOM/digests remained identical across 3091 restarts; native was complete and App Server remained explicitly partial.",
-    "proportionalLayout": "A real existing details-handle drag at a 1416px AppFrame produced a 284px Chat column and 852px details column: exactly 25%/75% of the 1136px shared content region, with details exceeding both the upstream 520px ceiling and half of the full frame. At 680px the existing Inspector overlay remained authoritative and proportional facts were absent.",
-    "codexInspired": "E1 internal dogfood revision 1 is exact-bound at digest f7841cbd49ebf7f3ad8e73db76e945eca86c6c7ac6311871bbd9d402f0fb0248. A real openai-codex/gpt-5.6-sol Session completed a structured DSH read Turn, survived Host restart, and completed Turn 2 in the same Session with durable policy/header/tool/result/usage evidence. Normal profile sync removed the internal preset from the system root; full approval/Security/Journal/cancel/compaction/Subagent/Inspector parity remains pending and the mode is not clickable.",
-    "verifiedAt": "2026-08-30"
+    "npmFamily": "244/244 public dsh family members are 0.1.2-alpha.3 and carry registry SHA-512 integrity",
+    "officialCli": "0.1.2-alpha.3",
+    "migrationSpike": "isolated /tmp DSH_HOME/profile/3193 passed composition, Web, Workspace, Session, presets, native provider owner, RemoteError, history page and restart persistence",
+    "promotedProfile": "~/.aezy-alpha/dsh / aezy-alpha passed real native governed Turn, codex-inspired revision 1 Turn, Codex App Server contract, Inspector live/cold trace and restart-equal reconstruction",
+    "verifiedAt": "2026-09-01"
   },
   "selector": {
     "sync": "pnpm alpha:profile:sync",
@@ -93,21 +55,24 @@
     "stableDshHome": "~/.aezy/dsh",
     "stableProfile": "aezy",
     "stablePort": 3090,
-    "alphaDshHome": "~/.aezy-alpha/dsh",
-    "alphaProfile": "aezy-alpha",
-    "alphaPort": 3091,
-    "alphaCompositionVerified": true,
-    "alphaModePresetVerified": true,
-    "promoted": false,
+    "migratedFromRuntime": "0.1.2-alpha.1",
+    "developmentDshHome": "~/.aezy-alpha/dsh",
+    "developmentProfile": "aezy-alpha",
+    "developmentPort": 3091,
+    "migrationDshHome": "/tmp/aezy-alpha3-migration/dsh",
+    "migrationProfile": "aezy-alpha3-migration",
+    "migrationPort": 3193,
+    "promoted": true,
     "branchDefault": "alpha"
   },
   "policy": {
     "preferOfficialRegistryPackages": true,
     "allowSourceReleaseArtifactsOnlyWhenRegistryVersionIsMissing": true,
-    "requireImmutableOfficialCommit": true,
-    "requireOfficialBuildPackAndPackedInstallVerification": true,
+    "requireSameVersionDshFamily": true,
+    "requireRegistryIntegrity": true,
     "forbidReferenceTreeBuilds": true,
     "forbidSourceImports": true,
-    "outOfTreeExtensionsOnly": true
+    "outOfTreeExtensionsOnly": true,
+    "longTermDualRuntimeCompatibility": false
   }
 }

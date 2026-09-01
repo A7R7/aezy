@@ -10,7 +10,7 @@ import {
   alphaMetadata,
   alphaNodeBin,
   alphaProfileDir,
-  verifyAlphaArtifacts,
+  verifyOfficialFamilyManifest,
 } from './lib/alpha-runtime.mjs'
 
 if (process.env.AEZY_ALPHA_AUTHORIZE_NATIVE_PROVIDER !== '1') {
@@ -54,15 +54,17 @@ const requiredPackages = [
   '@deepseek-ai/dsh-llm-pi-ai',
 ]
 
-const { packages: packed } = verifyAlphaArtifacts()
+const { packages: packed } = verifyOfficialFamilyManifest()
 for (const name of requiredPackages.filter(name => name.startsWith('@deepseek-ai/dsh-'))) {
   assert.equal(packed.get(name)?.version, expectedVersion, `${name} is not pinned to ${expectedVersion}`)
 }
 
 const profileManifestPath = join(alphaProfileDir, 'package.json')
 const requireFromProfile = createRequire(profileManifestPath)
+const requireFromDsh = createRequire(requireFromProfile.resolve('@deepseek-ai/dsh/package.json'))
 async function load(name) {
-  return import(pathToFileURL(requireFromProfile.resolve(name)).href)
+  const resolver = name === '@deepseek-ai/cordis' ? requireFromDsh : requireFromProfile
+  return import(pathToFileURL(resolver.resolve(name)).href)
 }
 
 const [

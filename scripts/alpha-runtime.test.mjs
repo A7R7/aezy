@@ -2,11 +2,13 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
+  alphaMetadata,
   alphaRuntimeEnv,
   codexInspiredDogfoodEnabled,
   composeCodexPreset,
-  parseSha256Manifest,
   profileManifest,
+  validateOfficialFamilyManifest,
+  verifyOfficialFamilyManifest,
   workspaceSettings,
 } from './lib/alpha-runtime.mjs'
 import {
@@ -14,37 +16,37 @@ import {
   CODEX_INSPIRED_PRESET_ID,
 } from '../packages/aezy-workflow/src/system.js'
 
-const zero = '0'.repeat(64)
 const one = '1'.repeat(64)
 
-test('alpha artifact manifest accepts sorted family tarballs', () => {
-  assert.deepEqual(parseSha256Manifest([
-    `${zero}  dsh/a.tgz`,
-    `${one}  vendor/b.tgz`,
-    '',
-  ].join('\n')), [
-    { digest: zero, relativePath: 'dsh/a.tgz' },
-    { digest: one, relativePath: 'vendor/b.tgz' },
-  ])
+test('alpha npm family manifest pins the complete official alpha.3 family', () => {
+  const { manifest, manifestDigest, packages } = verifyOfficialFamilyManifest()
+  assert.equal(manifestDigest, alphaMetadata.publication.familyManifestDigest)
+  assert.equal(packages.size, 244)
+  assert.equal(packages.get('@deepseek-ai/dsh').version, '0.1.2-alpha.3')
+  assert.equal(packages.get('@deepseek-ai/dsh').integrity, alphaMetadata.publication.rootIntegrity)
+  assert.equal(manifest.packages.every(entry => entry.integrity.startsWith('sha512-')), true)
 })
 
-test('alpha artifact manifest rejects traversal and unstable order', () => {
-  assert.throws(() => parseSha256Manifest(`${zero}  dsh/../a.tgz\n`), /Invalid/)
-  assert.throws(() => parseSha256Manifest([
-    `${zero}  vendor/b.tgz`,
-    `${one}  dsh/a.tgz`,
-  ].join('\n')), /sorted/)
+test('alpha npm family manifest rejects drift before installation', () => {
+  const { manifest } = verifyOfficialFamilyManifest()
+  const drifted = structuredClone(manifest)
+  drifted.packages[1].name = drifted.packages[0].name
+  assert.throws(() => validateOfficialFamilyManifest(
+    drifted,
+    alphaMetadata.publication.familyManifestDigest,
+  ), /unique, sorted/)
+  assert.throws(() => validateOfficialFamilyManifest(manifest, '0'.repeat(64)), /digest mismatch/)
 })
 
-test('alpha profile pins transitive workspace edges to local tarballs', () => {
+test('alpha profile pins every DSH edge to one registry version and only Aezy to local tarballs', () => {
   const dsh = new Map([['@deepseek-ai/dsh', {
     name: '@deepseek-ai/dsh',
-    path: '/tmp/dsh.tgz',
-    digest: zero,
+    version: '0.1.2-alpha.3',
+    integrity: 'sha512-root',
   }], ['@deepseek-ai/dsh-subprocess-local', {
     name: '@deepseek-ai/dsh-subprocess-local',
-    path: '/tmp/dsh-subprocess-local.tgz',
-    digest: zero,
+    version: '0.1.2-alpha.3',
+    integrity: 'sha512-subprocess',
   }]])
   const aezy = new Map([['@aezy/base', {
     name: '@aezy/base',
@@ -52,21 +54,33 @@ test('alpha profile pins transitive workspace edges to local tarballs', () => {
     digest: one,
   }]])
   const manifest = profileManifest(dsh, aezy)
-  const workspace = workspaceSettings(manifest.dependencies)
-  assert.deepEqual(workspace.overrides, manifest.dependencies)
+  const workspace = workspaceSettings(dsh, aezy)
+  assert.equal(workspace.overrides['@deepseek-ai/dsh'], '0.1.2-alpha.3')
+  assert.equal(workspace.overrides['@deepseek-ai/dsh-subprocess-local'], '0.1.2-alpha.3')
+  assert.equal(workspace.overrides.react, '18.3.1')
+  assert.equal(workspace.overrides['react-dom'], '18.3.1')
+  assert.match(workspace.overrides['@aezy/base'], /^file:\/\/\/tmp\/aezy-base\.tgz$/)
   assert.deepEqual(workspace.packages, ['.'])
   assert.equal(workspace.allowBuilds.koffi, true)
   assert.equal(workspace.allowBuilds['node-pty'], true)
   assert.equal(workspace.allowBuilds['@deepseek-ai/dsh-subprocess-local'], undefined)
-  assert.equal(Object.entries(workspace.allowBuilds).some(([selector, allowed]) => (
-    selector.startsWith('@deepseek-ai/dsh-subprocess-local@file:') && allowed === true
-  )), true)
-  assert.match(manifest.dependencies['@deepseek-ai/dsh'], /^file:\/\/\/tmp\/dsh\.tgz$/)
+  assert.equal(workspace.allowBuilds['@deepseek-ai/dsh-subprocess-local@0.1.2-alpha.3'], true)
+  assert.deepEqual(workspace.minimumReleaseAgeExclude, [
+    '@deepseek-ai/dsh@0.1.2-alpha.3',
+    '@deepseek-ai/dsh-subprocess-local@0.1.2-alpha.3',
+  ])
+  assert.equal(manifest.dependencies['@deepseek-ai/dsh'], '0.1.2-alpha.3')
+  assert.match(manifest.dependencies['@aezy/base'], /^file:\/\/\/tmp\/aezy-base\.tgz$/)
+  assert.equal(Object.entries(manifest.dependencies).some(([name, spec]) => (
+    name.startsWith('@deepseek-ai/dsh') && spec.startsWith('file:')
+  )), false)
 })
 
 test('alpha runtime always enables Node env-proxy routing', () => {
   assert.equal(alphaRuntimeEnv().NODE_USE_ENV_PROXY, '1')
   assert.equal(alphaRuntimeEnv({ NODE_USE_ENV_PROXY: '0' }).NODE_USE_ENV_PROXY, '1')
+  assert.equal(typeof alphaRuntimeEnv().HTTPS_PROXY, 'string')
+  assert.equal(typeof alphaRuntimeEnv().https_proxy, 'string')
 })
 
 test('codex preset mounts its route fence after the authoritative DSH composition', () => {

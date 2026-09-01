@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url'
 import {
   alphaMetadata,
   alphaProfileDir,
-  verifyAlphaArtifacts,
+  verifyOfficialFamilyManifest,
 } from './lib/alpha-runtime.mjs'
 
 const expectedVersion = alphaMetadata.source.tag.replace('dsh-v', '')
@@ -18,8 +18,8 @@ const requiredPackages = [
   '@deepseek-ai/dsh-llm-pi-ai',
 ]
 
-// Recheck the immutable release manifest before loading any installed package.
-const { packages: packed } = verifyAlphaArtifacts()
+// Recheck the immutable registry family manifest before loading any installed package.
+const { packages: packed } = verifyOfficialFamilyManifest()
 for (const name of requiredPackages.filter(name => name.startsWith('@deepseek-ai/dsh-'))) {
   assert.equal(packed.get(name)?.version, expectedVersion, `${name} is not pinned to ${expectedVersion}`)
 }
@@ -28,11 +28,14 @@ const profileManifestPath = join(alphaProfileDir, 'package.json')
 const profileManifest = JSON.parse(await readFile(profileManifestPath, 'utf8'))
 const requireFromProfile = createRequire(profileManifestPath)
 for (const name of requiredPackages) {
+  if (name === '@deepseek-ai/cordis') continue
   assert.equal(typeof profileManifest.dependencies?.[name], 'string', `${name} is missing from the alpha profile`)
 }
 
+const requireFromDsh = createRequire(requireFromProfile.resolve('@deepseek-ai/dsh/package.json'))
 async function load(name) {
-  return import(pathToFileURL(requireFromProfile.resolve(name)).href)
+  const resolver = name === '@deepseek-ai/cordis' ? requireFromDsh : requireFromProfile
+  return import(pathToFileURL(resolver.resolve(name)).href)
 }
 
 const [

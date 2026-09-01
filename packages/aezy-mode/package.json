@@ -40,10 +40,10 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
-    "@deepseek-ai/dsh-api-remotes": "0.1.2-alpha.1",
-    "@deepseek-ai/dsh-client-ui-commands": "0.1.2-alpha.1",
-    "@deepseek-ai/dsh-client-ui-conversation": "0.1.2-alpha.1",
-    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-alpha.1",
+    "@deepseek-ai/dsh-api-remotes": "0.1.2-alpha.3",
+    "@deepseek-ai/dsh-client-ui-commands": "0.1.2-alpha.3",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.2-alpha.3",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-alpha.3",
     "react": "^18.2.0"
   }
 }

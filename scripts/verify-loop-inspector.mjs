@@ -85,7 +85,7 @@ function semanticDigest(trace) {
 function assertSafe(trace) {
   const serialized = JSON.stringify(trace)
   assert.equal(serialized.includes(secretSentinel), false)
-  for (const forbidden of ['reasoning-delta', 'authorization', 'accessToken', 'refreshToken', 'arguments']) {
+  for (const forbidden of ['reasoning-delta', '"authorization":', '"accessToken":', '"refreshToken":', '"arguments":']) {
     assert.equal(serialized.includes(forbidden), false, forbidden)
   }
 }

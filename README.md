@@ -12,25 +12,21 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
   或 merge-back 内核。
 - 非必要 DSH 组件通过 Aezy profile patch 禁用，不删除或修改上游 package。
 
-当前 `alpha` 分支只面向 DSH `0.1.2-alpha.1`，tag/commit 为
-`dsh-v0.1.2-alpha.1` / `cd5ef8148158c3a752a658978873241fdf8e2bbc`。开发运行状态位于
+当前 `alpha` 分支只面向 DSH `0.1.2-alpha.3`，tag/commit 为
+`dsh-v0.1.2-alpha.3` / `dd6322d604e00eec1ba5e0c8541159906a21094a`。开发运行状态位于
 `~/.aezy-alpha/dsh/`，profile 为 `aezy-alpha`；该分支不承诺兼容 rc.2 runtime。
 
-只读上游参考快照已更新到 immutable prerelease `dsh-v0.1.2-alpha.1`（commit
-`cd5ef8148158c3a752a658978873241fdf8e2bbc`），但官方 npm registry 尚未发布对应 DSH family。
-由于 npm 尚未发布 alpha.1，经明确授权，本分支在仓库外从固定官方 commit 完整执行
-`build:official`、DSH/vendor/Landlock release pack 与官方 packed-install verification，产物只允许
-进入独立 3091 candidate，不从 reference 源码运行。参考 revision 由
-`reference/dsh.lock.json` 记录，reference/runtime 分离状态由 `compatibility/dsh.json` 记录；
-影响与 publication gate 见 [`dsh-0.1.2-alpha1-impact.md`](doc/reference/dsh-0.1.2-alpha1-impact.md)，
-source release 证据见
-[`dsh-alpha1-source-runtime.md`](doc/reference/dsh-alpha1-source-runtime.md)。
+alpha.3 已作为 immutable GitHub tag/release 和完整官方 npm family 发布。selector 精确安装并逐包
+校验 244 个 `0.1.2-alpha.3` DSH packages 的 SHA-512 integrity，只把 11 个 Aezy 外置包作为本地
+tarball；不再默认消费 alpha.1 源码 release artifacts，也不建立长期双 runtime compatibility layer。
+迁移先在独立 `/tmp` DSH_HOME/profile/3193 验证，再提升 `~/.aezy-alpha/dsh` 的 `aezy-alpha`
+profile；credentials、JSONL Sessions 与其他 DSH_HOME 状态保留。
 
-alpha.1 已通过独立 3091 的 composition、Web、Workspace、Session 与 Aezy 外置插件
-实机门禁，并完成原生 Agent mode UI、`codex-app-server` system preset、catalog UI/Host 双门禁；
-并作为本分支唯一开发 runtime。它使用 `~/.aezy-alpha/dsh`、`aezy-alpha` profile、隔离
-Node 24/CMake/pnpm store 和 checksum-pinned 本地 release tarball closure；不会迁移或共享
-`~/.aezy/dsh` 的 Session、credentials 与 profile。
+`.local/deepseek-harness` 与 `reference/dsh.lock.json` 仍如实保留 alpha.1 historical read-only
+snapshot，未被用于 alpha.3 runtime 或构建。alpha.3 源码审计使用仓库外可清理 checkout；
+reference/runtime 分离状态由 `compatibility/dsh.json` 记录。完整影响、integrity 与实机证据见
+[`dsh-0.1.2-alpha3-impact.md`](doc/reference/dsh-0.1.2-alpha3-impact.md)；alpha.1 的 source-release
+文档只保留为历史迁移证据。
 
 ## 仓库布局
 
@@ -88,15 +84,18 @@ pnpm run alpha:profile:dump
 pnpm run alpha:web -- --host 127.0.0.1 --port 3091 --no-open
 ```
 
-selector 会先校验 251 个官方 release tarball 的 SHA-256，重建并打包 11 个 Aezy 外置包，再用
-全量本地 override 安装 workspace closure。只有依赖安装、受审 native scripts 和 alpha CLI
-版本验证全部成功才写 completion marker；本分支的 `profile:sync`/`profile:dump`/`aezy:web`
+selector 会先校验 244-package 官方 npm family manifest，再精确安装同版 registry closure并逐包核对
+profile lock 的 SHA-512 integrity；只有 11 个 Aezy 外置包使用本地 pack/override。只有依赖安装、
+受审 native scripts、完整 family 与 alpha CLI 版本验证全部成功才写 completion marker；本分支的
+`profile:sync`/`profile:dump`/`aezy:web`
 直接指向该 alpha profile，`alpha:*` 只是等价的显式别名。
 
 Alpha native provider 验证命令：
 
 ```bash
 pnpm run test:alpha:runtime
+# 仅在以 AEZY_CODEX_INSPIRED_DOGFOOD=1 启动的已授权 3091 Host 上：
+AEZY_ALPHA_GATE_TOKEN=<launch-token> pnpm run test:alpha:migration
 pnpm run test:workflow
 pnpm run test:alpha:native-provider
 pnpm run test:mode
@@ -213,11 +212,10 @@ git clone https://github.com/deepseek-ai/deepseek-harness.git .local/deepseek-ha
 git -C .local/deepseek-harness checkout --detach cd5ef8148158c3a752a658978873241fdf8e2bbc
 ```
 
-正式发布后仍优先消费 npm 包；npm 版本缺失期间，本分支只允许使用从上述固定官方 commit、
-在仓库外通过官方完整 release path 构建并
-通过 packed-install verification 的 package artifacts。它必须使用独立 DSH_HOME/profile/3091，
-当前 Remote/controller/client split 与 mode/preset 的隔离 3091 门禁已完成；完整 parity gates
-决定何时把 `alpha` 分支合回主线，不再通过同分支双 runtime 兼容来过渡。
+该 clone 只是历史 alpha.1 参考恢复命令，不是当前 runtime 安装路径。当前 alpha.3 必须优先消费
+官方 npm family；只有 registry 缺失精确版本时，才允许从固定 immutable 官方 commit 在仓库外执行
+完整 release path 与 packed-install verification。完整 parity gates 决定何时把 `alpha` 分支合回
+主线，不通过同分支双 runtime 兼容来过渡。
 
 ## 文档与下一步
 
@@ -236,7 +234,7 @@ tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原�
 [`codex.md`](doc/milestones/codex.md)，Relay 兼容性证据见
 [`relay-dsh-plugin-codex-0.1.2-compatibility.md`](doc/reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)。
 
-隔离 alpha.1 已恢复上游 Agent preset UI，并把 Codex App Server 收口为独立 system preset，
+alpha.3 开发 runtime 已恢复上游 Agent preset UI，并把 Codex App Server 收口为独立 system preset，
 完成 per-preset catalog UI 过滤、Host 执行门禁与 Session header 模式显示；证据见
 [`mode-presets.md`](doc/milestones/mode-presets.md)。完整 alpha parity gates 仍是合回主线的 release
 gate；已完成闭环只按真实 dogfood 故障做 Worktree dependency bootstrap 与 App Server contract

@@ -1,6 +1,6 @@
 # Aezy 上游边界与实施路线图
 
-> 活动路线文档，更新于 2026-08-30。已完成切片的详细实现和验证只在
+> 活动路线文档，更新于 2026-09-01。已完成切片的详细实现和验证只在
 > `doc/milestones/` 维护。
 
 ## 决策原则
@@ -18,16 +18,17 @@ Aezy 是基于 DSH 公开扩展机制的完整编程 Agent 发行版，不是 DS
 
 ## 当前上游信号
 
-- 主线历史签收于 `dsh-v0.1.1-rc.2`；当前 `alpha` 分支只面向最新 immutable prerelease
-  `dsh-v0.1.2-alpha.1`，不承诺双 runtime 兼容。官方 npm family 仍未发布，但固定 commit 的仓库外 official
-  build、完整 DSH/vendor/Landlock release pack、逐 tarball SHA-256 与 packed-install 已通过；
-  alpha 分支使用独立 DSH_HOME/profile/3091；完整 parity gates 决定何时合回主线。
-- alpha.1 让 shipped presets 由 `dsh-agent-presets` 自己持有并默认优先，正式将 `code` id 改为
+- 主线历史签收于 `dsh-v0.1.1-rc.2`；当前 `alpha` 分支只面向 immutable prerelease
+  `dsh-v0.1.2-alpha.3`，不承诺双 runtime 兼容。完整官方 npm family 已发布；244 个 DSH package
+  使用同一精确版本并逐项锁定 registry integrity。alpha.1 source artifacts 只保留为历史证据，
+  不再是 selector 路径。alpha 分支使用独立 DSH_HOME/profile/3091；完整 parity gates 决定何时合回主线。
+- alpha.1 开始让 shipped presets 由 `dsh-agent-presets` 自己持有并默认优先，正式将 `code` id 改为
   `ptc`，增加 durable preset/tool-change 与 model-selection projection；这为 Aezy 增加
   `codex-app-server` system preset 提供了更直接的公开 seam。
-- alpha.1 同时移除 ApiProxy/client-runtime，改用 Remote gateway/controllers 和拆分 client
-  packages；这是 runtime adoption 前必须完成的破坏性迁移，不允许用 compatibility shim 复刻
-  旧 ApiProxy。
+- alpha.3 保留 Agent/LLM/tool hooks、shipped standard preset、Inspector eventSource 与
+  AppFrame/details seam，但把 Agent/usage/Subagent 等 Host state 更彻底地收口到 mandatory Session
+  projections，并让 unary Remote 收敛到 `RemoteResult`/`RemoteError`。迁移不得用 compatibility
+  shim 复刻旧 client wrapper、Session 投影或内核。
 - Models provider-card slots 可承载 Codex managed account UI，exact per-turn usage 可交还上游；
   但 model catalog 仍是 Host-wide，没有 per-preset filter，experimental Agent Team 也不是 Task
   Board。
@@ -130,6 +131,14 @@ M0 profile smoke 及 M1/M2/M3/Terminal 真实 HTTP/PTY 回归通过。没有新�
 已签收能力或 patch DSH 源码。门禁发现 `dsh-authorization` 必须显式精确锁定 rc.2，避免
 `dsh-llm-pi-ai` 带来的混合 peer graph。
 
+### 0.5. alpha.1 → alpha.3 official npm migration（Complete）
+
+244-package 官方 npm family、逐包 SHA-512、隔离 `/tmp` DSH_HOME/profile/3193、composition/Web/
+Workspace/Session/modes/native owner/RemoteError/history/Codex App Server/revision 1/Inspector/restart
+均已签收，随后才提升 3091 开发 profile。`.local` 仍是未修改的 alpha.1 historical reference；
+runtime 只消费 alpha.3 registry artifacts。完整证据见
+[`dsh-0.1.2-alpha3-impact.md`](../reference/dsh-0.1.2-alpha3-impact.md)。
+
 ### 1. Relay Codex companion gate（Complete：硬约束失败）
 
 已在隔离 profile 验证 `relay-dsh-plugin-codex@0.1.2`。ChatGPT managed auth 复用、account/
@@ -178,13 +187,13 @@ Workspace/Session 关联到 opaque Codex thread id 所需的最小 binding，不
 
 ### 4. Alpha native provider gate（Complete）
 
-DSH alpha.1 已原生持有 `llm-pi-ai/openai-codex` catalog、Responses transport、OAuth
+DSH alpha.3 已原生持有 `llm-pi-ai/openai-codex` catalog、Responses transport、OAuth
 grant/refresh 与 credential store。Aezy 已用外置 base patch 薄启用该 owner，并在真实 3091
 证明 `standard` Session 可选择并持久化 native Codex model，同时保持默认 DeepSeek route 和
 `codex-app-server`/`aezy-codex` 隔离。
 
 DSH-owned OAuth 已完成，真实 `standard` Turn、structured tool、Remote approval waterfall、Security
-audit、Journal/Review、usage 与 restart-resume 均通过。Node 24 env-proxy 与 alpha.1
+audit、Journal/Review、usage 与 restart-resume 均通过。Node 24 env-proxy 与 alpha.3
 `/api/remote.mux` `$events` contract 已固化为回归门禁。它现在可日常 dogfood；证据见
 [`native-provider.md`](../milestones/native-provider.md)。
 
@@ -215,12 +224,14 @@ durable usage 时明确保持 partial。完整签收见 [`loop-inspector.md`](..
 完整 alpha parity 仍是 `alpha` 合回主线的 release gate，不能因为既有 runtime trace gates 已通过
 而降低或跳过。
 
-### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（E1 in progress）
+### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（E1 parity paused）
 
 旧 E1–E3 实现已由后续 revert 提交撤回，原始提交完整保留供历史追溯。E0.1 revision 3 可读后，
 E1 已按新边界重新开始：外置 `@aezy/workflow` 提供内部、不可点击、不可执行任意代码的
 versioned/immutable LoopDefinition，让 `codex-inspired` 作为第一个 system-authored dogfood；
 revision 1 已通过真实 DSH-native Turn 与 restart 后同 Session continuation，但完整 parity pending。
+alpha.3 migration 已独立完成并再次证明 exact revision 1 Turn/restart；新增 parity 功能继续暂停，
+不得与 runtime upgrade 混入同一提交。
 E2 仍暂停，未来才考虑模板式 Editor；E3 仍暂停，之后才增加
 structured condition、parallel、Subagent 与 bounded retry。外置 node plugin SDK 不在当前实施
 范围内，也不为它预留抽象。
