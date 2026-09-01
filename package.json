@@ -29,6 +29,7 @@
     "test:alpha:native-provider": "node scripts/verify-alpha-native-provider.mjs",
     "test:alpha:native-turn": "node scripts/verify-alpha-native-provider-turn.mjs",
     "test:alpha:codex-inspired-turn": "node scripts/verify-alpha-codex-inspired-turn.mjs",
+    "test:alpha:codex-inspired-write": "node scripts/verify-alpha-codex-inspired-governed-write.mjs",
     "test:alpha:inspector": "node scripts/verify-loop-inspector.mjs",
     "test:alpha:blueprint": "node scripts/verify-loop-blueprint.mjs",
     "test:alpha:layout": "node scripts/verify-layout-policy.mjs",

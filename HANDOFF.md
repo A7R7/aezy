@@ -2,10 +2,10 @@
 
 > 更新日期：2026-09-01<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
-> 分支：`alpha`<br>
+> 分支：`main`（`alpha` 已 fast-forward 合入）<br>
 > 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
 > OpenAI/Codex provider（Complete）；E0.1 Loop Inspector revision 3（Candidate：等待产品验收）；
-> Codex-inspired E1 internal dogfood（Parity paused：alpha.3 revision 1/restart 复验通过，完整 parity pending）
+> Codex-inspired E1 internal dogfood（governed write verified；完整 parity pending）
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
@@ -90,7 +90,7 @@ alpha.3。完整审计、integrity、Remote/projection/history/Inspector/restart
 | Agent modes | standard/PTC/minimal/creative、legacy aezy、Codex App Server preset | `doc/milestones/mode-presets.md` |
 | Native provider | DSH-owned OAuth、OpenAI/Codex model、原生 tool/approval/Security/Journal/restart | `doc/milestones/native-provider.md` |
 | E0.1 | revision 3 双 backend full logic graph、durable overlay、Timeline、live/cold/restart parity（candidate） | `doc/milestones/loop-inspector.md` |
-| E1 slice | immutable Codex-inspired macro loop、DSH hook compiler、真实 native Turn + restart continuation（internal/pending parity） | `doc/milestones/codex-inspired.md` |
+| E1 slice | immutable Codex-inspired macro loop、DSH hook compiler、真实 native Turn + restart、governed write（internal/pending parity） | `doc/milestones/codex-inspired.md` |
 
 `openai-codex` 是 standard/PTC/minimal/creative 可用的 DSH-native provider；
 `codex-app-server` 仍只使用 `aezy-codex`。两者的模型可能同名，但 agent loop owner 不同。
@@ -117,14 +117,11 @@ alpha.3。完整审计、integrity、Remote/projection/history/Inspector/restart
 
 Tracked worktree clean；无需保留历史 dogfood fixture。
 
-交接时 Aezy Web 正在监听：
+交接时 3090、3091 与迁移用 3193 均未监听。main 最小 smoke 使用 alpha.3 profile composition
+dump 完成，没有留下常驻 Host。
 
-```text
-http://127.0.0.1:3090
-```
-
-alpha Host 已完成本次 alpha.3 启动/重启验收后停止；交接时 3091 与迁移用 3193 均未监听，
-新会话仍必须重新检查。其
+alpha Host 已完成本次 alpha.3 启动/重启与 governed write 验收后停止；新会话仍必须重新检查。
+其
 DSH_HOME/profile 与主线历史状态完全分离，启动命令为：
 
 ```bash
@@ -188,7 +185,8 @@ Worktree/Journal/Security HTTP 回归，以及 open/send/read、多 PTY、SIGINT
 fence 和 `cd /tmp` live cwd 均通过。
 浏览器验证确认 1440px 下 Terminal 是 359px 原生 details 列且 Chat 保持选中；680px 下
 只显示无溢出的 overlay；reopen、scrollback、双 Session 隔离与 `pageerror=[]` 通过。
-alpha.3 升级后的组合自动门禁为 109 tests pass（106 top-level subtests）；其中 Inspector 10/10、
+alpha.3 升级与 governed write 后的串行组合自动门禁为 110 tests pass（107 top-level subtests）；
+其中 Inspector 10/10、
 workflow 12/12、alpha runtime 12/12、mode 4/4、Codex 20/20；布局单元/Client
 门禁 6/6。真实 3091 在 1416px AppFrame 下通过既有 drag handle 将 Chat/details 固定到共享区
 25%/75%（284px/852px），details 超过完整 frame 的一半与上游 520px ceiling；680px 下仍为
@@ -244,15 +242,19 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
    保留 occurrence。DSH 图固定 alpha.3 源码 owner；Codex 图固定官方 rust-v0.149.0 source 并接入
    public protocol/DSH bridge，只有模型推理 opaque。Inspector 10/10 与真实双 backend DOM/digest/
    live/cold/restart gate 通过，等待产品验收后再决定是否恢复 E0 Complete。
-9. 完整 alpha parity gates 仍是 `alpha` 合回主线的 release gate；通过前不合并。
+9. 已完成：`alpha` 在 runtime migration 与最小 smoke 通过后以 `285bd5d28e` fast-forward 合入
+   `main`；合并没有把后续 codex-inspired parity 混进 runtime upgrade commit。后续 parity 直接在
+   `main` 以独立精确提交推进，且不因已合并而降低产品可点击 gate。
 10. 旧 E1–E3 实现已通过 revert 撤回，原提交完整保留。E1 已按新边界重新开始：
     `@aezy/workflow` revision 1（digest `f7841cbd49eb…`）描述宏观 coding loop，并只在
     `AEZY_CODEX_INSPIRED_DOGFOOD=1` 暂存 exact preset。真实 Session
     `aezy-codex-inspired-mtfs9w1k` 用 `openai-codex/gpt-5.6-sol` 完成 Turn 1、Host restart 与同
-    Session Turn 2；alpha.3 提升后又完成一次 exact revision 1 structured Turn 与 restart gate；
-    普通启动 system root 仍只有 `aezy` / `codex-app-server`。新增 parity 当前暂停，必须在之后的
-    独立精确提交中按 `doc/milestones/codex-inspired.md` 补 approval/Security/Journal/cancel/
-    compaction/Subagent/Inspector parity；完成前不可点击。E2/E3 暂停，E4 不在范围。
+    Session Turn 2；alpha.3 提升后又完成一次 exact revision 1 structured Turn 与 restart gate。
+    合入 `main` 后，Session `aezy-codex-inspired-write-mtieqspj` 已证明 Security `ask` → Remote
+    `allowed-once` → durable structured `write` → exact file → Journal/Review/usage 的 governed write
+    vertical slice。普通启动 system root 仍只有 `aezy` / `codex-app-server`。必须继续按
+    `doc/milestones/codex-inspired.md` 补 deny/cancel/compaction/Subagent/Inspector 等 parity；完成前
+    不可点击。E2/E3 暂停，E4 不在范围。
 11. 按真实 dogfood 故障 harden 已完成的两条 backend；Traffic Board 与 Task Board 继续暂缓。
 
 原 Activity dashboard 实验已全部废弃：原提交 `eae530ddcb`、`4d187252b0`、`d77430c012`
@@ -326,19 +328,19 @@ M0–M4.2、Turn File Change Journal 与 Integrated Terminal side panel 已完�
 doc/README.md 索引读取对应 milestone，不要递归读取整个 doc/，也不要重构已签收切片。
 
 Activity dashboard 的三笔原提交已经独立 revert，Browser integration 已暂停；Traffic/Task Board
-继续暂缓。alpha 分支只使用完整同版、integrity-pinned 的官方 alpha.3 npm family 与独立
+继续暂缓。当前 main 开发线只使用完整同版、integrity-pinned 的官方 alpha.3 npm family 与独立
 DSH_HOME/profile/3091，不得从 reference 源码运行；本地 reference 仍是 alpha.1 historical snapshot，
 不得伪改。Codex App Server self-development loop、原生 Agent preset 与
 codex-app-server system preset、DSH-native openai-codex OAuth/Turn/tool/approval/Security/Journal/
 usage/restart 均已签收；codex-inspired 已有 internal revision 1 和真实 restart dogfood，但完整
 parity 前仍不提供选项。
 
-完整 alpha parity 仍是合回主线的 release gate；E0/CI.0 因原 graph 只是 runtime span tree 而重新
-打开。先读 doc/milestones/loop-inspector.md 与 doc/roadmap/loop-inspector-workflow-editor.md，完成
-静态 backend logic graph：blueprint 是主体，runtime trace 只叠加 active/visited/usage/duration，
-Timeline 保留逐次证据；App Server 私有内核显示为 opaque。alpha.3 migration 与 revision 1
-回归已经独立完成；新增 E1 parity 当前暂停，之后只能按 doc/milestones/codex-inspired.md 用
-独立提交继续；E2/E3 暂停，不包含 E4。Inspector
+alpha.3 migration 已独立完成，`alpha` 已 fast-forward 合入 `main`，最小 main smoke 通过。E0/CI.0
+revision 3 的静态 backend logic graph 仍等待产品验收：blueprint 是主体，runtime trace 只叠加
+active/visited/usage/duration，Timeline 保留逐次证据；App Server 私有内核显示为 opaque。
+codex-inspired revision 1 的 restart 与 governed write vertical slice 已签收；下一步只能按
+doc/milestones/codex-inspired.md 用独立提交继续 deny/cancel/compaction/Subagent/Inspector parity；
+E2/E3 暂停，不包含 E4。Inspector
 失败只能降低可见性，不得影响 Turn，也不得展示 reasoning、credential、secret prompt 或未脱敏
 tool arguments。`codex-inspired` 在完整 parity gate 前不可点击。不要读取
 或管理 OAuth token，不修改 DSH 源码，不实现

@@ -160,6 +160,25 @@ test('codex-inspired Turn gate requires explicit dogfood and exact durable prese
   assert.doesNotMatch(gate, /readRecord|access[_-]?token|refresh[_-]?token|provider:\s*['"]aezy-codex/)
 })
 
+test('codex-inspired governed write gate stays on DSH approval, Security and Journal owners', async () => {
+  const gate = await readFile(
+    new URL('./verify-alpha-codex-inspired-governed-write.mjs', import.meta.url),
+    'utf8',
+  )
+  assert.match(gate, /AEZY_CODEX_INSPIRED_DOGFOOD !== '1'/)
+  assert.match(gate, /agentPreset: CODEX_INSPIRED_PRESET_ID/)
+  assert.match(gate, /provider: 'openai-codex'/)
+  assert.match(gate, /event === 'approval\/request'/)
+  assert.match(gate, /value: 'allowed-once'/)
+  assert.match(gate, /tool: 'write'/)
+  assert.match(gate, /event\.type === 'approval\/asked'/)
+  assert.match(gate, /event\.type === 'approval\/decided'/)
+  assert.match(gate, /event\.type === 'tool\/call' && event\.data\.name === 'write'/)
+  assert.match(gate, /project\/ledger/)
+  assert.match(gate, /project\/turn-review/)
+  assert.doesNotMatch(gate, /readRecord|access[_-]?token|refresh[_-]?token/i)
+})
+
 test('Loop Inspector gate consumes only authenticated Session follow/page truth', async () => {
   const gate = await readFile(
     new URL('./verify-loop-inspector.mjs', import.meta.url),

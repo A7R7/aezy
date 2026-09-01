@@ -12,9 +12,9 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
   或 merge-back 内核。
 - 非必要 DSH 组件通过 Aezy profile patch 禁用，不删除或修改上游 package。
 
-当前 `alpha` 分支只面向 DSH `0.1.2-alpha.3`，tag/commit 为
+当前 `main`（由 `alpha` fast-forward 合入）只面向 DSH `0.1.2-alpha.3`，tag/commit 为
 `dsh-v0.1.2-alpha.3` / `dd6322d604e00eec1ba5e0c8541159906a21094a`。开发运行状态位于
-`~/.aezy-alpha/dsh/`，profile 为 `aezy-alpha`；该分支不承诺兼容 rc.2 runtime。
+`~/.aezy-alpha/dsh/`，profile 为 `aezy-alpha`；当前开发线不承诺兼容 rc.2 runtime。
 
 alpha.3 已作为 immutable GitHub tag/release 和完整官方 npm family 发布。selector 精确安装并逐包
 校验 244 个 `0.1.2-alpha.3` DSH packages 的 SHA-512 integrity，只把 11 个 Aezy 外置包作为本地
@@ -108,6 +108,8 @@ AEZY_ALPHA_GATE_TOKEN=<launch-token> pnpm run test:alpha:layout
 # 只供内部 parity dogfood；普通启动不会出现该 preset：
 AEZY_CODEX_INSPIRED_DOGFOOD=1 AEZY_ALPHA_GATE_TOKEN=<launch-token> \
   pnpm run test:alpha:codex-inspired-turn
+AEZY_CODEX_INSPIRED_DOGFOOD=1 AEZY_ALPHA_GATE_TOKEN=<launch-token> \
+  pnpm run test:alpha:codex-inspired-write
 ```
 
 `standard` Session 已通过 DSH-owned OAuth、真实 `openai-codex/gpt-5.6-sol` Turn、structured
@@ -131,7 +133,7 @@ model 或 `codex-app-server` 的 `aezy-codex` route。证据见
 | Agent modes | 原生四模式、legacy `aezy`、Codex App Server preset 与双门禁 | [`mode-presets.md`](doc/milestones/mode-presets.md) |
 | Native provider | DSH-owned OAuth、OpenAI/Codex models 与原生 agent loop parity | [`native-provider.md`](doc/milestones/native-provider.md) |
 | Loop Inspector | 静态 backend logic graph、durable trace overlay、Timeline 与 restart rebuild | [`loop-inspector.md`](doc/milestones/loop-inspector.md) |
-| Codex-inspired | 内部 immutable macro loop + DSH hook compiler；完整 parity pending、不可点击 | [`codex-inspired.md`](doc/milestones/codex-inspired.md) |
+| Codex-inspired | 内部 immutable macro loop + DSH hook compiler；governed write 已验证，完整 parity pending、不可点击 | [`codex-inspired.md`](doc/milestones/codex-inspired.md) |
 
 关键语义：
 
@@ -236,9 +238,10 @@ tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原�
 
 alpha.3 开发 runtime 已恢复上游 Agent preset UI，并把 Codex App Server 收口为独立 system preset，
 完成 per-preset catalog UI 过滤、Host 执行门禁与 Session header 模式显示；证据见
-[`mode-presets.md`](doc/milestones/mode-presets.md)。完整 alpha parity gates 仍是合回主线的 release
-gate；已完成闭环只按真实 dogfood 故障做 Worktree dependency bootstrap 与 App Server contract
-hardening。当前 DSH-owned `openai-codex` 已完成 OAuth、真实
+[`mode-presets.md`](doc/milestones/mode-presets.md)。alpha.3 runtime migration 与最小 main smoke
+通过后，`alpha` 已 fast-forward 合入 `main`；完整 codex-inspired parity 仍是进入可点击产品面的
+release gate。已完成闭环只按真实 dogfood 故障做 Worktree dependency bootstrap 与 App Server
+contract hardening。当前 DSH-owned `openai-codex` 已完成 OAuth、真实
 standard Turn、tool/approval/Security/Journal/usage 与 restart-resume gate。E0/CI.0 Loop Inspector
 已有 durable Session event projector、只读 Session header、Timeline 与双 backend live/cold/restart
 trace accuracy；但原 Graph 只是同一 runtime span log 的树形缩略版，不满足静态 agent-loop 逻辑图
@@ -246,7 +249,9 @@ trace accuracy；但原 Graph 只是同一 runtime span log 的树形缩略版�
 只叠加 active/visited/count/usage/duration；Codex App Server 不公开的内部控制流显示为 opaque。
 实现与双 backend restart gate 已通过，当前等待产品验收。旧 E1–E3 实现已 revert，原 Git 历史
 保留；E1 已按新的宏观 workflow 边界重新开始，internal `codex-inspired` revision 1 已完成真实
-Turn 与 restart continuation，但完整 parity pending 且不可点击；E2/E3 继续暂停，不包含 E4。
+Turn、restart continuation，以及 Security ask → Remote allowed-once → durable structured write →
+Journal/Review/usage 的 governed write vertical slice；完整 parity 仍 pending 且不可点击；E2/E3
+继续暂停，不包含 E4。
 Inspector 不驱动 loop，
 且不得展示 reasoning、secret 或未脱敏 tool arguments。
 

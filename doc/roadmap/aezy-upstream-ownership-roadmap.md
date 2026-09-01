@@ -18,10 +18,11 @@ Aezy 是基于 DSH 公开扩展机制的完整编程 Agent 发行版，不是 DS
 
 ## 当前上游信号
 
-- 主线历史签收于 `dsh-v0.1.1-rc.2`；当前 `alpha` 分支只面向 immutable prerelease
+- 主线历史签收于 `dsh-v0.1.1-rc.2`；`alpha` 已 fast-forward 合入当前 `main`，开发线只面向 immutable prerelease
   `dsh-v0.1.2-alpha.3`，不承诺双 runtime 兼容。完整官方 npm family 已发布；244 个 DSH package
   使用同一精确版本并逐项锁定 registry integrity。alpha.1 source artifacts 只保留为历史证据，
-  不再是 selector 路径。alpha 分支使用独立 DSH_HOME/profile/3091；完整 parity gates 决定何时合回主线。
+  不再是 selector 路径。开发线继续使用独立 DSH_HOME/profile/3091；产品可点击 parity gate 不因
+  branch merge 而降低。
 - alpha.1 开始让 shipped presets 由 `dsh-agent-presets` 自己持有并默认优先，正式将 `code` id 改为
   `ptc`，增加 durable preset/tool-change 与 model-selection projection；这为 Aezy 增加
   `codex-app-server` system preset 提供了更直接的公开 seam。
@@ -221,17 +222,20 @@ durable usage 时明确保持 partial。完整签收见 [`loop-inspector.md`](..
 详细路线见
 [`loop-inspector-workflow-editor.md`](loop-inspector-workflow-editor.md)。
 
-完整 alpha parity 仍是 `alpha` 合回主线的 release gate，不能因为既有 runtime trace gates 已通过
-而降低或跳过。
+alpha.3 runtime migration 与 main smoke 已作为独立 merge gate 通过；完整 codex-inspired parity
+仍是进入可点击产品面的 release gate，不能因为 branch merge 或既有 runtime trace gates 已通过而
+降低或跳过。
 
-### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（E1 parity paused）
+### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（E1 parity in progress）
 
 旧 E1–E3 实现已由后续 revert 提交撤回，原始提交完整保留供历史追溯。E0.1 revision 3 可读后，
 E1 已按新边界重新开始：外置 `@aezy/workflow` 提供内部、不可点击、不可执行任意代码的
 versioned/immutable LoopDefinition，让 `codex-inspired` 作为第一个 system-authored dogfood；
 revision 1 已通过真实 DSH-native Turn 与 restart 后同 Session continuation，但完整 parity pending。
-alpha.3 migration 已独立完成并再次证明 exact revision 1 Turn/restart；新增 parity 功能继续暂停，
-不得与 runtime upgrade 混入同一提交。
+alpha.3 migration 已独立完成并再次证明 exact revision 1 Turn/restart，随后 fast-forward 合入
+`main`。独立 governed write vertical slice 已证明 exact preset 下的 Security ask、Remote
+allowed-once、durable structured write、Journal/Review 与 usage；其提交不得与 runtime upgrade
+混合。其余 parity 继续按独立、精确切片推进。
 E2 仍暂停，未来才考虑模板式 Editor；E3 仍暂停，之后才增加
 structured condition、parallel、Subagent 与 bounded retry。外置 node plugin SDK 不在当前实施
 范围内，也不为它预留抽象。
