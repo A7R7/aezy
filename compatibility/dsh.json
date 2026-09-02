@@ -1,15 +1,15 @@
 {
   "schemaVersion": 2,
-  "packageVersion": "0.1.2-alpha.3",
-  "tag": "dsh-v0.1.2-alpha.3",
-  "commit": "dd6322d604e00eec1ba5e0c8541159906a21094a",
-  "tree": "86be9091c78528b5ef0866ae6d58b01d4a53582e",
+  "packageVersion": "0.1.2-alpha.4",
+  "tag": "dsh-v0.1.2-alpha.4",
+  "commit": "4e84901e6471b79ec0338099867ebb4606d12bb5",
+  "tree": "aeb655f10fe7f8a15ddee8fa29a38af283660167",
   "runtimeSource": {
     "kind": "official-npm-family",
     "registry": "https://registry.npmjs.org/",
-    "familyPackages": 244,
-    "familyManifest": "reference/dsh-alpha3-npm-family.json",
-    "familyManifestDigest": "ed7f64c9b5c2b1f2a82f6a53148361ad2825aac69aad268eefce1d10488626f6"
+    "familyPackages": 242,
+    "familyManifest": "reference/dsh-alpha4-npm-family.json",
+    "familyManifestDigest": "c422f26b22899097e67344874a737fb909f0f7e1d76ec822bf53d672982b338d"
   },
   "reference": {
     "status": "historical-read-only-alpha1-snapshot",
@@ -17,7 +17,7 @@
     "commit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
     "tree": "a712eec535b48badc4fefb4df5176a7002e4280b",
     "lock": "reference/dsh.lock.json",
-    "note": "The local .local snapshot remains alpha.1 and was not edited or used as the alpha.3 runtime. Alpha.3 source audit used an external cleanable checkout."
+    "note": "The local .local snapshot remains alpha.1 and was not edited or used as the alpha.4 runtime. Alpha.4 source audit used an external cleanable checkout."
   },
   "profile": "aezy-alpha",
   "bundles": [
@@ -38,18 +38,18 @@
     "@aezy/mode"
   ],
   "upstreamReview": {
-    "checkedAt": "2026-09-01",
-    "latestObservedTag": "dsh-v0.1.2-alpha.3",
-    "latestObservedCommit": "dd6322d604e00eec1ba5e0c8541159906a21094a",
-    "latestObservedTree": "86be9091c78528b5ef0866ae6d58b01d4a53582e",
-    "runtimeDecision": "alpha.3 is the sole alpha-branch development runtime. The official 244-package npm family is exact-version and integrity pinned; the alpha.1 source-artifact selector is retired, not retained as a compatibility path.",
-    "ownershipImpact": "Agent hooks, llm/stream, tools/pre-execute, shipped standard preset, Inspector eventSource and AppFrame/details seams remain compatible. Alpha.3 makes Session projections mandatory for Agent, usage and Subagent state; converges unary Remote calls on RemoteResult/RemoteError; adds SessionEvent.ignorable for unknown external events; keeps JSONL persistence; expands history load-through pagination; and tightens cancel/Subagent projection behavior. Aezy consumes these owners without copying their kernels."
+    "checkedAt": "2026-09-02",
+    "latestObservedTag": "dsh-v0.1.2-alpha.4",
+    "latestObservedCommit": "4e84901e6471b79ec0338099867ebb4606d12bb5",
+    "latestObservedTree": "aeb655f10fe7f8a15ddee8fa29a38af283660167",
+    "runtimeDecision": "alpha.4 is the sole main development runtime. The official 242-package public npm family is exact-version and integrity pinned; alpha.3 is not retained as a compatibility path.",
+    "ownershipImpact": "Agent hooks, llm/stream, tools/pre-execute, SessionEvent.ignorable, JSONL persistence, RemoteError/controllers, shipped presets, openai-codex authorization, usage, compaction, cancel, history pagination, Inspector eventSource and AppFrame/details seams remain compatible. Alpha.4 separates Session event sequence and log offsets, removes the session.events getter in favor of snapshotEvents(), converges Subagent followup/report on adjacent send_message, removes the public tool-subagent-report and code-runtime-python packages, omits workflow from PTC, enables web fetch in base/headless/sdk, and validates configured provider headers. Aezy migrated its three public Session read seams without copying upstream kernels."
   },
   "releaseAvailability": {
-    "githubRelease": "https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.2-alpha.3",
+    "githubRelease": "https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.2-alpha.4",
     "immutable": true,
-    "npmPackageVersion": "0.1.2-alpha.3",
-    "npmPublishedAt": "2026-08-31T16:20:52.856Z",
+    "npmPackageVersion": "0.1.2-alpha.4",
+    "npmPublishedAt": "2026-09-01T16:01:23.092Z",
     "npmPublishedAtCheck": true,
     "sourceReleaseArtifactVerified": false,
     "officialNpmFamilyVerified": true,

@@ -1,4 +1,4 @@
-const DSH_REVISION = 'dsh-v0.1.2-alpha.3@dd6322d604e00eec1ba5e0c8541159906a21094a'
+const DSH_REVISION = 'dsh-v0.1.2-alpha.4@4e84901e6471b79ec0338099867ebb4606d12bb5'
 const CODEX_SOURCE_REVISION = 'rust-v0.149.0@758ef40f50c1a458425c7cfbf1eb12cbc07af0b0'
 const CODEX_PROTOCOL_REVISION = '@openai/codex@0.149.0'
 
@@ -186,7 +186,7 @@ const dshNative = blueprint({
     edge('dsh-driver-next-turn', 'dsh-finalize-driver', 'dsh-turn-start', 'loop-back', 'queued wake', 'pending input remains', [DSH_LOOP]),
     edge('dsh-driver-idle', 'dsh-finalize-driver', 'dsh-session-idle', 'normal', 'idle', 'no pending input remains', [DSH_LOOP]),
   ],
-  digest: 'sha256:18895de7d16942cef676fd5241dd8938884eb96196643f6f15f4eb781e23fa26',
+  digest: 'sha256:aa707d5b91bcbbfa94e25c4fff58fb588a85eab9c6922cfc801c5fb984ca83a6',
 })
 
 const codexAppServer = blueprint({
@@ -305,7 +305,7 @@ const codexAppServer = blueprint({
     edge('codex-dsh-interrupt', 'codex-dsh-turn', 'codex-interrupt', 'cancel', 'abort signal', 'DSH Turn is cancelled', [DSH_LOOP, AEZY_CODEX]),
     edge('codex-interrupt-settle', 'codex-interrupt', 'codex-adapter-settle', 'normal', 'aborted', 'interrupt is contained', [AEZY_CODEX, CODEX_PROTOCOL]),
   ],
-  digest: 'sha256:a90cda5a03c1c0e8e5eb83f7d3200f22614e29b8e99793928b22c71a0be9a567',
+  digest: 'sha256:af38cbbf6581adc43b6fda641780c350b1bc66200ddac9564f8dcdbe077851e7',
 })
 
 export const LOOP_BLUEPRINTS = Object.freeze({

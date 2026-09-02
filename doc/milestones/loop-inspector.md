@@ -2,7 +2,7 @@
 
 > 状态：**E0.1 revision 3 candidate — pending product acceptance**<br>
 > 原 runtime trace foundation 日期：2026-08-30<br>
-> Runtime：DSH `0.1.2-alpha.3` / `dd6322d604e00eec1ba5e0c8541159906a21094a` / 3091
+> Runtime：DSH `0.1.2-alpha.4` / `4e84901e6471b79ec0338099867ebb4606d12bb5` / 3091
 
 ## 交付结果
 
@@ -97,8 +97,8 @@ Session，检查完整 DOM topology、缩放与可交互 guard。安装最终 bu
 
 | Backend | Lane | Node | Edge | revision / digest | OPAQUE |
 | --- | ---: | ---: | ---: | --- | --- |
-| DSH-native | 5 | 40 | 59 | `v3 / 18895de7d169…` | `dsh-model-inference` |
-| Codex App Server | 5 | 41 | 54 | `v3 / a90cda5a03c1…` | `codex-model-inference` |
+| DSH-native | 5 | 40 | 59 | `v3 / aa707d5b91bc…` | `dsh-model-inference` |
+| Codex App Server | 5 | 41 | 54 | `v3 / af38cbbf6581…` | `codex-model-inference` |
 
 80% 默认、100% 切换、水平 readable scroll、edge Guard 选择均通过，旧 `Official Codex agent core`
 不存在，`pageErrors=[]`。重启前后 blueprint digest 完全一致。
@@ -113,10 +113,15 @@ project、security、terminal。Host 继续使用隔离 alpha DSH_HOME/
 profile，没有修改 `.local/deepseek-harness/`。
 
 alpha.3 migration 未改变 topology；因为 canonical blueprint 包含 source refs，DSH revision 从
-alpha.1 改钉 alpha.3 后两个 digest 必须如上变化。提升后的真实 gate 使用 native
+alpha.1 改钉 alpha.3 后两个 digest 曾更新为 `18895de7d169…` 与 `a90cda5a03c1…`。提升后的真实 gate 使用 native
 `throughSeq=95` / 14 spans / `complete` 与 App Server `throughSeq=880` / 36 spans / `partial`；
 两者 live/cold 相等且 restart digest equal。安全 gate 同时改为检查敏感 JSON key，而不是误把
 静态 blueprint 说明中的普通英文单词 `arguments` 当成 raw tool arguments 泄漏。
+
+alpha.4 migration 同样没有改变 topology。DSH source refs 从 alpha.3 改钉 alpha.4 后，canonical
+digest 更新为上表的 `aa707d5b91bc…` 与 `af38cbbf6581…`；单元 gate、真实 composition、history
+pagination、`eventSource` 与 restart persistence 均通过。Inspector 不为 alpha.4 的 Session
+sequence/log-offset 分离建立自己的兼容层。
 
 ## 当前边界
 

@@ -1,24 +1,24 @@
 {
   "schemaVersion": 2,
-  "id": "dsh-v0.1.2-alpha.3-dd6322d",
+  "id": "dsh-v0.1.2-alpha.4-4e84901",
   "status": "verified-official-npm-family-runtime",
   "defaultRuntime": true,
   "source": {
     "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
-    "tag": "dsh-v0.1.2-alpha.3",
-    "commit": "dd6322d604e00eec1ba5e0c8541159906a21094a",
-    "tree": "86be9091c78528b5ef0866ae6d58b01d4a53582e",
+    "tag": "dsh-v0.1.2-alpha.4",
+    "commit": "4e84901e6471b79ec0338099867ebb4606d12bb5",
+    "tree": "aeb655f10fe7f8a15ddee8fa29a38af283660167",
     "immutable": true,
     "auditCheckoutPolicy": "external-cleanable-cache-only"
   },
   "publication": {
     "registry": "https://registry.npmjs.org/",
-    "publishedAt": "2026-08-31T16:20:52.856Z",
+    "publishedAt": "2026-09-01T16:01:23.092Z",
     "family": "dsh",
-    "familyPackages": 244,
-    "familyManifest": "reference/dsh-alpha3-npm-family.json",
-    "familyManifestDigest": "ed7f64c9b5c2b1f2a82f6a53148361ad2825aac69aad268eefce1d10488626f6",
-    "rootIntegrity": "sha512-VvATzYmQ4LMJREJ9e2POKksSHRfqP3y9pghplLBaQBuw2BqfbC0mQUVsaPwxe4wlcpj+riEgn8OJB01YnpF+3A=="
+    "familyPackages": 242,
+    "familyManifest": "reference/dsh-alpha4-npm-family.json",
+    "familyManifestDigest": "c422f26b22899097e67344874a737fb909f0f7e1d76ec822bf53d672982b338d",
+    "rootIntegrity": "sha512-+dOvmCxBNs4fWkBqAw1trAYE/5Ue/SmcC+ZKUfKAK/ai/FAgsSeiZkOhRQudVHuq/DZUhFH8BYkibhprhYqgAA=="
   },
   "toolchain": {
     "runtime": {
@@ -32,17 +32,17 @@
     }
   },
   "artifacts": {
-    "cacheRoot": "~/.cache/aezy/runtime-artifacts/dsh-v0.1.2-alpha.3-dd6322d",
+    "cacheRoot": "~/.cache/aezy/runtime-artifacts/dsh-v0.1.2-alpha.4-4e84901",
     "sourceReleaseTarballs": 0,
-    "registryPackages": 244,
+    "registryPackages": 242,
     "aezyPackages": 11
   },
   "verification": {
-    "npmFamily": "244/244 public dsh family members are 0.1.2-alpha.3 and carry registry SHA-512 integrity",
-    "officialCli": "0.1.2-alpha.3",
-    "migrationSpike": "isolated /tmp DSH_HOME/profile/3193 passed composition, Web, Workspace, Session, presets, native provider owner, RemoteError, history page and restart persistence",
-    "promotedProfile": "~/.aezy-alpha/dsh / aezy-alpha passed real native governed Turn, codex-inspired revision 1 Turn, Codex App Server contract, Inspector live/cold trace and restart-equal reconstruction",
-    "verifiedAt": "2026-09-01"
+    "npmFamily": "242/242 public dsh family members are 0.1.2-alpha.4 and carry registry SHA-512 integrity; alpha.3 public code-runtime-python and tool-subagent-report were removed",
+    "officialCli": "0.1.2-alpha.4 from the exact packed official npm family",
+    "migrationSpike": "isolated /tmp DSH_HOME/profile/3294 passed composition, Web, Workspace, Session, shipped modes, native provider, Codex App Server, codex-inspired revision 1, Inspector, governed writes and cold restart",
+    "promotedProfile": "~/.aezy-alpha/dsh / aezy-alpha on 3091 passed composition, Web, Workspace, Session, shipped modes, native provider, Codex App Server, codex-inspired revision 1, standard and codex-inspired governed writes, history pagination, RemoteError and cold restart persistence",
+    "verifiedAt": "2026-09-02"
   },
   "selector": {
     "sync": "pnpm alpha:profile:sync",
@@ -59,11 +59,11 @@
     "developmentDshHome": "~/.aezy-alpha/dsh",
     "developmentProfile": "aezy-alpha",
     "developmentPort": 3091,
-    "migrationDshHome": "/tmp/aezy-alpha3-migration/dsh",
-    "migrationProfile": "aezy-alpha3-migration",
-    "migrationPort": 3193,
+    "migrationDshHome": "/tmp/aezy-alpha4-migration/dsh",
+    "migrationProfile": "aezy-alpha4-migration",
+    "migrationPort": 3294,
     "promoted": true,
-    "branchDefault": "alpha"
+    "branchDefault": "main"
   },
   "policy": {
     "preferOfficialRegistryPackages": true,

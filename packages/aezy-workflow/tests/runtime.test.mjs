@@ -59,7 +59,7 @@ function event(seq, type, data, time = 1_000 + seq) {
 function agent(events = [], preset = CODEX_INSPIRED_PRESET_ID) {
   return {
     status: 'idle',
-    session: { header: { agentPreset: preset }, events },
+    session: { header: { agentPreset: preset }, snapshotEvents: () => events },
     cancelCause: null,
     cancel(cause) { this.cancelCause = cause },
   }
@@ -97,14 +97,15 @@ test('runtime compiles onto public DSH hooks and contributes a safe policy secti
 })
 
 test('budget fold uses only durable DSH Turn, usage and tool facts', () => {
-  const session = { events: [
+  const events = [
     event(0, 'turn/start', { turn: 1 }, 1_000),
     event(1, 'step/start', { turn: 1, step: 1 }),
     event(2, 'assistant/message', { turn: 1, step: 1, message: { content: [] }, usage: { inputTokens: 10, outputTokens: 5 } }),
     event(3, 'tool/call', { turn: 1, step: 1, callId: 'c', name: 'read', arguments: '{}' }),
     event(4, 'turn/end', { turn: 1, reason: { kind: 'completed' } }),
     event(5, 'turn/start', { turn: 2 }, 2_000),
-  ] }
+  ]
+  const session = { snapshotEvents: () => events }
   assert.deepEqual(loopBudgetSnapshot(session, 1, 2_500), {
     turn: 1,
     startedAt: 1_000,

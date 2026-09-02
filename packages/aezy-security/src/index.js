@@ -76,8 +76,9 @@ function sessionContext(exec) {
   const cwd = session?.header.cwd ?? process.cwd()
   let turn = null
   if (session !== undefined) {
-    for (let index = session.events.length - 1; index >= 0; index -= 1) {
-      const event = session.events[index]
+    const events = session.snapshotEvents()
+    for (let index = events.length - 1; index >= 0; index -= 1) {
+      const event = events[index]
       if (event.type === 'turn/end') break
       if (event.type === 'turn/start') {
         turn = event.data.turn

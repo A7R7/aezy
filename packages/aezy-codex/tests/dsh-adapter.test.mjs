@@ -105,6 +105,10 @@ class FakeSession {
     this.events.push(event)
     return event
   }
+
+  snapshotEvents() {
+    return Object.freeze([...this.events])
+  }
 }
 
 async function setup({

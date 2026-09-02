@@ -51,7 +51,7 @@ function eventTurn(event) {
 }
 
 export function loopBudgetSnapshot(session, turn, now = Date.now()) {
-  const events = Array.isArray(session?.events) ? session.events : []
+  const events = session.snapshotEvents()
   let startedAt
   let tokens = 0
   let toolCalls = 0
@@ -184,7 +184,7 @@ export function apply(ctx, config = {}) {
 
   ctx.on('tools/pre-execute', async (exec, next) => {
     assertBound(exec.agent, runtime)
-    const start = [...exec.agent.session.events].findLast(event => event.type === 'turn/start')
+    const start = exec.agent.session.snapshotEvents().findLast(event => event.type === 'turn/start')
     const turn = start?.data?.turn
     if (!Number.isSafeInteger(turn)) return { kind: 'deny', reason: 'codex-inspired requires an active durable Turn' }
     const snapshot = loopBudgetSnapshot(exec.agent.session, turn)

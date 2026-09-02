@@ -169,7 +169,7 @@ test('DSH pre-execute integration asks before network access and preserves downs
         session: {
           id: 'session-1',
           header: { cwd: repository },
-          events: [{ type: 'turn/start', data: { turn: 3 } }],
+          snapshotEvents: () => [{ type: 'turn/start', data: { turn: 3 } }],
         },
       },
     }

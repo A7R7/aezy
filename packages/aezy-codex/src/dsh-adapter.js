@@ -28,7 +28,7 @@ function boundedText(value, limit = MAX_PROJECTED_TEXT_BYTES) {
 function currentBoundary(session) {
   let turn = null
   let step = null
-  for (const event of session.events) {
+  for (const event of session.snapshotEvents()) {
     if (event.type === 'turn/start') turn = event.data.turn
     else if (event.type === 'turn/end' && event.data.turn === turn) {
       turn = null
@@ -422,7 +422,7 @@ export class AezyCodexAdapter extends LlmAdapter {
     const agent = this.ctx.agents.get(sessionId)
     if (!agent) throw new Error(`Codex adapter could not find live DSH Session ${sessionId}`)
     const cwd = agent.session.header.cwd
-    const permissions = permissionConfiguration(agent.session.events)
+    const permissions = permissionConfiguration(agent.session.snapshotEvents())
     const dynamicTools = codexDynamicTools(options.tools ?? [])
     const threadId = await this.ensureThread(sessionId, cwd, options.model, permissions, dynamicTools)
     const boundary = currentBoundary(agent.session)
