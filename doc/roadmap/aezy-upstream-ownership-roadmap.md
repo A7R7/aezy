@@ -1,6 +1,6 @@
 # Aezy 上游边界与实施路线图
 
-> 活动路线文档，更新于 2026-09-02。已完成切片的详细实现和验证只在
+> 活动路线文档，更新于 2026-09-04。已完成切片的详细实现和验证只在
 > `doc/milestones/` 维护。
 
 ## 决策原则
@@ -19,7 +19,7 @@ Aezy 是基于 DSH 公开扩展机制的完整编程 Agent 发行版，不是 DS
 ## 当前上游信号
 
 - 主线历史签收于 `dsh-v0.1.1-rc.2`；`alpha` 已 fast-forward 合入当前 `main`，开发线只面向 immutable prerelease
-  `dsh-v0.1.2-alpha.4`，不承诺双 runtime 兼容。完整官方 npm family 已发布；242 个公开 DSH package
+  `dsh-v0.1.2-rc.1`，不承诺双 runtime 兼容。完整官方 npm family 已发布；242 个公开 DSH package
   使用同一精确版本并逐项锁定 registry integrity。alpha.1/alpha.3 artifacts 只保留为历史证据，
   不再是 selector 路径。开发线继续使用独立 DSH_HOME/profile/3091；产品可点击 parity gate 不因
   branch merge 而降低。
@@ -33,6 +33,10 @@ Aezy 是基于 DSH 公开扩展机制的完整编程 Agent 发行版，不是 DS
 - alpha.4 分离 Session event sequence 与 log offset，移除 `session.events` getter 并公开
   `snapshotEvents()`；Subagent followup/report 收敛到相邻 `send_message`，PTC 不再装 workflow。
   Aezy 已直接迁移三个只读 Session consumer，没有保留 alpha.3 shim 或复制任何 owner 内核。
+- alpha.5 与 rc.1 除 package manifest 版本字段外 byte-identical；实质增量仅在 DSH storage domain
+  与 `session_projcache`：compatible versions、坏派生记录 backup-and-skip、旧 lineage 默认语义。
+  Agent/LLM/tool/approval/usage/compaction/Subagent/cancel、presets、Remote、Inspector 与 layout seam
+  均未改变，Aezy 无需 runtime 适配。
 - Models provider-card slots 可承载 Codex managed account UI，exact per-turn usage 可交还上游；
   但 model catalog 仍是 Host-wide，没有 per-preset filter，experimental Agent Team 也不是 Task
   Board。
@@ -59,7 +63,7 @@ Aezy 是基于 DSH 公开扩展机制的完整编程 Agent 发行版，不是 DS
 publication gate 与路线影响见
 [`dsh-0.1.2-alpha1-impact.md`](../reference/dsh-0.1.2-alpha1-impact.md)。
 当前 runtime migration 证据见
-[`dsh-0.1.2-alpha4-impact.md`](../reference/dsh-0.1.2-alpha4-impact.md)。
+[`dsh-0.1.2-rc1-impact.md`](../reference/dsh-0.1.2-rc1-impact.md)。
 
 ## 能力所有权矩阵
 
@@ -153,6 +157,15 @@ Inspector seam/governed write/restart 均已签收。首次真实 write 暴露�
 直接迁到 `snapshotEvents()`，未保留双 runtime 层。完整证据见
 [`dsh-0.1.2-alpha4-impact.md`](../reference/dsh-0.1.2-alpha4-impact.md)。
 
+### 0.7. alpha.4 → rc.1 official npm migration（Complete）
+
+alpha.5 与 rc.1 除统一版本字段外 byte-identical。242-package 公开官方 npm family、逐包
+SHA-512、隔离 `/tmp` DSH_HOME/profile/3395 与正式 3091 均通过 composition/Web/Workspace/
+Session/modes/native provider/Codex App Server/exact revision 1/history/RemoteError、两条 governed
+write、alpha.4 Session/cache carryover 与 cold restart。唯一实质变更由 DSH storage/
+projection-cache owner 持有；Aezy 不增加修复层、兼容层或新 parity。完整证据见
+[`dsh-0.1.2-rc1-impact.md`](../reference/dsh-0.1.2-rc1-impact.md)。
+
 ### 1. Relay Codex companion gate（Complete：硬约束失败）
 
 已在隔离 profile 验证 `relay-dsh-plugin-codex@0.1.2`。ChatGPT managed auth 复用、account/
@@ -201,13 +214,13 @@ Workspace/Session 关联到 opaque Codex thread id 所需的最小 binding，不
 
 ### 4. Alpha native provider gate（Complete）
 
-DSH alpha.4 已原生持有 `llm-pi-ai/openai-codex` catalog、Responses transport、OAuth
+DSH rc.1 已原生持有 `llm-pi-ai/openai-codex` catalog、Responses transport、OAuth
 grant/refresh 与 credential store。Aezy 已用外置 base patch 薄启用该 owner，并在真实 3091
 证明 `standard` Session 可选择并持久化 native Codex model，同时保持默认 DeepSeek route 和
 `codex-app-server`/`aezy-codex` 隔离。
 
 DSH-owned OAuth 已完成，真实 `standard` Turn、structured tool、Remote approval waterfall、Security
-audit、Journal/Review、usage 与 restart-resume 均通过。Node 24 env-proxy 与 alpha.4
+audit、Journal/Review、usage 与 restart-resume 均通过。Node 24 env-proxy 与 rc.1
 `/api/remote.mux` `$events` contract 已固化为回归门禁。它现在可日常 dogfood；证据见
 [`native-provider.md`](../milestones/native-provider.md)。
 
@@ -235,7 +248,7 @@ durable usage 时明确保持 partial。完整签收见 [`loop-inspector.md`](..
 详细路线见
 [`loop-inspector-workflow-editor.md`](loop-inspector-workflow-editor.md)。
 
-alpha.4 runtime migration 与 main smoke 已作为独立 commit 通过；完整 codex-inspired parity
+rc.1 runtime migration 与 main smoke 已作为独立 commit 通过；完整 codex-inspired parity
 仍是进入可点击产品面的 release gate，不能因为 branch merge 或既有 runtime trace gates 已通过而
 降低或跳过。
 
@@ -248,8 +261,9 @@ revision 1 已通过真实 DSH-native Turn 与 restart 后同 Session continuati
 alpha.3 migration 已独立完成并再次证明 exact revision 1 Turn/restart，随后 fast-forward 合入
 `main`。独立 governed write vertical slice 已证明 exact preset 下的 Security ask、Remote
 allowed-once、durable structured write、Journal/Review 与 usage；其提交不得与 runtime upgrade
-混合。alpha.4 migration 又以未修改的 revision 1 重复该 write gate，并只迁移公开 Session read
-seam；其余 parity 继续按独立、精确切片推进。
+混合。alpha.4 migration 又以未修改的 revision 1 重复该 write gate并迁移公开 Session read seam；
+rc.1 migration 再次保持同一 revision/digest 并通过 write/restart gate，且没有加入新 parity；其余
+parity 继续按独立、精确切片推进。
 E2 仍暂停，未来才考虑模板式 Editor；E3 仍暂停，之后才增加
 structured condition、parallel、Subagent 与 bounded retry。外置 node plugin SDK 不在当前实施
 范围内，也不为它预留抽象。

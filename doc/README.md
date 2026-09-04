@@ -56,6 +56,8 @@ milestone 阅读。
   影响审计、244-package 官方 npm family integrity、隔离 migration 与 3091 提升证据。
 - [`reference/dsh-0.1.2-alpha4-impact.md`](reference/dsh-0.1.2-alpha4-impact.md)：alpha.3 → alpha.4
   Session API 影响审计、242-package 官方 npm family integrity、隔离 3294 与正式 3091 提升证据。
+- [`reference/dsh-0.1.2-rc1-impact.md`](reference/dsh-0.1.2-rc1-impact.md)：alpha.4 → alpha.5 →
+  rc.1 的 storage/projection-cache 影响审计、242-package integrity、隔离 3395 与正式 3091 证据。
 - [`milestones/mode-presets.md`](milestones/mode-presets.md)：原生 Agent preset UI、
   `codex-app-server` system preset、per-preset catalog UI 与 Host 执行门禁的 3091 签收。
 - [`reference/relay-dsh-plugin-codex-0.1.2-compatibility.md`](reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)：

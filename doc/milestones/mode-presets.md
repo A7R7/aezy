@@ -1,8 +1,8 @@
 # Agent mode 与 Codex App Server preset
 
 > 状态：**Complete on `main` development runtime**<br>
-> 日期：2026-09-02<br>
-> Runtime：DSH `0.1.2-alpha.4` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
+> 日期：2026-09-04<br>
+> Runtime：DSH `0.1.2-rc.1` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
 
 ## 产品结果
 
@@ -29,7 +29,7 @@ Session header 的模式名称由原生 `ui-agent-preset` 读取 durable `agentP
 - `@aezy/codex` adapter 在 App Server turn/thread I/O 前再次按 Session header 拒绝越界执行；
   `codex-app-server` 是正常入口，`aezy` 仅是历史 Session 兼容例外；该包不声明 rc.2 runtime 兼容。
 
-catalog 仍由 DSH Host 统一生成，这是 alpha.4 的公开 seam；因此 Remote
+catalog 仍由 DSH Host 统一生成，这是 rc.1 的公开 seam；因此 Remote
 `session/modelCatalog` 会包含 DeepSeek 与 Codex。隔离策略不伪造第二份 Host catalog，而在 UI
 目录和最终执行边界做双门禁。
 
@@ -66,6 +66,12 @@ alpha.4 migration 再次在隔离 3294 与正式 3091 创建 `standard`、`codex
 revision 1 Session，并在冷重启后恢复相同 durable preset projection。上游 PTC 在 alpha.4 不再
 装载 workflow；Aezy 不复制该配置，codex-inspired 继续由 exact standard composition 加外置
 overlay 组成。最终 normal sync 的 roster 仍精确为六个普通 mode，不残留 dogfood preset。
+
+rc.1 migration 在隔离 3395 与正式 3091 再次创建并冷恢复 `standard`、`codex-app-server` 和
+exact revision 1 Session。shipped preset、`ui-agent-preset`、Host catalog 与 provider fence 均无
+实质变化；alpha.4 carryover Session 可读。最终 normal sync 的 roster 仍为六个普通 mode，未建立
+双 runtime 或残留 dogfood preset。证据见
+[`../reference/dsh-0.1.2-rc1-impact.md`](../reference/dsh-0.1.2-rc1-impact.md)。
 
 自动门禁：
 

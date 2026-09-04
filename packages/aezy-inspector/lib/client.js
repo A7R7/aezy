@@ -10,7 +10,7 @@ window.__ModuleLoader__.load({
 		let react = require("react");
 		let react_jsx_runtime = require("react/jsx-runtime");
 		//#region src/blueprints.js
-		const DSH_REVISION = "dsh-v0.1.2-alpha.4@4e84901e6471b79ec0338099867ebb4606d12bb5";
+		const DSH_REVISION = "dsh-v0.1.2-rc.1@a66e4702047846cdaa10c66c9d3df3951f5ea70d";
 		const CODEX_SOURCE_REVISION = "rust-v0.149.0@758ef40f50c1a458425c7cfbf1eb12cbc07af0b0";
 		const CODEX_PROTOCOL_REVISION = "@openai/codex@0.149.0";
 		function ref(authority, owner, symbol, revision, path) {
@@ -223,7 +223,7 @@ window.__ModuleLoader__.load({
 				edge("dsh-driver-next-turn", "dsh-finalize-driver", "dsh-turn-start", "loop-back", "queued wake", "pending input remains", [DSH_LOOP]),
 				edge("dsh-driver-idle", "dsh-finalize-driver", "dsh-session-idle", "normal", "idle", "no pending input remains", [DSH_LOOP])
 			],
-			digest: "sha256:aa707d5b91bcbbfa94e25c4fff58fb588a85eab9c6922cfc801c5fb984ca83a6"
+			digest: "sha256:772d6169735e6214812ce460ab00574f900b57c5a6a282a7885ef57502bf86b4"
 		});
 		const codexAppServer = blueprint({
 			id: "codex-app-server",
@@ -354,7 +354,7 @@ window.__ModuleLoader__.load({
 				edge("codex-dsh-interrupt", "codex-dsh-turn", "codex-interrupt", "cancel", "abort signal", "DSH Turn is cancelled", [DSH_LOOP, AEZY_CODEX]),
 				edge("codex-interrupt-settle", "codex-interrupt", "codex-adapter-settle", "normal", "aborted", "interrupt is contained", [AEZY_CODEX, CODEX_PROTOCOL])
 			],
-			digest: "sha256:af38cbbf6581adc43b6fda641780c350b1bc66200ddac9564f8dcdbe077851e7"
+			digest: "sha256:9ad35e581aa482b8d5ea5ebd13022958b8e538c23488b018c9bc2b00195531ee"
 		});
 		const LOOP_BLUEPRINTS = Object.freeze({
 			"dsh-native": dshNative,

@@ -2,13 +2,13 @@
 
 > 状态：Complete
 >
-> Runtime：DSH `dsh-v0.1.2-alpha.4` / `4e84901e6471b79ec0338099867ebb4606d12bb5`，
+> Runtime：DSH `dsh-v0.1.2-rc.1` / `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，
 > `~/.aezy-alpha/dsh`，profile `aezy-alpha`，Host `127.0.0.1:3091`
 
 ## 目标与边界
 
 本切片验证“OpenAI/Codex 模型”和“Codex App Server agent loop”可以独立存在。Aezy 不增加
-第二个 provider implementation，只在外置 `@aezy/base` composition 中启用 alpha.4 已有的
+第二个 provider implementation，只在外置 `@aezy/base` composition 中启用 rc.1 已有的
 `@deepseek-ai/dsh-llm-pi-ai` `openai-codex` route，并挂载 DSH 的
 `@deepseek-ai/dsh-authorization` service。
 
@@ -42,7 +42,7 @@ credential 边界被后续 profile 调整意外移除。
 device code，但脚本不读取或输出 credential payload。
 
 `scripts/verify-alpha-native-provider-turn.mjs` 通过真实 3091 Remote control plane 建立 disposable
-Git fixture 和 `standard` Session，在 alpha.4 `/api/remote.mux` 的 `$events` stream 回答
+Git fixture 和 `standard` Session，在 rc.1 `/api/remote.mux` 的 `$events` stream 回答
 `approval/request` waterfall，再检查 Security、Journal、Review 与 exact provider usage。launch
 token 只由运行时环境提供，不写入仓库或测试输出。
 
@@ -132,6 +132,13 @@ getter 的使用，改为公开 `snapshotEvents()`。提升后的正式 3091 继
 uncached input、10,240 cache read、45 output，approval/Security/Journal/Review 均通过。三组 mode
 Session 又在冷重启后 exact-equal。完整证据见
 [`../reference/dsh-0.1.2-alpha4-impact.md`](../reference/dsh-0.1.2-alpha4-impact.md)。
+
+2026-09-04 的 rc.1 migration 确认 provider/authorization seam 没有实质变化：owner 仍是
+`@deepseek-ai/dsh-llm-pi-ai`，authorization key 仍是 `llm-pi-ai/openai-codex`，catalog 仍为 7 个
+模型。正式 3091 Session `aezy-alpha-native-turn-mtme7us8` 完成 governed write：6,446 uncached
+input、6,144 cache read、43 output，Security `ask → allowed-once`、Journal/Review 与 Turn completion
+均通过，随后冷重启恢复。完整证据见
+[`../reference/dsh-0.1.2-rc1-impact.md`](../reference/dsh-0.1.2-rc1-impact.md)。
 
 本 spike 没有新增或签收 Aezy logout/revocation UI；credential 删除仍应通过 DSH owner 的未来
 authorization surface 完成，而不是由 Aezy 读取或改写 credential 文件。

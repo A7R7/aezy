@@ -65,8 +65,8 @@ async function waitFor(expression, message, timeoutMs = 30_000) {
 }
 
 const expected = {
-  'dsh-native': { lanes: 5, nodes: 40, edges: 59, digest: 'sha256:aa707d5b91bcbbfa94e25c4fff58fb588a85eab9c6922cfc801c5fb984ca83a6' },
-  'codex-app-server': { lanes: 5, nodes: 41, edges: 54, digest: 'sha256:af38cbbf6581adc43b6fda641780c350b1bc66200ddac9564f8dcdbe077851e7' },
+  'dsh-native': { lanes: 5, nodes: 40, edges: 59, digest: 'sha256:772d6169735e6214812ce460ab00574f900b57c5a6a282a7885ef57502bf86b4' },
+  'codex-app-server': { lanes: 5, nodes: 41, edges: 54, digest: 'sha256:9ad35e581aa482b8d5ea5ebd13022958b8e538c23488b018c9bc2b00195531ee' },
 }
 
 try {

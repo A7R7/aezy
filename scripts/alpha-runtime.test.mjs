@@ -18,11 +18,11 @@ import {
 
 const one = '1'.repeat(64)
 
-test('alpha npm family manifest pins the complete official alpha.4 family', () => {
+test('alpha npm family manifest pins the complete official rc.1 family', () => {
   const { manifest, manifestDigest, packages } = verifyOfficialFamilyManifest()
   assert.equal(manifestDigest, alphaMetadata.publication.familyManifestDigest)
   assert.equal(packages.size, 242)
-  assert.equal(packages.get('@deepseek-ai/dsh').version, '0.1.2-alpha.4')
+  assert.equal(packages.get('@deepseek-ai/dsh').version, '0.1.2-rc.1')
   assert.equal(packages.get('@deepseek-ai/dsh').integrity, alphaMetadata.publication.rootIntegrity)
   assert.equal(manifest.packages.every(entry => entry.integrity.startsWith('sha512-')), true)
 })
@@ -41,11 +41,11 @@ test('alpha npm family manifest rejects drift before installation', () => {
 test('alpha profile pins every DSH edge to one registry version and only Aezy to local tarballs', () => {
   const dsh = new Map([['@deepseek-ai/dsh', {
     name: '@deepseek-ai/dsh',
-    version: '0.1.2-alpha.4',
+    version: '0.1.2-rc.1',
     integrity: 'sha512-root',
   }], ['@deepseek-ai/dsh-subprocess-local', {
     name: '@deepseek-ai/dsh-subprocess-local',
-    version: '0.1.2-alpha.4',
+    version: '0.1.2-rc.1',
     integrity: 'sha512-subprocess',
   }]])
   const aezy = new Map([['@aezy/base', {
@@ -55,8 +55,8 @@ test('alpha profile pins every DSH edge to one registry version and only Aezy to
   }]])
   const manifest = profileManifest(dsh, aezy)
   const workspace = workspaceSettings(dsh, aezy)
-  assert.equal(workspace.overrides['@deepseek-ai/dsh'], '0.1.2-alpha.4')
-  assert.equal(workspace.overrides['@deepseek-ai/dsh-subprocess-local'], '0.1.2-alpha.4')
+  assert.equal(workspace.overrides['@deepseek-ai/dsh'], '0.1.2-rc.1')
+  assert.equal(workspace.overrides['@deepseek-ai/dsh-subprocess-local'], '0.1.2-rc.1')
   assert.equal(workspace.overrides.react, '18.3.1')
   assert.equal(workspace.overrides['react-dom'], '18.3.1')
   assert.match(workspace.overrides['@aezy/base'], /^file:\/\/\/tmp\/aezy-base\.tgz$/)
@@ -64,12 +64,12 @@ test('alpha profile pins every DSH edge to one registry version and only Aezy to
   assert.equal(workspace.allowBuilds.koffi, true)
   assert.equal(workspace.allowBuilds['node-pty'], true)
   assert.equal(workspace.allowBuilds['@deepseek-ai/dsh-subprocess-local'], undefined)
-  assert.equal(workspace.allowBuilds['@deepseek-ai/dsh-subprocess-local@0.1.2-alpha.4'], true)
+  assert.equal(workspace.allowBuilds['@deepseek-ai/dsh-subprocess-local@0.1.2-rc.1'], true)
   assert.deepEqual(workspace.minimumReleaseAgeExclude, [
-    '@deepseek-ai/dsh@0.1.2-alpha.4',
-    '@deepseek-ai/dsh-subprocess-local@0.1.2-alpha.4',
+    '@deepseek-ai/dsh@0.1.2-rc.1',
+    '@deepseek-ai/dsh-subprocess-local@0.1.2-rc.1',
   ])
-  assert.equal(manifest.dependencies['@deepseek-ai/dsh'], '0.1.2-alpha.4')
+  assert.equal(manifest.dependencies['@deepseek-ai/dsh'], '0.1.2-rc.1')
   assert.match(manifest.dependencies['@aezy/base'], /^file:\/\/\/tmp\/aezy-base\.tgz$/)
   assert.equal(Object.entries(manifest.dependencies).some(([name, spec]) => (
     name.startsWith('@deepseek-ai/dsh') && spec.startsWith('file:')

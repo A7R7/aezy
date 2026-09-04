@@ -1,6 +1,6 @@
 # Aezy 项目交接
 
-> 更新日期：2026-09-02<br>
+> 更新日期：2026-09-04<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`main`（`alpha` 已 fast-forward 合入）<br>
 > 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
@@ -30,8 +30,8 @@
 
 ## 2. 上游与运行时基线
 
-- 分支运行版本：`@deepseek-ai/dsh@0.1.2-alpha.4`（官方 npm family / 3091）
-- 对应 tag/commit：`dsh-v0.1.2-alpha.4` / `4e84901e6471b79ec0338099867ebb4606d12bb5`
+- 分支运行版本：`@deepseek-ai/dsh@0.1.2-rc.1`（官方 npm family / 3091）
+- 对应 tag/commit：`dsh-v0.1.2-rc.1` / `a66e4702047846cdaa10c66c9d3df3951f5ea70d`
 - 只读本地参考版本：`dsh-v0.1.2-alpha.1` / `cd5ef8148158c3a752a658978873241fdf8e2bbc`
 - 参考锁定文件：`reference/dsh.lock.json`
 - 兼容性声明：`compatibility/dsh.json`
@@ -53,6 +53,14 @@ Session/modes/native provider/Codex App Server/revision 1/history/RemoteError/go
 restart。真实 write 暴露 alpha.4 已移除 `session.events` getter，Security、workflow 与 Codex adapter
 三个外置 consumer 已直接迁到 `snapshotEvents()`，没有保留 alpha.3 shim。完整证据见
 `doc/reference/dsh-0.1.2-alpha4-impact.md`。
+
+2026-09-04 完成 alpha.4 → alpha.5 → rc.1 审计与迁移。alpha.5 与 rc.1 除 package 版本字段外
+byte-identical；242-package 官方 npm family 同版且逐项有 registry SHA-512。唯一实质变化是
+DSH-owned storage/projection-cache 增加 compatible versions 与损坏派生记录 backup-and-skip。
+隔离 `/tmp` DSH_HOME/profile/3395 与正式 3091 均通过 composition/Web/Workspace/Session/modes、
+native provider、Codex App Server、未修改的 codex-inspired revision 1、history/RemoteError、两条
+governed write、alpha.4 Session/cache carryover 和 cold restart。Aezy runtime seam 无需适配，也
+没有建立 alpha.4 兼容层。完整证据见 `doc/reference/dsh-0.1.2-rc1-impact.md`。
 
 当前外置包：
 
@@ -124,10 +132,10 @@ restart。真实 write 暴露 alpha.4 已移除 `session.events` getter，Securi
 
 Tracked worktree clean；无需保留历史 dogfood fixture。
 
-交接时 3090、3091 与迁移用 3294 均未监听。main smoke 使用 alpha.4 profile composition
+交接时 3090、3091 与迁移用 3395 均未监听。main smoke 使用 rc.1 profile composition
 dump 完成，没有留下常驻 Host。
 
-alpha Host 已完成本次 alpha.4 启动/重启与 governed write 验收后停止；新会话仍必须重新检查。
+alpha Host 已完成本次 rc.1 启动/重启与 governed write 验收后停止；新会话仍必须重新检查。
 其
 DSH_HOME/profile 与主线历史状态完全分离，启动命令为：
 
@@ -192,7 +200,7 @@ Worktree/Journal/Security HTTP 回归，以及 open/send/read、多 PTY、SIGINT
 fence 和 `cd /tmp` live cwd 均通过。
 浏览器验证确认 1440px 下 Terminal 是 359px 原生 details 列且 Chat 保持选中；680px 下
 只显示无溢出的 overlay；reopen、scrollback、双 Session 隔离与 `pageerror=[]` 通过。
-alpha.4 升级后的串行组合自动门禁为 110 tests pass（107 top-level subtests）；
+rc.1 升级后的串行组合自动门禁为 110 tests pass（107 top-level subtests）；
 其中 Inspector 10/10、
 workflow 12/12、alpha runtime 13/13、mode 4/4、Codex 20/20；布局单元/Client
 门禁 6/6。真实 3091 在 1416px AppFrame 下通过既有 drag handle 将 Chat/details 固定到共享区
@@ -202,7 +210,7 @@ live/cold trace 与 Host restart exact-prefix digest parity 通过。其他里�
 milestone 中维护。
 
 E0.1 revision 3 浏览器门禁：DSH-native 为 5 lanes / 40 nodes / 59 edges，digest
-`aa707d5b91bc…`；Codex App Server 为 5 / 41 / 54，digest `af38cbbf6581…`。Codex 静态图固定
+`772d6169735e…`；Codex App Server 为 5 / 41 / 54，digest `9ad35e581aa4…`。Codex 静态图固定
 官方 `rust-v0.149.0@758ef40f` 源码，不再把整个 core 标为 opaque；两条 backend 都只有模型推理
 保持 OPAQUE。80%/100%、edge Guard、两 workspace/Session、Host restart 与 `pageErrors=[]` 通过。
 
@@ -224,8 +232,9 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 1. 已完成：独立 rc.2 runtime compatibility gate，发布包/lock/profile/3090 均已签收。
 2. 已完成：alpha.1 historical reference/source-release gate；随后 alpha.1 → alpha.3 上游影响审计、
    244-package 官方 npm family integrity、独立 3193 migration 与 3091 提升均已通过。之后
-   alpha.3 → alpha.4 的 242-package family、独立 3294 与正式 3091 migration 也已通过。alpha.4
-   是 `main` 唯一开发 runtime；不保留双 runtime selector。
+   alpha.3 → alpha.4 的 242-package family、独立 3294 与正式 3091 migration 也已通过；随后
+   alpha.4 → rc.1 的同规模 family、独立 3395 与正式 3091 migration 通过。rc.1 是 `main` 唯一
+   开发 runtime；不保留双 runtime selector。
 3. 已完成：隔离验证 `relay-dsh-plugin-codex@0.1.2`。auth/account/usage、对话、resume、cancel
    通过，但真实工具/approval 事实与安全切模型失败；不要安装到 Aezy profile。
 4. 已完成：最小外置官方 App Server adapter。process/protocol client、真实
@@ -240,14 +249,14 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
 6. 已完成：alpha 恢复上游 `ui-agent-preset`，保留 standard/ptc/minimal/cordis，
    增加 `codex-app-server` system preset、catalog UI/Host 双门禁与原生持久 header；旧 `aezy`
    仅保历史恢复，`codex-inspired` 不可点击。证据见 `doc/milestones/mode-presets.md`。
-7. 已完成：alpha DSH-native provider。通过 `@aezy/base` 薄启用 alpha.4 已有
+7. 已完成：alpha DSH-native provider。通过 `@aezy/base` 薄启用 rc.1 已有
    `llm-pi-ai/openai-codex` 与 authorization owner；DSH-owned OAuth、真实 standard Turn、
    structured tool、approval、Security、Journal/Review、usage 与 restart-resume 均通过。默认
    DeepSeek model 与 `codex-app-server`/`aezy-codex` 隔离未改变。证据见
    `doc/milestones/native-provider.md`。
 8. E0.1 revision 3 candidate：原 runtime span tree 已移除；默认 `Backend Logic` 是 5-lane full
    static topology，durable trace 只叠加可证明的 active/visited/count/usage/duration，Timeline 单独
-   保留 occurrence。DSH 图固定 alpha.4 源码 owner；Codex 图固定官方 rust-v0.149.0 source 并接入
+   保留 occurrence。DSH 图固定 rc.1 源码 owner；Codex 图固定官方 rust-v0.149.0 source 并接入
    public protocol/DSH bridge，只有模型推理 opaque。Inspector 10/10 与真实双 backend DOM/digest/
    live/cold/restart gate 通过，等待产品验收后再决定是否恢复 E0 Complete。
 9. 已完成：`alpha` 在 runtime migration 与最小 smoke 通过后以 `285bd5d28e` fast-forward 合入
@@ -263,8 +272,8 @@ experimental，因此第一步必须是固定版本的兼容性 spike 和端到�
     vertical slice。普通启动 system root 仍只有 `aezy` / `codex-app-server`。必须继续按
     `doc/milestones/codex-inspired.md` 补 deny/cancel/compaction/Subagent/Inspector 等 parity；完成前
     不可点击。E2/E3 暂停，E4 不在范围。
-    alpha.4 migration 保持同一 revision/digest，并在正式 3091 再次通过 governed write；本次
-    runtime commit 没有加入新的 parity。
+    alpha.4 和 rc.1 migration 均保持同一 revision/digest，并在正式 3091 再次通过 governed
+    write；这些 runtime commit 没有加入新的 parity。
 11. 按真实 dogfood 故障 harden 已完成的两条 backend；Traffic Board 与 Task Board 继续暂缓。
 
 原 Activity dashboard 实验已全部废弃：原提交 `eae530ddcb`、`4d187252b0`、`d77430c012`
@@ -338,15 +347,15 @@ M0–M4.2、Turn File Change Journal 与 Integrated Terminal side panel 已完�
 doc/README.md 索引读取对应 milestone，不要递归读取整个 doc/，也不要重构已签收切片。
 
 Activity dashboard 的三笔原提交已经独立 revert，Browser integration 已暂停；Traffic/Task Board
-继续暂缓。当前 main 开发线只使用完整同版、integrity-pinned 的官方 alpha.4 npm family 与独立
+继续暂缓。当前 main 开发线只使用完整同版、integrity-pinned 的官方 rc.1 npm family 与独立
 DSH_HOME/profile/3091，不得从 reference 源码运行；本地 reference 仍是 alpha.1 historical snapshot，
 不得伪改。Codex App Server self-development loop、原生 Agent preset 与
 codex-app-server system preset、DSH-native openai-codex OAuth/Turn/tool/approval/Security/Journal/
 usage/restart 均已签收；codex-inspired 已有 internal revision 1 和真实 restart dogfood，但完整
 parity 前仍不提供选项。
 
-alpha.3 migration 已独立完成并合入 `main`；alpha.4 migration 又以独立 commit 通过隔离与正式
-3091 smoke。E0/CI.0
+alpha.3 与 alpha.4 migration 已独立完成并合入 `main`；rc.1 migration 又以独立 commit 通过隔离与
+正式 3091 smoke。E0/CI.0
 revision 3 的静态 backend logic graph 仍等待产品验收：blueprint 是主体，runtime trace 只叠加
 active/visited/usage/duration，Timeline 保留逐次证据；App Server 私有内核显示为 opaque。
 codex-inspired revision 1 的 restart 与 governed write vertical slice 已签收；下一步只能按

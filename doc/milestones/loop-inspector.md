@@ -2,7 +2,7 @@
 
 > 状态：**E0.1 revision 3 candidate — pending product acceptance**<br>
 > 原 runtime trace foundation 日期：2026-08-30<br>
-> Runtime：DSH `0.1.2-alpha.4` / `4e84901e6471b79ec0338099867ebb4606d12bb5` / 3091
+> Runtime：DSH `0.1.2-rc.1` / `a66e4702047846cdaa10c66c9d3df3951f5ea70d` / 3091
 
 ## 交付结果
 
@@ -97,8 +97,8 @@ Session，检查完整 DOM topology、缩放与可交互 guard。安装最终 bu
 
 | Backend | Lane | Node | Edge | revision / digest | OPAQUE |
 | --- | ---: | ---: | ---: | --- | --- |
-| DSH-native | 5 | 40 | 59 | `v3 / aa707d5b91bc…` | `dsh-model-inference` |
-| Codex App Server | 5 | 41 | 54 | `v3 / af38cbbf6581…` | `codex-model-inference` |
+| DSH-native | 5 | 40 | 59 | `v3 / 772d6169735e…` | `dsh-model-inference` |
+| Codex App Server | 5 | 41 | 54 | `v3 / 9ad35e581aa4…` | `codex-model-inference` |
 
 80% 默认、100% 切换、水平 readable scroll、edge Guard 选择均通过，旧 `Official Codex agent core`
 不存在，`pageErrors=[]`。重启前后 blueprint digest 完全一致。
@@ -122,6 +122,12 @@ alpha.4 migration 同样没有改变 topology。DSH source refs 从 alpha.3 改�
 digest 更新为上表的 `aa707d5b91bc…` 与 `af38cbbf6581…`；单元 gate、真实 composition、history
 pagination、`eventSource` 与 restart persistence 均通过。Inspector 不为 alpha.4 的 Session
 sequence/log-offset 分离建立自己的兼容层。
+
+rc.1 migration 也没有改变 topology、`eventSource` 或 AppFrame/details seam。仅因 DSH canonical
+source revision 更新，DSH-native digest 变为 `772d6169735e…`，Codex App Server digest 变为
+`9ad35e581aa4…`；节点、控制边、owner lane 与 OPAQUE 边界不变。正式 composition、history
+pagination、alpha.4 Session/cache carryover 与 cold restart 均通过。DSH 新增的 projection-cache
+compatible-version/backup-and-skip 仍由上游 storage owner 持有，Inspector 没有增加 repair 或兼容层。
 
 ## 当前边界
 

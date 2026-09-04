@@ -45,10 +45,10 @@ export const alphaCmakeRoot = resolve(expandHome(
   process.env.AEZY_ALPHA_CMAKE_ROOT || '~/.cache/aezy/toolchains/cmake/root',
 ))
 export const alphaPnpmStore = resolve(expandHome(
-  process.env.AEZY_ALPHA_PNPM_STORE || '~/.cache/aezy/pnpm-alpha4-store',
+  process.env.AEZY_ALPHA_PNPM_STORE || '~/.cache/aezy/pnpm-rc1-store',
 ))
 export const alphaNpmCache = resolve(expandHome(
-  process.env.AEZY_ALPHA_NPM_CACHE || '~/.cache/aezy/npm-alpha4',
+  process.env.AEZY_ALPHA_NPM_CACHE || '~/.cache/aezy/npm-rc1',
 ))
 export const alphaDshBin = join(alphaProfileDir, 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js')
 

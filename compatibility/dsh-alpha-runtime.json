@@ -1,24 +1,24 @@
 {
   "schemaVersion": 2,
-  "id": "dsh-v0.1.2-alpha.4-4e84901",
+  "id": "dsh-v0.1.2-rc.1-a66e470",
   "status": "verified-official-npm-family-runtime",
   "defaultRuntime": true,
   "source": {
     "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
-    "tag": "dsh-v0.1.2-alpha.4",
-    "commit": "4e84901e6471b79ec0338099867ebb4606d12bb5",
-    "tree": "aeb655f10fe7f8a15ddee8fa29a38af283660167",
+    "tag": "dsh-v0.1.2-rc.1",
+    "commit": "a66e4702047846cdaa10c66c9d3df3951f5ea70d",
+    "tree": "27ab636bb3d77e698f5637e518db44ae1f61e262",
     "immutable": true,
     "auditCheckoutPolicy": "external-cleanable-cache-only"
   },
   "publication": {
     "registry": "https://registry.npmjs.org/",
-    "publishedAt": "2026-09-01T16:01:23.092Z",
+    "publishedAt": "2026-09-03T06:21:52.107Z",
     "family": "dsh",
     "familyPackages": 242,
-    "familyManifest": "reference/dsh-alpha4-npm-family.json",
-    "familyManifestDigest": "c422f26b22899097e67344874a737fb909f0f7e1d76ec822bf53d672982b338d",
-    "rootIntegrity": "sha512-+dOvmCxBNs4fWkBqAw1trAYE/5Ue/SmcC+ZKUfKAK/ai/FAgsSeiZkOhRQudVHuq/DZUhFH8BYkibhprhYqgAA=="
+    "familyManifest": "reference/dsh-rc1-npm-family.json",
+    "familyManifestDigest": "b2d09ca40d9c1c171d99f501a12c26c8895261ebb8bb2ee94f21580a054287b1",
+    "rootIntegrity": "sha512-RPq48TzxvwpdT9/7W1tbhZDBMmeK+bxDrX9cqQC27Wx/LqtgJF8PSa3b3xriU8oxtvhwYmk21w2cej3uMQrnVA=="
   },
   "toolchain": {
     "runtime": {
@@ -32,17 +32,17 @@
     }
   },
   "artifacts": {
-    "cacheRoot": "~/.cache/aezy/runtime-artifacts/dsh-v0.1.2-alpha.4-4e84901",
+    "cacheRoot": "~/.cache/aezy/runtime-artifacts/dsh-v0.1.2-rc.1-a66e470",
     "sourceReleaseTarballs": 0,
     "registryPackages": 242,
     "aezyPackages": 11
   },
   "verification": {
-    "npmFamily": "242/242 public dsh family members are 0.1.2-alpha.4 and carry registry SHA-512 integrity; alpha.3 public code-runtime-python and tool-subagent-report were removed",
-    "officialCli": "0.1.2-alpha.4 from the exact packed official npm family",
-    "migrationSpike": "isolated /tmp DSH_HOME/profile/3294 passed composition, Web, Workspace, Session, shipped modes, native provider, Codex App Server, codex-inspired revision 1, Inspector, governed writes and cold restart",
-    "promotedProfile": "~/.aezy-alpha/dsh / aezy-alpha on 3091 passed composition, Web, Workspace, Session, shipped modes, native provider, Codex App Server, codex-inspired revision 1, standard and codex-inspired governed writes, history pagination, RemoteError and cold restart persistence",
-    "verifiedAt": "2026-09-02"
+    "npmFamily": "242/242 public dsh family members are 0.1.2-rc.1 and carry registry SHA-512 integrity; package names are unchanged from alpha.4",
+    "officialCli": "0.1.2-rc.1 from the exact registry family in both the isolated and promoted profiles",
+    "migrationSpike": "isolated /tmp DSH_HOME/profile/3395 passed composition, Web, Workspace, Session, modes, native provider, Codex App Server, codex-inspired revision 1, history pagination, RemoteError, governed writes, alpha.4 carryover and cold restart",
+    "promotedProfile": "~/.aezy-alpha/dsh / aezy-alpha promoted to 0.1.2-rc.1; credentials and Sessions preserved; formal 3091 first-start, real native and codex-inspired governed writes, carryover and restart gates passed",
+    "verifiedAt": "2026-09-04"
   },
   "selector": {
     "sync": "pnpm alpha:profile:sync",
@@ -55,13 +55,13 @@
     "stableDshHome": "~/.aezy/dsh",
     "stableProfile": "aezy",
     "stablePort": 3090,
-    "migratedFromRuntime": "0.1.2-alpha.1",
+    "migratedFromRuntime": "0.1.2-alpha.4",
     "developmentDshHome": "~/.aezy-alpha/dsh",
     "developmentProfile": "aezy-alpha",
     "developmentPort": 3091,
-    "migrationDshHome": "/tmp/aezy-alpha4-migration/dsh",
-    "migrationProfile": "aezy-alpha4-migration",
-    "migrationPort": 3294,
+    "migrationDshHome": "/tmp/aezy-rc1-migration/dsh",
+    "migrationProfile": "aezy-rc1-migration",
+    "migrationPort": 3395,
     "promoted": true,
     "branchDefault": "main"
   },

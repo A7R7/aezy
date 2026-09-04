@@ -1,8 +1,8 @@
 # Codex-inspired Agent Loop
 
 > 状态：**E1 internal dogfood + governed write slice verified；完整 parity pending；不可点击**<br>
-> 日期：2026-09-02<br>
-> Runtime：DSH `0.1.2-alpha.4` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
+> 日期：2026-09-04<br>
+> Runtime：DSH `0.1.2-rc.1` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
 
 ## 当前产品结果
 
@@ -54,7 +54,7 @@ import、prompt eval、未知字段、无界 cycle 和不可达节点。
 
 ## 公共 seam 与所有权
 
-runtime controller 只使用固定 alpha.4 的公开 seam：
+runtime controller 只使用固定 rc.1 的公开 seam：
 
 - `agent/pre-step`、`agent/request`、`agent/turn-stopping`：检查 durable Turn facts 与硬预算；
 - `tools/pre-execute`：在调用已经进入 DSH durable log 后执行 tool-call budget，允许时继续委托
@@ -127,6 +127,13 @@ root 未保留 dogfood preset。这一切片没有新增长期双 runtime 层，
 definition/policy、structured write、Security ask、Remote allowed-once、Journal/Review、3,720
 uncached input、9,216 cache read、53 output，并在 normal sync 后移除 dogfood preset。完整证据见
 [`../reference/dsh-0.1.2-alpha4-impact.md`](../reference/dsh-0.1.2-alpha4-impact.md)。
+
+2026-09-04 的 rc.1 migration 同样没有修改 revision 1：definition digest 仍为
+`f7841cbd49eb…`，没有新增 hook、budget、node 或 parity。隔离 3395 与正式 3091 都完成了
+governed write；正式 Session `aezy-codex-inspired-write-mtme8g70` 记录 structured write、Security
+`ask`、Remote `allowed-once`、Journal/Review、6,649 uncached input、6,272 cache read、53 output，
+冷重启后 exact preset projection 相等。普通 profile sync 后仍不残留 dogfood preset。完整证据见
+[`../reference/dsh-0.1.2-rc1-impact.md`](../reference/dsh-0.1.2-rc1-impact.md)。
 
 ## 尚未签收
 
