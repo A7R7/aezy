@@ -1,7 +1,7 @@
 # This overlay is appended to the immutable alpha runtime's shipped standard
-# preset by the external runtime selector. Later Cordis waterfall listeners
-# enter first, so this fence observes DSH's final Session model selection after
-# `await next()`. The installed DSH package remains the authority for the coding
+# preset by the external runtime selector. This validates preset ownership;
+# the Host's llm/stream fence validates the final Session-selected provider.
+# The installed DSH package remains the authority for the coding
 # surface and its version-specific invariants.
 
 - id: codex-app-server-mode

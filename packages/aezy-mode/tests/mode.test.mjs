@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import { pathToFileURL } from 'node:url'
 import test from 'node:test'
 import {
   apply,
@@ -7,11 +9,12 @@ import {
   CODEX_PROVIDER,
 } from '../src/index.js'
 
-function mounted(config) {
+function mounted(config, preset = CODEX_APP_SERVER_PRESET) {
   let handler = null
   const ctx = {
+    agents: { currentInitiator: () => ({ session: { header: { agentPreset: preset } } }) },
     on(event, callback) {
-      assert.equal(event, 'agent/request')
+      assert.equal(event, config.surfaceOnly ? 'llm/stream' : 'agent/request')
       handler = callback
     },
   }
@@ -26,11 +29,27 @@ function request(provider, agentPreset = CODEX_APP_SERVER_PRESET) {
   }
 }
 
-test('root surface instance does not install a request hook', () => {
-  assert.equal(mounted({ surfaceOnly: true }), null)
+test('root dispatch fence checks only the final route of Codex sessions', () => {
+  const handler = mounted({ surfaceOnly: true })
+  assert.equal(handler({ provider: CODEX_PROVIDER }, () => 'stream'), 'stream')
+  assert.throws(() => handler({ provider: 'deepseek-official' }, () => 'wrong'), /requires provider aezy-codex/)
+  assert.equal(mounted({ surfaceOnly: true }, 'standard')({ provider: 'deepseek-official' }, () => 'native'), 'native')
 })
 
-test('codex-app-server fence accepts only the Aezy Codex provider in its owning preset', async () => {
+test('default-export plugin retains its dependency grant in a real Cordis context', async () => {
+  const require = createRequire(import.meta.url)
+  const resolver = createRequire(require.resolve('@deepseek-ai/dsh/package.json'))
+  const { Context } = await import(pathToFileURL(resolver.resolve('@deepseek-ai/cordis')).href)
+  const ctx = new Context()
+  try {
+    ctx.provide('agents', { currentInitiator: () => ({ session: { header: { agentPreset: CODEX_APP_SERVER_PRESET } } }) })
+    await ctx.plugin(apply, { surfaceOnly: true })
+    assert.equal(ctx.waterfall('llm/stream', { provider: CODEX_PROVIDER }, () => 'owned-stream'), 'owned-stream')
+    assert.throws(() => ctx.waterfall('llm/stream', { provider: 'deepseek-official' }, () => 'wrong-stream'), /requires provider aezy-codex/)
+  } finally { await ctx.fiber.dispose() }
+})
+
+test('standing preset validates ownership without rejecting the pre-selection model seed', async () => {
   const handler = mounted({ enforceCodex: true })
   assert.equal(typeof handler, 'function')
   const accepted = request(CODEX_PROVIDER)
@@ -40,7 +59,7 @@ test('codex-app-server fence accepts only the Aezy Codex provider in its owning 
   })
 
   const wrongProvider = request('deepseek')
-  await assert.rejects(() => handler(wrongProvider.input, wrongProvider.next), /requires provider aezy-codex/)
+  assert.equal((await handler(wrongProvider.input, wrongProvider.next)).provider, 'deepseek')
 
   const wrongPreset = request(CODEX_PROVIDER, 'standard')
   await assert.rejects(() => handler(wrongPreset.input, wrongPreset.next), /outside its owning preset/)
