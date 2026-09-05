@@ -30,6 +30,8 @@ export class CodexAppServerClient extends EventEmitter {
     capabilities = DEFAULT_CAPABILITIES,
     requestTimeoutMs = 30_000,
     spawnProcess = spawn,
+    env,
+    cwd,
   } = {}) {
     super()
     const bundled = command ? null : bundledCodexSpawnSpec()
@@ -40,6 +42,8 @@ export class CodexAppServerClient extends EventEmitter {
     this.capabilities = structuredClone(capabilities)
     this.requestTimeoutMs = requestTimeoutMs
     this.spawnProcess = spawnProcess
+    this.env = env === undefined ? undefined : { ...env }
+    this.cwd = cwd
     this.child = null
     this.nextRequestId = 1
     this.pending = new Map()
@@ -66,6 +70,8 @@ export class CodexAppServerClient extends EventEmitter {
     const child = this.spawnProcess(spec.command, [...spec.args], {
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
+      ...(this.env === undefined ? {} : { env: { ...this.env } }),
+      ...(this.cwd === undefined ? {} : { cwd: this.cwd }),
     })
     this.child = child
     createInterface({ input: child.stdout }).on('line', (line) => this.handleLine(line))

@@ -32,7 +32,13 @@ test('initializes, routes notifications and server requests, and closes the chil
   const client = new CodexAppServerClient({
     command: '/fake/codex',
     argsPrefix: [],
-    spawnProcess: () => child,
+    env: { CODEX_HOME: '/aezy/owned' },
+    cwd: '/aezy/owned',
+    spawnProcess: (_command, _args, options) => {
+      assert.deepEqual(options.env, { CODEX_HOME: '/aezy/owned' })
+      assert.equal(options.cwd, '/aezy/owned')
+      return child
+    },
   })
   const starting = client.start()
   await new Promise((resolve) => setImmediate(resolve))

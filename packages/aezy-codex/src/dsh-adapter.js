@@ -284,6 +284,7 @@ export class AezyCodexAdapter extends LlmAdapter {
     logger = console,
     allowedAgentPresets = [],
     legacyAgentPresets = [],
+    runtime,
   }) {
     super()
     this.client = client
@@ -291,6 +292,7 @@ export class AezyCodexAdapter extends LlmAdapter {
     this.bindings = bindings
     this.ctx = ctx
     this.logger = logger
+    this.runtime = runtime
     this.allowedAgentPresets = new Set(allowedAgentPresets.filter(value => typeof value === 'string' && value))
     this.legacyAgentPresets = new Set(legacyAgentPresets.filter(value => typeof value === 'string' && value))
     this.pendingThreads = new Map()
@@ -310,7 +312,17 @@ export class AezyCodexAdapter extends LlmAdapter {
   }
 
   providerInfo() {
-    return { id: CODEX_PROVIDER, name: 'Codex (ChatGPT)' }
+    return { id: CODEX_PROVIDER, name: 'Codex App Server' }
+  }
+
+  threadRoute() {
+    return this.runtime ? { modelProvider: this.runtime.provider, config: this.runtime.config } : {}
+  }
+
+  assertThreadRoute(result) {
+    if (this.runtime && result.modelProvider !== this.runtime.provider) {
+      throw new Error('Codex Thread returned a foreign model provider; execution refused')
+    }
   }
 
   async listModels() {
@@ -370,17 +382,22 @@ export class AezyCodexAdapter extends LlmAdapter {
     const signature = JSON.stringify(dynamicTools)
     const binding = this.bindings.get(sessionId)
     if (binding !== null) {
+      if (this.runtime && binding.runtimeId !== this.runtime.id) {
+        throw new Error('Codex Thread belongs to a different or legacy runtime. Binding preserved; create a new isolated Session.')
+      }
       if (binding.cwd !== cwd) {
         throw new Error(`Codex binding cwd mismatch for DSH Session ${sessionId}: expected ${binding.cwd}, got ${cwd}`)
       }
       if (!this.resumedThreads.has(binding.threadId) || this.toolSignatures.get(binding.threadId) !== signature) {
         try {
-          await this.client.request('thread/resume', {
+          const resumed = await this.client.request('thread/resume', {
+            ...this.threadRoute(),
             threadId: binding.threadId,
             cwd,
             dynamicTools,
             developerInstructions: DSH_TOOL_INSTRUCTIONS,
           })
+          this.assertThreadRoute(resumed)
         } catch (error) {
           throw new Error(`Could not resume Codex Thread ${binding.threadId}; the binding was preserved`, { cause: error })
         }
@@ -393,6 +410,7 @@ export class AezyCodexAdapter extends LlmAdapter {
       cwd,
       model,
       config: { 'features.realtime_conversation': false },
+      ...this.threadRoute(),
       approvalsReviewer: 'user',
       approvalPolicy: permissions.approvalPolicy,
       permissions: ':read-only',
@@ -403,9 +421,10 @@ export class AezyCodexAdapter extends LlmAdapter {
       threadSource: 'aezy',
       ephemeral: false,
     })
+    this.assertThreadRoute(result)
     const threadId = result.thread?.id
     if (typeof threadId !== 'string' || !threadId) throw new Error('Codex thread/start returned no thread id')
-    await this.bindings.set(sessionId, { threadId, cwd, model })
+    await this.bindings.set(sessionId, { threadId, cwd, model, ...(this.runtime ? { runtimeId: this.runtime.id } : {}) })
     this.resumedThreads.add(threadId)
     this.toolSignatures.set(threadId, signature)
     return threadId
@@ -674,6 +693,7 @@ export class AezyCodexAdapter extends LlmAdapter {
     const sessionId = String(options.sessionId ?? '')
     const cwd = this.ctx.agents.get(sessionId)?.session.header.cwd ?? process.cwd()
     const thread = await this.client.request('thread/start', {
+      ...this.threadRoute(),
       cwd,
       model: options.model,
       approvalPolicy: 'never',
@@ -685,6 +705,7 @@ export class AezyCodexAdapter extends LlmAdapter {
       threadSource: 'aezy',
       ephemeral: true,
     })
+    this.assertThreadRoute(thread)
     const threadId = thread.thread?.id
     const queue = new ActivityQueue(options.signal)
     const listener = message => {

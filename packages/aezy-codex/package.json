@@ -10,6 +10,7 @@
     "./app-server-client": "./src/app-server-client.js",
     "./binding-store": "./src/binding-store.js",
     "./dsh-adapter": "./src/dsh-adapter.js",
+    "./runtime-instance": "./src/runtime-instance.js",
     "./client": "./lib/client.js",
     "./package.json": "./package.json"
   },

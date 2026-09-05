@@ -10,6 +10,7 @@ import { join } from 'node:path'
 import { CodexAppServerClient } from './app-server-client.js'
 import { CodexBindingStore } from './binding-store.js'
 import { AezyCodexAdapter, CODEX_PROVIDER } from './dsh-adapter.js'
+import { prepareCodexRuntime } from './runtime-instance.js'
 
 export { CodexBindingStore } from './binding-store.js'
 export { AezyCodexAdapter, CODEX_PROVIDER } from './dsh-adapter.js'
@@ -97,8 +98,9 @@ function rateLimitsView(value) {
 }
 
 export class CodexAccountBridge {
-  constructor(client) {
+  constructor(client, runtimeView = null) {
     this.client = client
+    this.runtimeView = runtimeView
     this.startError = null
   }
 
@@ -113,21 +115,22 @@ export class CodexAccountBridge {
   async snapshot() {
     const connection = this.client.status()
     if (connection.state !== 'connected') {
-      return { connection, account: null, rateLimits: null, usage: null, models: [], error: this.startError }
+      return { connection, runtime: this.runtimeView, account: null, rateLimits: null, usage: null, models: [], error: this.startError }
     }
     const [account, rateLimits, usage, models] = await Promise.all([
-      this.client.request('account/read', { refreshToken: false }),
+      this.client.request('account/read', { refreshToken: false }).catch(() => null),
       this.client.request('account/rateLimits/read', {}).catch(() => null),
       this.client.request('account/usage/read', {}).catch(() => null),
       this.client.request('model/list', { cursor: null, limit: 100 }).catch(() => ({ data: [] })),
     ])
     return {
       connection,
-      account: {
+      runtime: this.runtimeView,
+      account: account ? {
         requiresOpenaiAuth: account.requiresOpenaiAuth ?? null,
         type: account.account?.type ?? null,
         planType: account.account?.planType ?? null,
-      },
+      } : null,
       rateLimits: rateLimits ? rateLimitsView(rateLimits) : null,
       usage: usage ? {
         summary: usage.summary ?? null,
@@ -192,14 +195,15 @@ export function createCodexHandler(bridge) {
   }
 }
 
-export function apply(ctx, config = {}) {
-  const client = new CodexAppServerClient({
-    ...(config.command ? { command: config.command, argsPrefix: [] } : {}),
-    ...(Array.isArray(config.argsPrefix) ? { argsPrefix: config.argsPrefix } : {}),
-    ...(Array.isArray(config.appServerArgs) ? { appServerArgs: config.appServerArgs } : {}),
-  })
-  const bridge = new CodexAccountBridge(client)
+export async function apply(ctx, config = {}) {
   const home = process.env.DSH_HOME ?? join(homedir(), '.aezy', 'dsh')
+  const runtime = await prepareCodexRuntime({ dshHome: home })
+  const client = new CodexAppServerClient({
+    env: runtime.env,
+    cwd: runtime.home,
+    appServerArgs: runtime.appServerArgs,
+  })
+  const bridge = new CodexAccountBridge(client, runtime.view)
   const bindings = new CodexBindingStore(config.bindingFile ?? join(home, 'aezy', 'codex-bindings.json'))
   const ready = client.start()
   const adapter = new AezyCodexAdapter({
@@ -210,6 +214,7 @@ export function apply(ctx, config = {}) {
     logger: ctx.logger,
     allowedAgentPresets: Array.isArray(config.allowedAgentPresets) ? config.allowedAgentPresets : [],
     legacyAgentPresets: Array.isArray(config.legacyAgentPresets) ? config.legacyAgentPresets : [],
+    runtime,
   })
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',

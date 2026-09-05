@@ -8,6 +8,12 @@ ChatGPT browser/device login, logout, connection state, plan, rate limits, usage
 It never accepts or returns access/refresh tokens, and browser authentication stays in the external
 browser.
 
+The Host launches an Aezy-owned Codex home at `DSH_HOME/aezy/codex-runtime`, with an explicit
+child environment and pinned routing configuration. It does not inherit personal Codex/OpenCodex
+homes, catalogs, credentials, or route overrides. Old bindings without this runtime identity are
+preserved but cannot silently resume in a different home; start a new isolated Session instead.
+This is configuration isolation, not an OS security boundary against other same-user processes.
+
 The `aezy-codex` DSH provider binds each DSH Session to one opaque official Codex Thread. Codex owns
 conversation history and its agent loop; DSH owns the visible Session/Turn log. The adapter streams
 assistant output and projects official activity into the current DSH step without executing it twice.

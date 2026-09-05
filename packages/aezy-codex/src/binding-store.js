@@ -25,6 +25,7 @@ function validateRecord(sessionId, value) {
     threadId: value.threadId,
     cwd: value.cwd,
     ...(typeof value.model === 'string' && value.model ? { model: value.model } : {}),
+    ...(typeof value.runtimeId === 'string' && value.runtimeId ? { runtimeId: value.runtimeId } : {}),
   })
 }
 

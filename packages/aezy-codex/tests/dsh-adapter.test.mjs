@@ -192,6 +192,31 @@ test('persisted bindings resume the same official Thread instead of creating a r
   first.adapter.dispose()
 })
 
+test('managed runtime refuses legacy and foreign bindings without replacing history', async () => {
+  const proof = await setup()
+  proof.adapter.runtime = { id: 'owned', provider: 'aezy-opencodex', config: {} }
+  for (const record of [
+    { threadId: 'old', cwd: '/workspace' },
+    { threadId: 'foreign', cwd: '/workspace', runtimeId: 'other' },
+  ]) {
+    await proof.bindings.set('session-1', record)
+    await assert.rejects(async () => { for await (const _ of proof.adapter.stream(options())) {} }, /different or legacy runtime/)
+    assert.equal(proof.bindings.get('session-1').threadId, record.threadId)
+    assert.equal(proof.client.calls.some(call => call.method.startsWith('thread/')), false)
+  }
+  proof.adapter.dispose()
+})
+
+test('managed thread route is explicit and a returned foreign provider is refused', async () => {
+  const proof = await setup()
+  proof.adapter.runtime = { id: 'owned', provider: 'aezy-opencodex', config: { model_provider: 'aezy-opencodex' } }
+  await assert.rejects(async () => { for await (const _ of proof.adapter.stream(options())) {} }, /foreign model provider/)
+  assert.equal(proof.client.calls.find(call => call.method === 'thread/start').params.modelProvider, 'aezy-opencodex')
+  assert.equal(proof.client.calls.some(call => call.method === 'turn/start'), false)
+  assert.equal(proof.bindings.get('session-1'), null)
+  proof.adapter.dispose()
+})
+
 test('dynamic tool calls execute through the owning DSH Agent tool registry', async () => {
   const { adapter, client, executions, session } = await setup({ dynamic: true })
   for await (const _chunk of adapter.stream(options(undefined, true))) { /* drain */ }
