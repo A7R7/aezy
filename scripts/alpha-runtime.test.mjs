@@ -68,6 +68,7 @@ test('alpha profile pins every DSH edge to one registry version and only Aezy to
   assert.deepEqual(workspace.minimumReleaseAgeExclude, [
     '@deepseek-ai/dsh@0.1.2-rc.1',
     '@deepseek-ai/dsh-subprocess-local@0.1.2-rc.1',
+    '@bitkyc08/opencodex@2.42.0',
   ])
   assert.equal(manifest.dependencies['@deepseek-ai/dsh'], '0.1.2-rc.1')
   assert.match(manifest.dependencies['@aezy/base'], /^file:\/\/\/tmp\/aezy-base\.tgz$/)

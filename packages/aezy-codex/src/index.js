@@ -19,7 +19,7 @@ const ROUTE = '/aezy/api/codex'
 const MAX_BODY_BYTES = 8 * 1024
 
 export const name = '@aezy/codex'
-export const inject = ['agents', 'approval', 'aezySecurity', 'llm', 'webServer']
+export const inject = ['agents', 'approval', 'aezySecurity', 'aezyOpenCodex', 'llm', 'webServer']
 
 function json(res, status, value) {
   const body = JSON.stringify(value)
@@ -147,6 +147,7 @@ export class CodexAccountBridge {
   }
 
   async startLogin(mode) {
+    if (this.runtimeView?.provider === 'aezy-opencodex') throw new Error('Managed OpenCodex uses DSH credentials, not ChatGPT login')
     this.expectConnected()
     if (mode !== 'browser' && mode !== 'device') throw new Error('mode must be browser or device')
     return this.client.request('account/login/start', mode === 'browser'
@@ -155,6 +156,7 @@ export class CodexAccountBridge {
   }
 
   async cancelLogin(loginId) {
+    if (this.runtimeView?.provider === 'aezy-opencodex') throw new Error('Managed OpenCodex does not use ChatGPT login')
     this.expectConnected()
     if (typeof loginId !== 'string' || !loginId.trim()) throw new Error('loginId must be a non-empty string')
     await this.client.request('account/login/cancel', { loginId: loginId.trim() })
@@ -162,6 +164,7 @@ export class CodexAccountBridge {
   }
 
   async logout() {
+    if (this.runtimeView?.provider === 'aezy-opencodex') throw new Error('Manage the DeepSeek credential in DSH settings')
     this.expectConnected()
     await this.client.request('account/logout', {})
     return { loggedOut: true }
@@ -197,15 +200,21 @@ export function createCodexHandler(bridge) {
 
 export async function apply(ctx, config = {}) {
   const home = process.env.DSH_HOME ?? join(homedir(), '.aezy', 'dsh')
-  const runtime = await prepareCodexRuntime({ dshHome: home })
-  const client = new CodexAppServerClient({
-    env: runtime.env,
-    cwd: runtime.home,
-    appServerArgs: runtime.appServerArgs,
-  })
-  const bridge = new CodexAccountBridge(client, runtime.view)
+  const runtime = { provider: 'aezy-opencodex' }
+  const client = new CodexAppServerClient()
+  const bridge = new CodexAccountBridge(client, { owner: 'aezy', provider: runtime.provider })
   const bindings = new CodexBindingStore(config.bindingFile ?? join(home, 'aezy', 'codex-bindings.json'))
-  const ready = client.start()
+  let disposed = false
+  const ready = ctx.aezyOpenCodex.ready.then(async gateway => {
+    if (disposed) throw new Error('Aezy Codex was disposed during gateway startup')
+    Object.assign(runtime, await prepareCodexRuntime({ dshHome: home, gateway }))
+    if (disposed) throw new Error('Aezy Codex was disposed during runtime preparation')
+    client.env = runtime.env
+    client.cwd = runtime.home
+    client.appServerArgs = runtime.appServerArgs
+    bridge.runtimeView = runtime.view
+    await client.start()
+  })
   const adapter = new AezyCodexAdapter({
     client,
     ready,
@@ -222,7 +231,6 @@ export async function apply(ctx, config = {}) {
     handler: createCodexHandler(bridge),
   }), 'aezy-codex: account API')
   ctx.effect(() => {
-    let disposed = false
     void ready.catch((error) => {
       bridge.recordStartError(error)
       if (!disposed) ctx.logger.warn(error instanceof Error ? error : new Error(String(error)))

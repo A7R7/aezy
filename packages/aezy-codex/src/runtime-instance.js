@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { lstat, mkdir, realpath } from 'node:fs/promises'
-import { isAbsolute, join } from 'node:path'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import { writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
 
 // An explicit child environment, not a copy of the desktop/terminal environment.
@@ -25,10 +25,25 @@ export function isolatedChildEnv(source = process.env) {
 }
 
 export async function privateDirectory(path) {
-  if (!isAbsolute(path)) throw new Error('Runtime state directory must be absolute')
-  await mkdir(path, { recursive: true, mode: 0o700 })
-  if ((await lstat(path)).isSymbolicLink() || await realpath(path) !== path) {
-    throw new Error('Runtime state directory must not traverse symlinks')
+  if (!isAbsolute(path) || resolve(path) !== path) throw new Error('Runtime state directory must be absolute and normalized')
+  const missing = []
+  let ancestor = path
+  while (true) {
+    try {
+      if ((await lstat(ancestor)).isSymbolicLink() || await realpath(ancestor) !== ancestor) {
+        throw new Error('Runtime state directory must not traverse symlinks')
+      }
+      break
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error
+      missing.push(ancestor)
+      ancestor = dirname(ancestor)
+    }
+  }
+  for (const directory of missing.reverse()) await mkdir(directory, { mode: 0o700 })
+  const entry = await lstat(path)
+  if (!entry.isDirectory() || (entry.mode & 0o077) !== 0 || entry.uid !== process.getuid()) {
+    throw new Error('Runtime state directory must be private to its owner (0700)')
   }
   return path
 }

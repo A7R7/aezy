@@ -94,6 +94,15 @@ test('managed login allows only browser/device and never accepts tokens', async 
   ])
 })
 
+test('owned gateway never starts OAuth or changes a personal account', async () => {
+  const client = new FakeClient()
+  const bridge = new CodexAccountBridge(client, { owner: 'aezy', provider: 'aezy-opencodex' })
+  await assert.rejects(bridge.startLogin('browser'), /DSH credentials/)
+  await assert.rejects(bridge.cancelLogin('id'), /does not use ChatGPT/)
+  await assert.rejects(bridge.logout(), /DSH settings/)
+  assert.deepEqual(client.calls, [])
+})
+
 test('HTTP account and login routes require Aezy Web authority', async () => {
   const bridge = new CodexAccountBridge(new FakeClient())
   const handler = createCodexHandler(bridge)

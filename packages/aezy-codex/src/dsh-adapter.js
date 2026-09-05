@@ -59,6 +59,7 @@ function codexDynamicTools(tools = []) {
     tools: tools.map(tool => ({
       type: 'function',
       name: tool.name,
+      deferLoading: false,
       description: tool.description,
       inputSchema: structuredClone(tool.parameters),
     })),
@@ -341,6 +342,7 @@ export class AezyCodexAdapter extends LlmAdapter {
     await this.ready
     const catalog = await this.client.request('model/list', { cursor: null, limit: 100 })
     const raw = (catalog.data ?? []).find(candidate => candidate.id === model)
+    if (!raw && this.runtime) throw new Error('Model is not in the Aezy-owned Codex catalog; no personal fallback is permitted')
     const efforts = (raw?.supportedReasoningEfforts ?? []).map(value => value.reasoningEffort ?? value.id ?? value)
     return compact({
       provider,

@@ -17,7 +17,7 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
 `~/.aezy-alpha/dsh/`，profile 为 `aezy-alpha`；当前开发线不承诺兼容 rc.2 runtime。
 
 rc.1 已作为 immutable GitHub tag/release 和完整官方 npm family 发布。selector 精确安装并逐包
-校验 242 个 `0.1.2-rc.1` public DSH packages 的 SHA-512 integrity，只把 11 个 Aezy 外置包作为
+校验 242 个 `0.1.2-rc.1` public DSH packages 的 SHA-512 integrity，只把 12 个 Aezy 外置包作为
 本地 tarball；不消费源码 release artifacts，也不建立长期双 runtime compatibility layer。
 alpha.4 → rc.1 迁移先在独立 `/tmp` DSH_HOME/profile/3395 验证，再提升 `~/.aezy-alpha/dsh` 的 `aezy-alpha`
 profile；credentials、JSONL Sessions 与其他 DSH_HOME 状态保留。
@@ -38,9 +38,11 @@ reference/runtime 分离状态由 `compatibility/dsh.json` 记录。完整影响
 - `packages/aezy-security/`：Approval Rules、Network Policy、解释与审计。
 - `packages/aezy-terminal/`：复用 DSH PTY registry/platform shell 的 Integrated Terminal
   Host bridge 与右侧 panel。
-- `packages/aezy-codex/`：固定官方 Codex App Server runtime 的外置 process/protocol client，
-  以及 managed ChatGPT browser/device login、plan/rate/usage 的 Settings 产品面；不读取或返回
-  OAuth token，也不默认启用 analytics。
+- `packages/aezy-codex/`：固定官方 Codex App Server runtime、独立配置目录和 Session↔Thread
+  归属；Settings 显示受管实例与模型目录。当前路由不导入个人配置或 OAuth。
+- `packages/aezy-opencodex/`：托管官方 `@bitkyc08/opencodex@2.42.0` 与 Bun `1.4.0`，使用
+  DSH 已有 DeepSeek settings/credentials。Codex 继续拥有 agent loop；OpenCodex 只负责模型协议
+  路由；可变操作仍经 DSH tools/approval、Aezy Security 与 Journal。当前支持 Linux/WSL x64。
 - `packages/aezy-mode/`：alpha-only 的原生 preset 装配、Codex system preset overlay、
   per-preset model directory 与 Host provider fence；不拥有 Agent/Session/tool loop。
 - `packages/aezy-inspector/`：从权威 durable Session events 纯投影 `LoopTrace`，提供 Session
@@ -85,10 +87,35 @@ pnpm run alpha:web -- --host 127.0.0.1 --port 3091 --no-open
 ```
 
 selector 会先校验 242-package 官方 public npm family manifest，再精确安装同版 registry closure并逐包核对
-profile lock 的 SHA-512 integrity；只有 11 个 Aezy 外置包使用本地 pack/override。只有依赖安装、
+profile lock 的 SHA-512 integrity；只有 12 个 Aezy 外置包使用本地 pack/override。只有依赖安装、
 受审 native scripts、完整 family 与 alpha CLI 版本验证全部成功才写 completion marker；本分支的
 `profile:sync`/`profile:dump`/`aezy:web`
 直接指向该 alpha profile，`alpha:*` 只是等价的显式别名。
+
+## 独立 Codex / OpenCodex
+
+当前 Codex 模式使用 Aezy 自己的 `DSH_HOME/aezy/codex-runtime` 与
+`DSH_HOME/aezy/opencodex`。它不读取个人 `CODEX_HOME`、OpenCodex catalog、10100 路由或 OAuth，
+也不修改它们；网关监听独立动态 loopback 端口，启动时验证 bearer 鉴权。凭据来自 Web Models
+中已有的 DSH DeepSeek 配置，修改后须重启 Host。缺 key 或启动失败时 Codex 模式不可用，
+不会回退个人路由；原生 DSH modes 仍可独立运行。
+
+旧 Session 的 Thread binding 没有新 runtime 身份时保留但拒绝自动恢复，请新建 Codex App Server
+Session 并选择 `deepseek/deepseek-v4-flash` 或 `deepseek/deepseek-v4-pro`。迁移不复制旧 Thread
+history，不建立双运行时兼容层。配置隔离不等于 OS 沙箱：同 UID 的全局 kill/restart 或文件访问
+仍可能干扰；抵御这种干扰需要独立 OS 用户或容器。
+
+已用非 OpenAI 模型证明真实 read → approved write → test → Journal/Review → deny → restart /
+同 Thread continuation。Inspector 仍只诚实展示 DSH 边界的 partial trace，Codex token usage
+尚未投影到 DSH，不把它显示成完整计费。详细证据见
+[`Codex milestone`](doc/milestones/codex.md)，依赖 pin 见
+[`opencodex-runtime.json`](compatibility/opencodex-runtime.json)。Codex-inspired revision 1 原样保留，
+新增提示词/parity 复刻暂停，优先验证这个受管插件路径。
+
+```sh
+pnpm test:opencodex
+AEZY_OPENCODEX_PROCESS_TEST=1 node --test packages/aezy-opencodex/tests/process.test.mjs
+```
 
 Alpha native provider 验证命令：
 

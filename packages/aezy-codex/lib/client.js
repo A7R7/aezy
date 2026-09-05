@@ -118,7 +118,7 @@ window.__ModuleLoader__.load({
 				}
 			};
 			const logout = async () => {
-				if (!window.confirm("Sign out of the shared Codex account on this machine?")) return;
+				if (!window.confirm("Sign out of this Aezy-owned Codex instance?")) return;
 				setBusy("logout");
 				setError(null);
 				try {
@@ -138,6 +138,7 @@ window.__ModuleLoader__.load({
 			const summary = snapshot?.usage?.summary ?? null;
 			const externalHref = safeExternalUrl(pending?.authUrl ?? pending?.verificationUrl);
 			const connected = snapshot?.connection.state === "connected";
+			const managed = snapshot?.runtime?.provider === "aezy-opencodex";
 			const primaryReset = resetLabel(snapshot?.rateLimits?.primary);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 				"data-aezy-codex-settings": true,
@@ -153,14 +154,14 @@ window.__ModuleLoader__.load({
 							fontSize: 20,
 							margin: "0 0 6px"
 						},
-						children: "Codex account"
+						children: "Codex runtime"
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 						style: {
 							color: palette.muted,
 							margin: 0,
 							lineHeight: 1.55
 						},
-						children: "Aezy uses the official Codex App Server and your machine's shared ChatGPT sign-in. Authentication opens in your external browser; Aezy never asks for or displays an OAuth token."
+						children: "Aezy owns an isolated official Codex App Server and OpenCodex gateway. DeepSeek uses DSH credentials; personal Codex configuration, OAuth and history are not imported. Restart the Host after changing provider settings or credentials."
 					})]
 				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 					style: {
@@ -203,7 +204,7 @@ window.__ModuleLoader__.load({
 								})]
 							})
 						}),
-						account?.type !== "chatgpt" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+						!managed && account?.type !== "chatgpt" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							style: {
 								padding: 16,
 								border: `1px solid ${palette.border}`,
@@ -306,7 +307,29 @@ window.__ModuleLoader__.load({
 								})
 							]
 						}),
-						account?.type === "chatgpt" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
+						managed && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							style: {
+								padding: 16,
+								border: `1px solid ${palette.border}`,
+								borderRadius: 10
+							},
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									style: { fontWeight: 650 },
+									children: ["Aezy managed OpenCodex ", snapshot?.runtime?.gateway?.version]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
+									style: { color: palette.muted },
+									children: ["Credentials: ", snapshot?.runtime?.gateway?.credentialSource ?? "DSH (waiting for gateway)"]
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", { children: ["Available models: ", snapshot?.models.map((model) => model.displayName).join(" · ") || "Unavailable"] }),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+									style: { color: palette.muted },
+									children: "ChatGPT plan limits do not apply to this provider. This adapter does not yet project Codex token usage into DSH; gateway accounting is separate."
+								})
+							]
+						}),
+						!managed && account?.type === "chatgpt" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 								style: {
 									padding: 16,

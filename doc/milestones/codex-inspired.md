@@ -1,10 +1,15 @@
 # Codex-inspired Agent Loop
 
-> 状态：**E1 internal dogfood + governed write slice verified；完整 parity pending；不可点击**<br>
+> 状态：**既有 E1 internal dogfood / governed write 已验证；新增 parity 暂停；不可点击**<br>
 > 日期：2026-09-04<br>
 > Runtime：DSH `0.1.2-rc.1` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
 
 ## 当前产品结果
+
+2026-09-05 路线调整：revision 1 与下述历史证据保持不变，不继续提示词级 Codex loop 复刻。
+优先通过 Aezy-owned OpenCodex 插件将不同模型接入官方 Codex App Server 的真实 agent loop；
+实现与非 OpenAI 模型治理闭环证据由 [`codex.md`](codex.md) 维护。这个选择不宣称 E1 parity
+已完成，也不授权开发 DAG、多 runtime、Boards 或 Editor。
 
 Aezy 已有第一个可执行的 `codex-inspired` system-authored macro loop。它不是把 Codex model
 放进标准模式，也不是复制 Codex 或 DSH 的底层 agent 内核：模型仍可独立选择，DSH 继续拥有

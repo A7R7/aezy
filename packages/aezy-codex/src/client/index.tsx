@@ -17,6 +17,7 @@ type RateWindow = {
 
 type AccountSnapshot = {
   connection: { state: string }
+  runtime?: { owner: string; provider: string; home?: string; gateway?: { version: string; endpoint: string; credentialSource: string } }
   account: null | {
     requiresOpenaiAuth: boolean | null
     type: string | null
@@ -164,7 +165,7 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
   }
 
   const logout = async () => {
-    if (!window.confirm('Sign out of the shared Codex account on this machine?')) return
+    if (!window.confirm('Sign out of this Aezy-owned Codex instance?')) return
     setBusy('logout')
     setError(null)
     try {
@@ -182,13 +183,14 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
   const summary = snapshot?.usage?.summary ?? null
   const externalHref = safeExternalUrl(pending?.authUrl ?? pending?.verificationUrl)
   const connected = snapshot?.connection.state === 'connected'
+  const managed = snapshot?.runtime?.provider === 'aezy-opencodex'
   const primaryReset = resetLabel(snapshot?.rateLimits?.primary)
 
   return <section data-aezy-codex-settings style={{ color: palette.text, maxWidth: 760, paddingBottom: 32 }}>
     <div style={{ marginBottom: 22 }}>
-      <h2 style={{ fontSize: 20, margin: '0 0 6px' }}>Codex account</h2>
+      <h2 style={{ fontSize: 20, margin: '0 0 6px' }}>Codex runtime</h2>
       <p style={{ color: palette.muted, margin: 0, lineHeight: 1.55 }}>
-        Aezy uses the official Codex App Server and your machine's shared ChatGPT sign-in. Authentication opens in your external browser; Aezy never asks for or displays an OAuth token.
+        Aezy owns an isolated official Codex App Server and OpenCodex gateway. DeepSeek uses DSH credentials; personal Codex configuration, OAuth and history are not imported. Restart the Host after changing provider settings or credentials.
       </p>
     </div>
 
@@ -206,7 +208,7 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
         </div>
       </div>
 
-      {account?.type !== 'chatgpt' && <div style={{ padding: 16, border: `1px solid ${palette.border}`, borderRadius: 10 }}>
+      {!managed && account?.type !== 'chatgpt' && <div style={{ padding: 16, border: `1px solid ${palette.border}`, borderRadius: 10 }}>
         <div style={{ fontWeight: 650, marginBottom: 6 }}>Sign in with ChatGPT</div>
         <p style={{ color: palette.muted, margin: '0 0 12px', lineHeight: 1.5 }}>
           Browser login is recommended. Device login is available when the browser callback cannot reach this machine.
@@ -234,7 +236,14 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
         </div>
       </div>}
 
-      {account?.type === 'chatgpt' && <>
+      {managed && <div style={{ padding: 16, border: `1px solid ${palette.border}`, borderRadius: 10 }}>
+        <div style={{ fontWeight: 650 }}>Aezy managed OpenCodex {snapshot?.runtime?.gateway?.version}</div>
+        <p style={{ color: palette.muted }}>Credentials: {snapshot?.runtime?.gateway?.credentialSource ?? 'DSH (waiting for gateway)'}</p>
+        <div>Available models: {snapshot?.models.map(model => model.displayName).join(' · ') || 'Unavailable'}</div>
+        <p style={{ color: palette.muted }}>ChatGPT plan limits do not apply to this provider. This adapter does not yet project Codex token usage into DSH; gateway accounting is separate.</p>
+      </div>}
+
+      {!managed && account?.type === 'chatgpt' && <>
         <div style={{ padding: 16, border: `1px solid ${palette.border}`, borderRadius: 10 }}>
           <div style={{ fontWeight: 650, marginBottom: 10 }}>Plan and limits</div>
           <dl style={{ display: 'grid', gridTemplateColumns: 'minmax(130px, 1fr) 2fr', gap: '8px 16px', margin: 0 }}>

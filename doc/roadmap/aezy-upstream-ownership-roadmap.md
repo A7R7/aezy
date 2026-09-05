@@ -1,6 +1,6 @@
 # Aezy 上游边界与实施路线图
 
-> 活动路线文档，更新于 2026-09-04。已完成切片的详细实现和验证只在
+> 活动路线文档，更新于 2026-09-05。已完成切片的详细实现和验证只在
 > `doc/milestones/` 维护。
 
 ## 决策原则
@@ -252,7 +252,7 @@ rc.1 runtime migration 与 main smoke 已作为独立 commit 通过；完整 cod
 仍是进入可点击产品面的 release gate，不能因为 branch merge 或既有 runtime trace gates 已通过而
 降低或跳过。
 
-### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（E1 parity in progress）
+### 6. E1–E3：声明式 workflow 与可选 Codex-inspired backend（新增 parity 暂停）
 
 旧 E1–E3 实现已由后续 revert 提交撤回，原始提交完整保留供历史追溯。E0.1 revision 3 可读后，
 E1 已按新边界重新开始：外置 `@aezy/workflow` 提供内部、不可点击、不可执行任意代码的
@@ -263,7 +263,7 @@ alpha.3 migration 已独立完成并再次证明 exact revision 1 Turn/restart�
 allowed-once、durable structured write、Journal/Review 与 usage；其提交不得与 runtime upgrade
 混合。alpha.4 migration 又以未修改的 revision 1 重复该 write gate并迁移公开 Session read seam；
 rc.1 migration 再次保持同一 revision/digest 并通过 write/restart gate，且没有加入新 parity；其余
-parity 继续按独立、精确切片推进。
+parity 不再作为当前开发优先项，2026-09-05 起暂停提示词级复刻，既有 revision 1 不重做。
 E2 仍暂停，未来才考虑模板式 Editor；E3 仍暂停，之后才增加
 structured condition、parallel、Subagent 与 bounded retry。外置 node plugin SDK 不在当前实施
 范围内，也不为它预留抽象。
@@ -276,6 +276,21 @@ compaction/approval 内核。
 
 近期 hardening 仍只按真实 dogfood 故障补强 Worktree dependency bootstrap 和固定版本 App Server
 contract，不为未来 Editor 提前泛化已签收切片。
+
+### 6.5. Aezy-owned OpenCodex：模型与 Codex harness 解耦
+
+采用外置 `@aezy/opencodex` 托管固定官方 npm 实例，而不是吸收/维护 OpenCodex 源码 fork。
+独立 `OPENCODEX_HOME`、`CODEX_HOME`、sqlite/config/catalog、动态端口和环境白名单隔离个人
+10100 路由；DSH credentials 仍拥有 DeepSeek key。OpenCodex 只持有模型协议转换与自己的
+网关状态，Codex 持有 Thread/loop，DSH/Aezy 持有 Session、tools、approval、Security 和 Journal。
+
+已经证明非 OpenAI 模型的受治理开发与同 Thread restart continuation，详细证据只在
+[`codex.md`](../milestones/codex.md) 维护。下一步优先用真实工程任务检验此路径的可靠性和必要的
+usage/cancel/错误可见性；不把它扩成多 runtime 调度器。是否支持第二个 provider、Claude Code
+或容器级隔离，均按单独需求和真实故障立项。DAG、issue dashboard、Boards 等仍暂缓。
+
+该方案是配置与生命周期归属隔离，不承诺抵御同 UID 进程的全局 restart/kill。没有复制个人
+OAuth/history，也不兼容旧 personal Thread binding；保留旧 binding 并要求新建隔离 Session。
 
 ### 7. 暂缓产品面
 

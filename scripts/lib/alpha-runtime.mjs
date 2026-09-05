@@ -22,6 +22,7 @@ import {
 
 export const alphaMetadataPath = join(repoRoot, 'compatibility', 'dsh-alpha-runtime.json')
 export const alphaMetadata = JSON.parse(readFileSync(alphaMetadataPath, 'utf8'))
+const gatewayMetadata = JSON.parse(readFileSync(join(repoRoot, 'compatibility/opencodex-runtime.json'), 'utf8'))
 
 function expandHome(value) {
   if (value === '~') return homedir()
@@ -61,6 +62,7 @@ const aezyPackages = [
   ['@aezy/inspector', 'packages/aezy-inspector', true],
   ['@aezy/layout', 'packages/aezy-layout', true],
   ['@aezy/mode', 'packages/aezy-mode', true],
+  ['@aezy/opencodex', 'packages/aezy-opencodex', false],
   ['@aezy/project', 'packages/aezy-project', true],
   ['@aezy/security', 'packages/aezy-security', true],
   ['@aezy/terminal', 'packages/aezy-terminal', true],
@@ -68,6 +70,7 @@ const aezyPackages = [
   ['@aezy/web', 'packages/aezy-web', false],
 ]
 const alphaAllowedBuilds = {
+  'bun@1.4.0': false,
   '@google/genai': false,
   esbuild: true,
   koffi: true,
@@ -310,7 +313,10 @@ export function workspaceSettings(dshPackages, aezyPacked = new Map()) {
       ...alphaAllowedBuilds,
       [`@deepseek-ai/dsh-subprocess-local@${alphaVersion}`]: true,
     },
-    minimumReleaseAgeExclude: [...dshPackages.keys()].map(name => `${name}@${alphaVersion}`),
+    minimumReleaseAgeExclude: [
+      ...[...dshPackages.keys()].map(name => `${name}@${alphaVersion}`),
+      `${gatewayMetadata.gateway.package}@${gatewayMetadata.gateway.version}`,
+    ],
   }
 }
 
@@ -380,9 +386,9 @@ function syncSystemPresets() {
 }
 
 /**
- * Mount the fence after DSH's authoritative preset rows. Cordis waterfalls
- * enter later listeners first, so the fence's `await next()` observes the
- * Session controller's final model selection instead of the Agent seed route.
+ * Append preset ownership validation after DSH's authoritative composition.
+ * Final provider validation lives at the Host llm/stream seam; a standing
+ * preset's agent/request listener still sees the pre-selection seed route.
  */
 export function composeCodexPreset(shippedStandard, codexOverlay) {
   return `${shippedStandard.trimEnd()}\n\n${codexOverlay.trim()}\n`
@@ -443,6 +449,9 @@ export function syncAlphaProfile() {
   }
 
   const family = verifyInstalledRegistryFamily(dshPackages)
+  if (!readFileSync(join(alphaProfileDir, 'pnpm-lock.yaml'), 'utf8').includes(gatewayMetadata.gateway.integrity)) {
+    throw new Error('Managed OpenCodex registry integrity is absent from the installed profile lockfile')
+  }
   const version = run(alphaNodeBin, [alphaDshBin, '--version'], { env: alphaRuntimeEnv() }).stdout.trim()
   if (version !== alphaVersion) {
     throw new Error(`Expected alpha DSH ${alphaMetadata.source.tag}, installed CLI reports ${version}`)

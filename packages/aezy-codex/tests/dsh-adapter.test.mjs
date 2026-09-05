@@ -163,6 +163,15 @@ function options(signal = new AbortController().signal, withTools = false) {
   }
 }
 
+test('owned runtime rejects models absent from its catalog before any Thread request', async () => {
+  const { adapter, client } = await setup()
+  adapter.runtime = { id: 'owned', provider: 'aezy-opencodex' }
+  try {
+    await assert.rejects(adapter.resolveModel(CODEX_PROVIDER, 'foreign-model'), /no personal fallback/)
+    assert.deepEqual(client.calls.map(call => call.method), ['model/list'])
+  } finally { adapter.dispose() }
+})
+
 test('adapter binds one DSH Session, streams text, and projects native activity without re-execution', async () => {
   const { adapter, bindings, client, session } = await setup()
   const chunks = []

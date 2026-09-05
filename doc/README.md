@@ -21,7 +21,7 @@
 | Review、Files/Preview、Contextual Ask | [`milestones/m4.md`](milestones/m4.md) |
 | Git-independent Turn journal | [`milestones/turn-journal.md`](milestones/turn-journal.md) |
 | Integrated Terminal | [`milestones/terminal.md`](milestones/terminal.md) |
-| Codex-backed managed account and self-development loop | [`milestones/codex.md`](milestones/codex.md) |
+| Codex-backed self-development / Aezy-owned OpenCodex isolation | [`milestones/codex.md`](milestones/codex.md) |
 | Alpha DSH-native Codex provider spike | [`milestones/native-provider.md`](milestones/native-provider.md) |
 | E0 / CI.0 read-only Loop Inspector | [`milestones/loop-inspector.md`](milestones/loop-inspector.md) |
 | E1 internal Codex-inspired Agent Loop | [`milestones/codex-inspired.md`](milestones/codex-inspired.md) |
@@ -34,7 +34,8 @@ milestone 阅读。
 
 - [`roadmap/loop-inspector-workflow-editor.md`](roadmap/loop-inspector-workflow-editor.md)：
   E0/CI.0 已交付静态 backend logic graph corrected candidate，等待产品验收；E1 已重新开始
-  internal codex-inspired dogfood，完整 parity pending 且不可点击；E2/E3 暂停，不包含 E4。
+  internal codex-inspired dogfood 的既有证据保留，新增 parity 复刻暂停且不可点击；当前优先受管
+  OpenCodex 的模型/harness 解耦（见 Codex milestone）。E2/E3 暂停，不包含 E4。
 
 ## 长期参考
 
