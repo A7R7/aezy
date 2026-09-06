@@ -3,7 +3,8 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import test from 'node:test'
-import { gatewayConfig, OpenCodexManager, selectCatalog } from '../src/manager.js'
+import { gatewayConfig, OpenCodexManager } from '../src/manager.js'
+import { createCatalog, BASE_INSTRUCTIONS } from '../src/catalog.js'
 import * as plugin from '../src/index.js'
 import { privateDirectory } from '@aezy/codex/runtime-instance'
 const { resolveDeepSeek } = plugin
@@ -22,11 +23,14 @@ test('managed gateway enables only explicit DeepSeek models and no personal inte
   assert.throws(() => gatewayConfig({ baseURL: 'https://example.com', models: [] }), /explicit/)
 })
 
-test('catalog filters official generated data without reimplementing prompt templates', () => {
-  const row = { slug: 'deepseek/x', model_messages: { base_instructions: 'vendor prompt' } }
-  assert.deepEqual(selectCatalog({ models: [row, { slug: 'openai/y' }] }, ['x']).models, [row])
-  assert.throws(() => selectCatalog({ models: [] }, ['x']), /exactly/)
-  assert.throws(() => selectCatalog({ models: [row, row] }, ['x']), /exactly/)
+test('Aezy owns a narrow catalog, with no vendor CLI, prompts or inflated capabilities', () => {
+  const row = createCatalog(['deepseek-v4-flash']).models[0]
+  assert.deepEqual(row.input_modalities, ['text'])
+  assert.equal(row.base_instructions, BASE_INSTRUCTIONS)
+  assert.equal(row.supports_search_tool, false)
+  assert.equal(row.node_repl_disabled, true)
+  assert.throws(() => createCatalog(['unknown']), /Unsupported/)
+  assert.throws(() => createCatalog(['deepseek-v4-flash', 'deepseek-v4-flash']), /Unsupported/)
 })
 
 test('DeepSeek resolution uses public DSH settings and credential reference only', async () => {

@@ -8,6 +8,7 @@ import { createInterface } from 'node:readline'
 import { writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
 import { bundledCodexSpawnSpec } from '@aezy/codex'
 import { isolatedChildEnv, privateDirectory } from '@aezy/codex/runtime-instance'
+import { createCatalog, CATALOG_REVISION } from './catalog.js'
 
 const require = createRequire(import.meta.url)
 export const OPENCODEX_VERSION = '2.42.0'
@@ -44,15 +45,6 @@ export function gatewayConfig({ baseURL, models }) {
   }
 }
 
-export function selectCatalog(catalog, models) {
-  const expected = models.map(id => `deepseek/${id}`)
-  const rows = catalog.models?.filter(row => expected.includes(row.slug)) ?? []
-  if (rows.length !== expected.length || new Set(rows.map(row => row.slug)).size !== expected.length) {
-    throw new Error('Official OpenCodex catalog did not contain exactly the configured DeepSeek models')
-  }
-  return { ...catalog, models: rows }
-}
-
 export async function bundledGatewayPaths() {
   if (process.platform !== 'linux' || process.arch !== 'x64') {
     throw new Error('Managed OpenCodex currently supports Linux/WSL x64 only')
@@ -63,7 +55,6 @@ export async function bundledGatewayPaths() {
   if (JSON.parse(await readFile(bunManifest, 'utf8')).version !== BUN_VERSION) throw new Error('Bun pin mismatch')
   return {
     bun: join(dirname(bunManifest), 'bin', 'bun'),
-    cli: join(dirname(manifest), 'src', 'cli.ts'),
     entry: fileURLToPath(new URL('./gateway-entry.mjs', import.meta.url)),
     codex: bundledCodexSpawnSpec().argsPrefix[0],
   }
@@ -112,7 +103,7 @@ export class OpenCodexManager {
       await privateDirectory(this.root)
       this.lock = await open(join(this.root, 'aezy-owner.lock'), 'wx', 0o600)
       await this.lock.writeFile(JSON.stringify({ pid: process.pid }))
-      const integrationHome = await privateDirectory(join(this.root, 'catalog-codex-home'))
+      const integrationHome = await privateDirectory(join(this.root, 'unused-codex-home'))
       const temporaryHome = await privateDirectory(join(this.root, 'tmp'))
       await writeFileAtomic(join(integrationHome, 'config.toml'), 'cli_auth_credentials_store = "file"\n', { mode: 0o600 })
       const config = gatewayConfig({ baseURL, models })
@@ -129,8 +120,7 @@ export class OpenCodexManager {
       }
       // Validate with the vendor's public API before any CLI/config integration.
       await this.run(paths.bun, [paths.entry, '--validate'], env, 'config validation')
-      await this.run(paths.bun, [paths.cli, 'sync'], env, 'catalog generation')
-      const catalog = selectCatalog(JSON.parse(await readFile(join(integrationHome, 'opencodex-catalog.json'), 'utf8')), models)
+      const catalog = createCatalog(models)
       const catalogPath = join(this.root, 'codex-catalog.json')
       await writeFileAtomic(catalogPath, `${JSON.stringify(catalog)}\n`, { mode: 0o600 })
       const child = this.launch(paths.bun, [paths.entry], env)
@@ -162,7 +152,7 @@ export class OpenCodexManager {
       return {
         endpoint, catalogPath, dataKey, version: OPENCODEX_VERSION, credentialSource,
         models: models.map(id => ({ id: `deepseek/${id}` })),
-        routeId: createHash('sha256').update(JSON.stringify({ root: this.root, baseURL, credentialRef, models, version: OPENCODEX_VERSION })).digest('hex'),
+        routeId: createHash('sha256').update(JSON.stringify({ root: this.root, baseURL, credentialRef, models, version: OPENCODEX_VERSION, catalog: CATALOG_REVISION })).digest('hex'),
       }
     } catch (error) {
       await this.stop()

@@ -219,3 +219,14 @@ cancel 证据。配置隔离不抵御同 UID 文件读取/环境读取/全局 ki
 下一步是用这条现成 harness 路径做小型真实工程 dogfood，再按失败补契约；暂停新增
 codex-inspired 提示词/parity 复刻，不捆绑多 runtime、DAG、issue dashboard、Browser、Boards、
 Cloud/Remote/PR、Side Chat 或 merge-back。
+
+## 2026-09-06：Aezy 内置网关迁移（进行中）
+
+用户批准将有限模型协议转换内置，而非长期托管完整 OpenCodex 产品。固定 DSH rc.1 / Codex
+0.149.0；不改变 DSH/Codex loop、工具与审批 owner。迁移分为目录、网关、实机签收三个提交。
+
+第一步已移除启动时 `ocx sync`：Aezy 自己生成 text-only Flash/Pro catalog，拒绝未知模型与重复
+行；明确 reasoning low/high/max、无 image/search/node-repl 能力和保守 128k 本地上下文上限。
+使用 Aezy 自写的短 coding instructions，不复制 OpenCodex 的 vendor prompt，也不声称提示词
+等价。官方 Codex 0.149.0 实进程读取目录、无 OAuth、双启动身份一致测试通过；六项插件测试通过。
+本步骤仍使用原网关处理模型请求，未提升开发 profile；内置网关与真实开发复验仍 pending。
