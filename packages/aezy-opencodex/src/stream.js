@@ -99,6 +99,8 @@ export async function streamResponse(upstream, translated, { key, signal, emit, 
     if (!done || !finish) fail('upstream_stream_truncated', 502)
     if (!['stop', 'tool_calls', 'length'].includes(finish)) fail('unsupported_finish_reason', 502)
     if ((calls.size && finish === 'stop') || (!calls.size && finish === 'tool_calls')) fail('inconsistent_tool_finish', 502)
+    if (finish !== 'length' && translated.requireTool && !calls.size) fail('required_tool_missing', 502)
+    if (translated.parallelTools === false && calls.size > 1) fail('parallel_tools_forbidden', 502)
     // Validate the WHOLE batch before emitting any executable tool item.
     const validated = [], ids = new Set()
     if (finish !== 'length') for (const [index, call] of [...calls].sort(([a], [b]) => a - b)) {

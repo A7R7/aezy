@@ -151,9 +151,14 @@ export function translateRequest(body, { models, key, scope }) {
     if (!wire) fail('undeclared_tool_choice')
     toolChoice = { type: 'function', function: { name: wire } }
   }
+  if (body.parallel_tool_calls !== undefined && typeof body.parallel_tool_calls !== 'boolean') fail('invalid_parallel_tool_setting')
+  if (!tools.length && toolChoice !== 'auto' && toolChoice !== 'none') fail('tool_choice_without_tools')
+  const admittedRoutes = toolChoice === 'none' ? new Map()
+    : object(toolChoice) ? new Map([[toolChoice.function.name, routes.get(toolChoice.function.name)]]) : routes
   if (body.max_output_tokens !== undefined && (!Number.isSafeInteger(body.max_output_tokens) || body.max_output_tokens < 1 || body.max_output_tokens > 32768)) fail('invalid_output_limit')
   return {
-    routes, model: body.model, scope,
+    routes: admittedRoutes, model: body.model, scope,
+    requireTool: toolChoice === 'required' || object(toolChoice), parallelTools: body.parallel_tool_calls !== false,
     request: {
       model: body.model.slice('deepseek/'.length), messages, stream: true, stream_options: { include_usage: true },
       thinking: { type: 'enabled' }, reasoning_effort: effort,

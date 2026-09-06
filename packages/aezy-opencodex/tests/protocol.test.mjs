@@ -116,6 +116,21 @@ test('parallel function/custom tools retain distinct IDs, namespaces and exact f
   assert.equal(calls[1].input, 'patch\ntext')
 })
 
+test('tool-choice none/specific and parallel=false constrain the executable response, not just the upstream hint', async () => {
+  for (const [patch, chunks] of [
+    [{ tool_choice: 'none' }, [delta({ tool_calls: [call(0, 'c1', 'dsh__write', '{}')] }, 'tool_calls')]],
+    [{ tool_choice: { type: 'custom', name: 'apply_patch' } }, [delta({ tool_calls: [call(0, 'c1', 'dsh__write', '{}')] }, 'tool_calls')]],
+    [{ tool_choice: 'required' }, [delta({ content: 'no tool' }, 'stop')]],
+    [{ parallel_tool_calls: false }, [delta({ tool_calls: [call(0, 'c1', 'dsh__write', '{}'), call(1, 'c2', 'dsh__write', '{}')] }, 'tool_calls')]],
+  ]) {
+    const events = []
+    await assert.rejects(streamResponse(sseResponse(chunks), translateRequest({ ...request(), ...patch }, options), {
+      key, signal: new AbortController().signal, emit: event => events.push(event),
+    }), /Aezy gateway/)
+    assert.equal(events.some(e => e.item?.type === 'function_call'), false)
+  }
+})
+
 test('SSE decoder preserves split UTF-8, CRLF and multiline data, rejects partial frames', async () => {
   const bytes = Buffer.from('data: 中文\r\ndata: second\r\n\r\n')
   const body = new ReadableStream({ start(controller) { for (const byte of bytes) controller.enqueue(Uint8Array.of(byte)); controller.close() } })
