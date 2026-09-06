@@ -70,7 +70,6 @@ const aezyPackages = [
   ['@aezy/web', 'packages/aezy-web', false],
 ]
 const alphaAllowedBuilds = {
-  'bun@1.4.0': false,
   '@google/genai': false,
   esbuild: true,
   koffi: true,
@@ -264,6 +263,7 @@ export function profileManifest(dshPackages, aezyPacked) {
     dsh: alphaMetadata.publication.familyManifestDigest,
     aezy: aezyDigests,
     peers: pinnedRuntimePeers,
+    gateway: gatewayMetadata.gateway,
     installer: {
       name: 'pnpm',
       optionalDependencies: true,
@@ -315,7 +315,6 @@ export function workspaceSettings(dshPackages, aezyPacked = new Map()) {
     },
     minimumReleaseAgeExclude: [
       ...[...dshPackages.keys()].map(name => `${name}@${alphaVersion}`),
-      `${gatewayMetadata.gateway.package}@${gatewayMetadata.gateway.version}`,
     ],
   }
 }
@@ -415,6 +414,15 @@ export function verifyInstalledRegistryFamily(dshPackages, profileDirectory = al
   return { packageCount: dshPackages.size, version: alphaVersion }
 }
 
+export function verifyNativeGatewayClosure(lock) {
+  if (/@bitkyc08\/opencodex|@oven\/bun-|(?:^|\n)\s{2}bun@/m.test(lock)) {
+    throw new Error('Retired OpenCodex/Bun runtime remains in the profile closure')
+  }
+  if (gatewayMetadata.gateway.implementation !== 'aezy-node' || gatewayMetadata.gateway.version !== 'aezy-responses-v1') {
+    throw new Error('Unexpected embedded gateway implementation')
+  }
+}
+
 export function syncAlphaProfile() {
   if (!existsSync(alphaNodeBin)) throw new Error(`Alpha Node runtime is missing at ${alphaNodeBin}`)
   prepareAlphaHome()
@@ -449,9 +457,7 @@ export function syncAlphaProfile() {
   }
 
   const family = verifyInstalledRegistryFamily(dshPackages)
-  if (!readFileSync(join(alphaProfileDir, 'pnpm-lock.yaml'), 'utf8').includes(gatewayMetadata.gateway.integrity)) {
-    throw new Error('Managed OpenCodex registry integrity is absent from the installed profile lockfile')
-  }
+  verifyNativeGatewayClosure(readFileSync(join(alphaProfileDir, 'pnpm-lock.yaml'), 'utf8'))
   const version = run(alphaNodeBin, [alphaDshBin, '--version'], { env: alphaRuntimeEnv() }).stdout.trim()
   if (version !== alphaVersion) {
     throw new Error(`Expected alpha DSH ${alphaMetadata.source.tag}, installed CLI reports ${version}`)

@@ -38,6 +38,8 @@ try {
   assert.equal(result.connection.state, 'connected')
   assert.equal(result.runtime.owner, 'aezy')
   assert.equal(result.runtime.provider, 'aezy-opencodex')
+  assert.equal(result.runtime.gateway.version, 'aezy-responses-v1')
+  assert.equal(new URL(result.runtime.gateway.endpoint).hostname, '127.0.0.1')
   assert.equal(result.account.requiresOpenaiAuth, false)
   assert.ok(result.models.some(row => row.id === 'deepseek/deepseek-v4-flash'))
   assert.ok(result.models.every(row => row.id.startsWith('deepseek/')))

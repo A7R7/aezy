@@ -40,9 +40,10 @@ reference/runtime 分离状态由 `compatibility/dsh.json` 记录。完整影响
   Host bridge 与右侧 panel。
 - `packages/aezy-codex/`：固定官方 Codex App Server runtime、独立配置目录和 Session↔Thread
   归属；Settings 显示受管实例与模型目录。当前路由不导入个人配置或 OAuth。
-- `packages/aezy-opencodex/`：托管官方 `@bitkyc08/opencodex@2.42.0` 与 Bun `1.4.0`，使用
-  DSH 已有 DeepSeek settings/credentials。Codex 继续拥有 agent loop；OpenCodex 只负责模型协议
-  路由；可变操作仍经 DSH tools/approval、Aezy Security 与 Journal。当前支持 Linux/WSL x64。
+- `packages/aezy-opencodex/`：Aezy 自写、运行于 Node Host 的内置模型网关，使用 DSH 已有
+  DeepSeek settings/credentials；不依赖、启动或同步 OpenCodex/Bun。Codex 继续拥有 agent loop，
+  网关只做模型协议转换；可变操作仍经 DSH tools/approval、Aezy Security 与 Journal。
+  旧包名只是 composition 标识；当前支持 Node 24 / Linux/WSL x64。
 - `packages/aezy-mode/`：alpha-only 的原生 preset 装配、Codex system preset overlay、
   per-preset model directory 与 Host provider fence；不拥有 Agent/Session/tool loop。
 - `packages/aezy-inspector/`：从权威 durable Session events 纯投影 `LoopTrace`，提供 Session
@@ -92,29 +93,37 @@ profile lock 的 SHA-512 integrity；只有 12 个 Aezy 外置包使用本地 pa
 `profile:sync`/`profile:dump`/`aezy:web`
 直接指向该 alpha profile，`alpha:*` 只是等价的显式别名。
 
-## 独立 Codex / OpenCodex
+## 独立 Codex / Aezy 内置模型网关
 
 当前 Codex 模式使用 Aezy 自己的 `DSH_HOME/aezy/codex-runtime` 与
-`DSH_HOME/aezy/opencodex`。它不读取个人 `CODEX_HOME`、OpenCodex catalog、10100 路由或 OAuth，
-也不修改它们；网关监听独立动态 loopback 端口，启动时验证 bearer 鉴权。凭据来自 Web Models
+`DSH_HOME/aezy/model-gateway`。它不读取个人 `CODEX_HOME`、OpenCodex catalog、10100 路由或 OAuth，
+也不修改它们；网关在 Host 内监听 `127.0.0.1` 动态端口，每次请求验证 bearer。凭据来自 Web Models
 中已有的 DSH DeepSeek 配置，修改后须重启 Host。缺 key 或启动失败时 Codex 模式不可用，
 不会回退个人路由；原生 DSH modes 仍可独立运行。
 
-旧 Session 的 Thread binding 没有新 runtime 身份时保留但拒绝自动恢复，请新建 Codex App Server
+模型 catalog 与短 coding instructions 由 Aezy 生成，不复制 vendor prompt。provider key 只保留
+在 Host 内存；Codex 仅获得每次启动轮换的本地 bearer。网关没有工具执行器、会话历史或第二层
+Agent；不再需要 OpenCodex 进程、Bun、`ocx sync`、sqlite 或个人配置协同。
+
+旧 Session 的 Thread binding 没有新 runtime 身份或仍绑定旧 OpenCodex 时保留但拒绝自动恢复，请新建 Codex App Server
 Session 并选择 `deepseek/deepseek-v4-flash` 或 `deepseek/deepseek-v4-pro`。迁移不复制旧 Thread
-history，不建立双运行时兼容层。配置隔离不等于 OS 沙箱：同 UID 的全局 kill/restart 或文件访问
+history，旧 `aezy/opencodex` 状态目录保留但不使用，不建立双运行时兼容层。
+配置隔离不等于 OS 沙箱：同 UID 的全局 kill/restart 或文件访问
 仍可能干扰；抵御这种干扰需要独立 OS 用户或容器。
 
 已用非 OpenAI 模型证明真实 read → approved write → test → Journal/Review → deny → restart /
 同 Thread continuation。Inspector 仍只诚实展示 DSH 边界的 partial trace，Codex token usage
-尚未投影到 DSH，不把它显示成完整计费。详细证据见
+已通过 Responses / 官方 token-usage notification 契约，但尚未投影到 DSH billing；未知值不伪装成零。
+本切片只支持固定 Codex `0.149.0` + DeepSeek 文本，Flash 已真实付费验证，Pro 仅目录/契约验证；
+image、search、remote compaction、多 provider 和完整 Subagent parity 不在已签收范围。详细证据见
 [`Codex milestone`](doc/milestones/codex.md)，依赖 pin 见
 [`opencodex-runtime.json`](compatibility/opencodex-runtime.json)。Codex-inspired revision 1 原样保留，
-新增提示词/parity 复刻暂停，优先验证这个受管插件路径。
+新增提示词/parity 复刻暂停，优先用真实工程任务检验内置网关路径。
 
 ```sh
 pnpm test:opencodex
 AEZY_OPENCODEX_PROCESS_TEST=1 node --test packages/aezy-opencodex/tests/process.test.mjs
+pnpm test:opencodex:profile # 无付费模型调用，结束后停止本次 Host
 ```
 
 Alpha native provider 验证命令：
@@ -243,8 +252,8 @@ git -C .local/deepseek-harness checkout --detach cd5ef8148158c3a752a658978873241
 
 该 clone 只是历史 alpha.1 参考恢复命令，不是当前 runtime 安装路径。当前 rc.1 必须只消费
 官方 npm family；只有 registry 缺失精确版本时，才允许从固定 immutable 官方 commit 在仓库外执行
-完整 release path 与 packed-install verification。完整 parity gates 决定何时把 `alpha` 分支合回
-主线，不通过同分支双 runtime 兼容来过渡。
+完整 release path 与 packed-install verification。`alpha` 已合入 `main`；完整 parity gate 仍约束
+codex-inspired 的可点击产品入口，不通过同分支双 runtime 兼容来过渡。
 
 ## 文档与下一步
 

@@ -6,7 +6,6 @@ saveExact: true
 autoInstallPeers: false
 
 allowBuilds:
-  'bun@1.4.0': false
   '@deepseek-ai/dsh-subprocess-local': true
   '@google/genai': false
   koffi: false
@@ -258,4 +257,3 @@ minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-workflow@0.1.2-rc.1'
   - '@deepseek-ai/dsh-workflow-worker-thread@0.1.2-rc.1'
   - '@deepseek-ai/dsh-workspace@0.1.2-rc.1'
-  - '@bitkyc08/opencodex@2.42.0'

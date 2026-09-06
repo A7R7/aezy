@@ -1,6 +1,6 @@
 # Aezy 上游边界与实施路线图
 
-> 活动路线文档，更新于 2026-09-05。已完成切片的详细实现和验证只在
+> 活动路线文档，更新于 2026-09-06。已完成切片的详细实现和验证只在
 > `doc/milestones/` 维护。
 
 ## 决策原则
@@ -277,20 +277,25 @@ compaction/approval 内核。
 近期 hardening 仍只按真实 dogfood 故障补强 Worktree dependency bootstrap 和固定版本 App Server
 contract，不为未来 Editor 提前泛化已签收切片。
 
-### 6.5. Aezy-owned OpenCodex：模型与 Codex harness 解耦
+### 6.5. Aezy 内置模型网关：模型与 Codex harness 解耦
 
-采用外置 `@aezy/opencodex` 托管固定官方 npm 实例，而不是吸收/维护 OpenCodex 源码 fork。
-独立 `OPENCODEX_HOME`、`CODEX_HOME`、sqlite/config/catalog、动态端口和环境白名单隔离个人
-10100 路由；DSH credentials 仍拥有 DeepSeek key。OpenCodex 只持有模型协议转换与自己的
-网关状态，Codex 持有 Thread/loop，DSH/Aezy 持有 Session、tools、approval、Security 和 Journal。
+2026-09-05 先证明受管 OpenCodex；2026-09-06 按用户批准的收敛路线，将固定 Codex + DeepSeek
+文本所需的网关能力用 Aezy 原创代码内置。外置 `@aezy/opencodex` 只保留 composition 包名，
+不再加载 OpenCodex/Bun，不维护完整产品 fork，不留旧实现 fallback。Aezy 拥有 model catalog、
+短 coding instructions、Responses/Chat 协议转换、HTTP/SSE 传输与生命周期；独立 Codex home、
+动态鉴权 loopback 与环境白名单隔离个人 10100 路由。DSH credentials 仍拥有 DeepSeek key。
+Codex 持有 Thread/loop，DSH/Aezy 持有 Session、tools、approval、Security 和 Journal；网关不执行
+工具，不保存对话、不运行第二层 Agent，也不复制这些内核。
 
 已经证明非 OpenAI 模型的受治理开发与同 Thread restart continuation，详细证据只在
 [`codex.md`](../milestones/codex.md) 维护。下一步优先用真实工程任务检验此路径的可靠性和必要的
-usage/cancel/错误可见性；不把它扩成多 runtime 调度器。是否支持第二个 provider、Claude Code
+usage/cancel/错误可见性；传输 usage 与官方中断到 HTTP 的契约已验证，DSH billing 投影仍未提供。
+不把它扩成多 runtime 调度器。是否支持第二个 provider、Claude Code
 或容器级隔离，均按单独需求和真实故障立项。DAG、issue dashboard、Boards 等仍暂缓。
 
 该方案是配置与生命周期归属隔离，不承诺抵御同 UID 进程的全局 restart/kill。没有复制个人
-OAuth/history，也不兼容旧 personal Thread binding；保留旧 binding 并要求新建隔离 Session。
+OAuth/history，也不兼容旧 personal/OpenCodex Thread binding；保留旧 binding 并要求新建内置
+网关 Session。保留的旧目录只是历史数据，不是第二条 runtime 路径。
 
 ### 7. 暂缓产品面
 

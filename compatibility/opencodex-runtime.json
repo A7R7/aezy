@@ -1,17 +1,20 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "owner": "@aezy/opencodex",
   "platform": "linux-x64 (including WSL2)",
   "gateway": {
-    "package": "@bitkyc08/opencodex",
-    "version": "2.42.0",
-    "registry": "https://registry.npmjs.org",
-    "integrity": "sha512-Jnw7ZL/0dlxYMBXZwtMRG6J6+wuKDtXOdSl7sl52gT2eekQsR36zihe7NzThaixotGoqKc96ZL3w9E/Ff+qKGg=="
+    "implementation": "aezy-node",
+    "version": "aezy-responses-v1",
+    "catalogRevision": 1,
+    "nodeMajor": 24,
+    "stateDirectory": "aezy/model-gateway",
+    "protocol": "Responses HTTP/SSE to DeepSeek Chat Completions",
+    "models": ["deepseek-v4-flash", "deepseek-v4-pro"]
   },
-  "bun": "1.4.0",
+  "retiredRuntime": { "package": "@bitkyc08/opencodex", "version": "2.42.0", "bun": "1.4.0", "runtimeDependency": false },
   "codex": "0.149.0",
   "dsh": "0.1.2-rc.1",
   "provider": "DSH llm-deepseek settings and credentials/reference owner",
-  "interfaces": ["public loadConfig/startServer", "scoped CLI sync (catalog only)", "Responses HTTP", "official Codex App Server stdio"],
-  "excluded": ["personal OAuth/config/history import", "global restart", "shim/service install", "OpenAI account pool", "sidecars", "multi-runtime orchestration"]
+  "interfaces": ["DSH settings/credentials", "Aezy-generated model catalog", "Responses HTTP/SSE", "official Codex App Server stdio"],
+  "excluded": ["OpenCodex/Bun runtime", "personal OAuth/config/history import", "global restart", "shim/service install", "OpenAI account pool", "sidecars", "multi-runtime orchestration", "image/search", "remote compaction", "gateway history store", "previous_response_id"]
 }

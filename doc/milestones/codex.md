@@ -6,7 +6,7 @@
 > Codex runtime: `@openai/codex@0.149.0`
 
 上方日期/runtime 是首个 managed ChatGPT 自开发闭环的历史签收。当前开发 runtime 为 DSH
-`0.1.2-rc.1`；2026-09-05 已切换为 Aezy-owned OpenCodex / DeepSeek，当前路径与新增证据见
+`0.1.2-rc.1`；2026-09-06 已从受管 OpenCodex 切换为 Aezy 内置 Node 网关 / DeepSeek，当前路径与新增证据见
 本文最后一节。不要把历史个人账户路径当作当前配置要求。
 
 ## Outcome
@@ -109,6 +109,8 @@ not fork Codex or DSH internals.
   separate deferred product slices.
 
 ## 2026-09-05：Aezy-owned OpenCodex
+
+本节为已经退役的托管方案历史签收；当前实现与限制以 2026-09-06 一节为准。
 
 ### 结果与固定依赖
 
@@ -220,16 +222,17 @@ cancel 证据。配置隔离不抵御同 UID 文件读取/环境读取/全局 ki
 codex-inspired 提示词/parity 复刻，不捆绑多 runtime、DAG、issue dashboard、Browser、Boards、
 Cloud/Remote/PR、Side Chat 或 merge-back。
 
-## 2026-09-06：Aezy 内置网关迁移（进行中）
+## 2026-09-06：Aezy 内置网关迁移（Complete，限定范围）
 
 用户批准将有限模型协议转换内置，而非长期托管完整 OpenCodex 产品。固定 DSH rc.1 / Codex
-0.149.0；不改变 DSH/Codex loop、工具与审批 owner。迁移分为目录、网关、实机签收三个提交。
+0.149.0；不改变 DSH/Codex loop、工具与审批 owner。目录、网关、依赖清理/profile 提升分别
+提交；最终检查发现的工具准入与早期中断问题各自再作独立修复，不与 runtime 清理混合。
 
 第一步已移除启动时 `ocx sync`：Aezy 自己生成 text-only Flash/Pro catalog，拒绝未知模型与重复
 行；明确 reasoning low/high/max、无 image/search/node-repl 能力和保守 128k 本地上下文上限。
 使用 Aezy 自写的短 coding instructions，不复制 OpenCodex 的 vendor prompt，也不声称提示词
 等价。官方 Codex 0.149.0 实进程读取目录、无 OAuth、双启动身份一致测试通过；六项插件测试通过。
-本步骤仍使用原网关处理模型请求，未提升开发 profile；内置网关与真实开发复验仍 pending。
+第一步提交时仍使用原网关处理模型请求、尚未提升开发 profile；后续步骤已完成替换与复验。
 
 第二步：新增 Aezy 自写的 Node HTTP/Responses 网关，完全不加载 OpenCodex 或 Bun。目录/指令、
 请求翻译、SSE、取消、鉴权、错误和传输 replay 都在外置插件内；不执行工具，不运行第二层
@@ -265,4 +268,46 @@ Agent，不存会话或响应历史，不复制 DSH 内核。`@aezy/opencodex` �
 - 全量本地回归 136 pass / 0 fail / 3 opt-in skipped；3 个官方 Codex 实进程门禁另行通过，含
   namespaced dynamic tools + encrypted replay + tokenUsage notification、turn/interrupt 传播、双启动。
 
-第三步仍 pending：删除 OpenCodex/Bun 依赖、复验无旧包 profile，再提升正式开发 profile。
+最终检查补充两个独立修复：
+
+- `5e8875846c`：模型返回的工具批次必须符合 `tool_choice` none/specific/required 与
+  `parallel_tool_calls:false`，不仅把这些约束作为上游提示。违例不给出可执行工具。
+- `e2ae3de3c9`：实进程测试复现 Codex 较早 interrupt 会报告 interrupted，但不保证立即关闭
+  空闲 HTTP 流。adapter 监听官方 interrupted/failed Turn 事实，直接取消该 Thread 活跃传输；
+  进程断连取消本实例全部请求。跨 Thread 隔离、实际上游 HTTP 关闭、官方早期 interrupt 均通过。
+  只记录活跃 HTTP 的 Thread scope，不拥有 Turn/cancel 状态机或公开 HTTP admin/cancel API。
+
+第三步完成：OpenCodex/Bun/keyring 等退役依赖从根 lock 与 profile closure 移除，profile selector
+新增旧依赖缺席门禁。DSH 仍为完整 242-package 官方 `0.1.2-rc.1` family，逐项 SHA-512 校验，
+没有升级/修改 DSH；只有 12 个 Aezy 外置包来自本地 pack。
+
+最终代码（含上述两个修复）真实签收于 **`2026-09-06T08:19:55.640Z`**，同一独立 proof home /
+profile；本次 fixture `/tmp/aezy-governed-project-Xl1fo0`：
+
+- Session `aezy-owned-deepseek-mtpjjn9q`；Thread `01a075cd-4a2a-71d1-9a3f-c8b127bb048b`；
+  runtime `3a9f1843e00ff77ebd3ee31a24c5a6fbcf0bcd2ab7a9ec8fbfb020b3a966e5e0`。
+- 实际版本：DSH `0.1.2-rc.1`、Codex `0.149.0`、gateway `aezy-responses-v1`；
+  OpenCodex/Bun 均不在运行依赖中。仅复用既有 DSH DeepSeek credential reference，不读 OAuth。
+- 失败测试基线 → 真实 read → 4 次 allowed-once（含 structured write）→ 测试 1 pass，独立检查
+  Git diff 仅 `sum.mjs`；Security network deny、Journal/Review、16-span partial Inspector 和分页通过。
+- 整个 Host 重启后 exact history、同 runtime/Thread 及真实 read/test continuation 通过；
+  重启后的 3 次 provider 请求全部 completed 且提供 usage；无 failed/cancelled/unknown usage。
+- 全量 Node 24 回归：**140 pass / 0 fail / 3 opt-in skipped**；另行启用官方 Codex 实进程测试
+  **3 pass / 0 fail**。取消/HTTP 错误/工具准入的负向契约使用本地受控 provider，不增加付费请求。
+- 收据：`/tmp/aezy-opencodex-e2e-native-imUspG/dsh/aezy/opencodex-proof.json`；
+  无 secret/prompt/原始 provider 输出，临时 home 仅供复查、不作为第二 runtime。
+
+最终外置包随后同步到 `~/.aezy-alpha/dsh` / `aezy-alpha`，正式 3091 无模型请求的 Web/runtime
+smoke 验证 native gateway、官方 App Server connected、Flash/Pro 目录、无需 OpenAI auth、
+credentials 文件 mtime 未变。测试停止各自 Host；开发使用原 `alpha:web` 命令，新建 Codex App
+Server Session。旧 OpenCodex 目录/binding 原样保留但不自动 resume、不作为 fallback。
+
+限制：只有 Flash 做真实付费开发；Pro 为 catalog/契约覆盖。仅文本、HTTP/SSE、固定版本
+Responses full-input replay；未实现 image/search/remote compaction/其它 provider/完整 Subagent
+parity。模型 reasoning 只加密传输、由 Codex 持久化；`replay-key` 不是可随意删除的缓存。
+Responses usage 与官方 tokenUsage notification 已验证，**DSH per-Turn billing 投影仍不可用**。
+Inspector partial 不代表完整私有 loop 可见。不会抵御同 UID 文件读取/global kill。
+
+本次路径提交：`4d8680c83e`（目录脱离 CLI）、`0f7a863bfe`（内置网关）、上述两个独立修复，
+以及本节所在的依赖清理/profile 提升提交。新增 codex-inspired parity、多 runtime、DAG、issue
+dashboard、Browser、Boards、Cloud/Remote/PR、Side Chat 和 merge-back 均未加入。

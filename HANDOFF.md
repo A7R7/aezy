@@ -1,12 +1,12 @@
 # Aezy 项目交接
 
-> 更新日期：2026-09-05<br>
+> 更新日期：2026-09-06<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`main`（`alpha` 已 fast-forward 合入）<br>
 > 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
 > OpenAI/Codex provider（Complete）；E0.1 Loop Inspector revision 3（Candidate：等待产品验收）；
 > Codex-inspired E1 既有 dogfood 保留（新增 parity 暂停）；
-> Aezy-owned OpenCodex + DeepSeek 真实受治理开发 / restart continuation 已验证
+> Aezy 内置 Node 网关 + DeepSeek 真实受治理开发 / restart continuation 已验证；不依赖 OpenCodex/Bun
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
@@ -75,10 +75,11 @@ governed write、alpha.4 Session/cache carryover 和 cold restart。Aezy runtime
 - `packages/aezy-terminal`：DSH PTY 的 Session-scoped Host bridge 与右侧 Terminal panel。
 - `packages/aezy-codex`：官方 App Server process/protocol client、独立 Codex home、runtime-bound
   Session↔Thread/Turn、stream/activity/cancel/resume 薄适配。当前 Settings 显示受管路由与模型，
-  不导入个人 OAuth，OpenCodex 模式拒绝 ChatGPT login/logout。
-- `packages/aezy-opencodex`：固定官方 npm `@bitkyc08/opencodex@2.42.0` / Bun `1.4.0`，
-  独立 home/catalog/动态 loopback 端口。凭据由 DSH `llm-deepseek` settings / credentials owner
-  提供；Codex 仍拥有 agent loop，写操作仍回 DSH approval/Security/Journal。
+  不导入个人 OAuth，受管网关模式拒绝 ChatGPT login/logout。
+- `packages/aezy-opencodex`：Aezy 自写、Host 内置 Node 网关 `aezy-responses-v1`，旧包名仅作
+  composition 标识；不依赖或启动 OpenCodex/Bun/CLI sync。独立 catalog/replay-key/动态鉴权
+  loopback 端口；凭据由 DSH `llm-deepseek` settings / credentials owner 提供且仅留在 Host 内存。
+  Codex 仍拥有 agent loop，写操作仍回 DSH approval/Security/Journal。
 - `packages/aezy-mode`：alpha-only 原生 preset 装配、`codex-app-server` system overlay、
   per-preset catalog UI 与 Host provider fence。
 - `packages/aezy-inspector`：只读 Session event projector、LoopTrace contract、header 与
@@ -105,7 +106,7 @@ governed write、alpha.4 Session/cache carryover 和 cold restart。Aezy runtime
 | M4.1B | File tree + code/Markdown/image preview、自动目录刷新 | `doc/milestones/m4.md` |
 | M4.2 | `@directory` / Working+Historical `@diff` 与 Contextual Ask | `doc/milestones/m4.md` |
 | Terminal | DSH line PTY 的多标签 Integrated Terminal side panel | `doc/milestones/terminal.md` |
-| Codex loop | Aezy-owned OpenCodex / DeepSeek、DSH dynamic tools、受治理开发与同 Thread restart | `doc/milestones/codex.md` |
+| Codex loop | Aezy 内置网关 / DeepSeek、DSH dynamic tools、受治理开发与同 Thread restart | `doc/milestones/codex.md` |
 | Agent modes | standard/PTC/minimal/creative、legacy aezy、Codex App Server preset | `doc/milestones/mode-presets.md` |
 | Native provider | DSH-owned OAuth、OpenAI/Codex model、原生 tool/approval/Security/Journal/restart | `doc/milestones/native-provider.md` |
 | E0.1 | revision 3 双 backend full logic graph、durable overlay、Timeline、live/cold/restart parity（candidate） | `doc/milestones/loop-inspector.md` |
@@ -115,16 +116,19 @@ governed write、alpha.4 Session/cache carryover 和 cold restart。Aezy runtime
 `codex-app-server` 仍只使用 `aezy-codex`。两者的模型可能同名，但 agent loop owner 不同。
 
 2026-09-05：个人 Codex config 的 `openai_base_url` 指向 `127.0.0.1:10100`，这是旧 Aezy 进程
-继承个人 OpenCodex 路由的来源。现在 Codex 使用 `DSH_HOME/aezy/codex-runtime`，OpenCodex 使用
-`DSH_HOME/aezy/opencodex`；不复制个人 config/catalog/history/OAuth。旧无 runtimeId 的 binding
-原样保留但拒绝跨 home 自动 resume，请新建 Codex Session。仅 Linux/WSL x64 已支持；同 UID
+继承个人 OpenCodex 路由的来源。2026-09-06 起 Codex 使用 `DSH_HOME/aezy/codex-runtime`，
+内置网关使用 `DSH_HOME/aezy/model-gateway`；不复制个人 config/catalog/history/OAuth。
+旧无 runtimeId 或绑定旧 OpenCodex 的 binding 原样保留但拒绝跨 runtime 自动 resume，请新建
+Codex Session。旧 `aezy/opencodex` 目录保留但不读、不使用。仅 Node 24 / Linux/WSL x64 已支持；同 UID
 的全局 kill/restart 不属于配置隔离保证，强隔离需另行引入 OS 用户或容器。
 
 真实 profile 暴露并修正旧 mode fence：standing preset 的 `agent/request` 仍看到 seed model，
-最终 provider 验证现在位于公开 `llm/stream`；不能回退成修改 seed 或放宽门禁。OpenCodex
-采用官方 `codexToolMode: shell` 暴露直接 DSH dynamic tools；不关闭未声明工具检查，不提高
-Codex 的 native read-only 权限。provider 配置/凭据变动后须重启 Host；usage 尚未映射到 DSH，
-Inspector 仍诚实标记 partial。详细证据与复验命令见 Codex milestone。
+最终 provider 验证现在位于公开 `llm/stream`；不能回退成修改 seed 或放宽门禁。内置网关直接
+映射 namespaced DSH dynamic tools，完整校验工具批次与 tool_choice 后才准入；不提高 Codex 的
+native read-only 权限。Aezy 拥有短 coding instructions，不声称 vendor prompt 等价。provider
+配置/凭据变动后须重启 Host；usage 已经 Responses/官方 notification 验证但尚未映射到 DSH billing，
+Inspector 仍诚实标记 partial。Flash 已真实验证，Pro 只有目录/契约覆盖；image/search/remote
+compaction/多 provider/完整 Subagent parity 尚未签收。详细证据与复验命令见 Codex milestone。
 
 接手时最容易误解的语义：
 
@@ -148,9 +152,9 @@ Inspector 仍诚实标记 partial。详细证据与复验命令见 Codex milesto
 
 Tracked worktree clean；无需保留历史 dogfood fixture。
 
-本次独立 OpenCodex/DeepSeek 真实开发闭环已通过后，同一插件已同步至
+本次独立 Aezy 内置网关/DeepSeek 真实开发闭环已通过后，同一插件已同步至
 `~/.aezy-alpha/dsh` / `aezy-alpha`。正式 3091 最小 Web/runtime smoke 返回 connected，
-独立 gateway 为 `127.0.0.2` 动态端口，模型仅 `deepseek-v4-flash` / `deepseek-v4-pro`，
+Host 内置 gateway 为 `127.0.0.1` 动态端口，模型仅 `deepseek-v4-flash` / `deepseek-v4-pro`，
 凭据来源 `DSH credentials (file)`，凭据文件 mtime 未变。smoke 没有付费模型请求。
 验证后所有本次 Host 已停止，3091 未监听；新会话须重新检查，不能仅相信此处的运行时状态。
 
@@ -163,13 +167,13 @@ pnpm run alpha:web -- --host 127.0.0.1 --port 3091 --no-open
 ```
 
 历史 managed ChatGPT/3090 验收由 `doc/milestones/codex.md` 保留，不代表现在使用个人账户。
-独立临时证明目录 `/tmp/aezy-opencodex-e2e-uNKR9m` 只供复查，可在确认无进程后清理；
+最新独立临时证明目录 `/tmp/aezy-opencodex-e2e-native-imUspG` 只供复查，可在确认无进程后清理；
 不是第二套开发 runtime，也没有替换当前 DSH profile 的 credentials/Sessions。
 
 ## 5. 最小复验入口
 
-2026-09-05 全量本地回归：124 pass / 0 fail / 1 opt-in process test skipped；该官方 package
-process test 已在宿主环境另行通过。真实 DeepSeek 开发、审批、Network deny、Journal/Review、
+2026-09-06 全量本地回归：140 pass / 0 fail / 3 opt-in process tests skipped；3 个官方 Codex
+实进程测试另行通过（动态工具/replay/usage、早期中断传输清理、目录/隔离/重启）。真实 DeepSeek 开发、审批、Network deny、Journal/Review、
 Inspector partial、分页、restart 与同 Thread continuation 均通过；正式 3091 无付费 smoke 通过。
 新增入口：`pnpm test:opencodex`、`pnpm test:opencodex:profile`。真实付费 gate 必须使用独立
 `/tmp/aezy-opencodex-e2e-*` profile 与显式 `AEZY_OPENCODEX_REAL_PROOF=1`。
@@ -227,15 +231,16 @@ E0.1 revision 3 浏览器门禁：DSH-native 为 5 lanes / 40 nodes / 59 edges�
 
 ## 6. 下一步与所有权
 
-当前目标已验证：由 Aezy 外置插件托管独立 OpenCodex，使用既有 DSH DeepSeek 凭据驱动官方
+当前目标已验证：由 Aezy 外置插件内置有限模型网关，使用既有 DSH DeepSeek 凭据驱动官方
 Codex App Server，完成真实受审批开发、测试、Journal/Review、网络 deny、历史分页与 Host
-restart 后同 Thread continuation。个人 OpenCodex 与 OAuth 不作为运行依赖。
+restart 后同 Thread continuation。OpenCodex/Bun 已从根/profile closure 删除，个人配置与 OAuth
+不作为运行依赖；没有保留旧网关 fallback。原始 OpenCodex 托管实机记录只保留为历史阶段。
 
 首选 owner/seam 是官方 Codex `app-server`，不是 Aezy 自写 OAuth 或立即复制 Codex agent
 loop。官方接口已提供 ChatGPT managed OAuth（浏览器与 device-code）、凭据持久化/刷新、
 `planType`、rate limits/usage、conversation history、approval 和 streamed agent events。Aezy
 只通过外置 runtime adapter 启动/连接该进程并投影协议事实。当前固定 npm Codex `0.149.0`，
-个人 CLI 版本不是权威；官方 OpenCodex 消费方式固定于 `compatibility/opencodex-runtime.json`。
+个人 CLI 版本不是权威；内置网关/目录版本与退役依赖记录固定于 `compatibility/opencodex-runtime.json`。
 不把 App Server 协议散入现有 M0–M4/Terminal 包。
 
 近期顺序：
@@ -284,8 +289,10 @@ loop。官方接口已提供 ChatGPT managed OAuth（浏览器与 device-code）
     保留；新增提示词/parity 复刻暂停，不可点击。E2/E3 暂停，E4 不在范围。
     alpha.4 和 rc.1 migration 均保持同一 revision/digest，并在正式 3091 再次通过 governed
     write；这些 runtime commit 没有加入新的 parity。
-11. 当前优先 Aezy-owned OpenCodex 的真实工程 dogfood 和必要错误/usage/cancel 契约验证；
-    不 fork OpenCodex，不追加多 runtime/DAG/issue dashboard。Traffic/Task Board 继续暂缓。
+11. 已完成：目录生成脱离 `ocx sync` → Aezy 内置 Responses 网关 → 移除 OpenCodex/Bun →
+    独立真实开发复验与正式 profile 提升。tool_choice 和早期中断传输清理分别独立修复；只接入
+    官方终态事实，不增加 Turn/cancel 内核。下一步优先真实工程 dogfood，按故障补契约；DSH
+    usage 投影尚未完成。不追加多 runtime/DAG/issue dashboard，Traffic/Task Board 继续暂缓。
 
 原 Activity dashboard 实验已全部废弃：原提交 `eae530ddcb`、`4d187252b0`、`d77430c012`
 分别由 `4428fc8037`、`2cb30ba1ab`、`b89422ddc0` 的独立 revert 撤销。不要从这些旧提交继续
@@ -370,8 +377,10 @@ alpha.3 与 alpha.4 migration 已独立完成并合入 `main`；rc.1 migration �
 revision 3 的静态 backend logic graph 仍等待产品验收：blueprint 是主体，runtime trace 只叠加
 active/visited/usage/duration，Timeline 保留逐次证据；App Server 私有内核显示为 opaque。
 codex-inspired revision 1 的 restart 与 governed write vertical slice 已签收，但新增 parity 复刻暂停。
-先按 doc/milestones/codex.md 继续 Aezy-owned OpenCodex 的真实工程 dogfood：官方 npm 插件、
-独立 home/端口、DSH DeepSeek 凭据和 DSH tools/approval/Security/Journal；不要复用个人 10100 路由。
+先按 doc/milestones/codex.md 继续 Aezy 内置 Node 网关的真实工程 dogfood：固定官方 Codex
+0.149.0、独立 home/鉴权端口、DSH DeepSeek 凭据和 DSH tools/approval/Security/Journal。
+OpenCodex/Bun 依赖和 ocx sync 已删除，不恢复旧网关，不复用个人 10100 路由；旧 binding 保留
+但要求新建 native-gateway Session。传输 usage 与早期 interrupt 已验证，DSH billing 投影仍未完成。
 E2/E3 暂停，不包含 E4。Inspector
 失败只能降低可见性，不得影响 Turn，也不得展示 reasoning、credential、secret prompt 或未脱敏
 tool arguments。`codex-inspired` 在完整 parity gate 前不可点击。不要读取

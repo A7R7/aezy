@@ -7,7 +7,8 @@
 ## 当前产品结果
 
 2026-09-05 路线调整：revision 1 与下述历史证据保持不变，不继续提示词级 Codex loop 复刻。
-优先通过 Aezy-owned OpenCodex 插件将不同模型接入官方 Codex App Server 的真实 agent loop；
+优先通过 Aezy-owned 模型网关将不同模型接入官方 Codex App Server 的真实 agent loop；
+2026-09-06 已从受管 OpenCodex 收敛为 Aezy 内置 Node 网关（见 Codex milestone），不复制提示词；
 实现与非 OpenAI 模型治理闭环证据由 [`codex.md`](codex.md) 维护。这个选择不宣称 E1 parity
 已完成，也不授权开发 DAG、多 runtime、Boards 或 Editor。
 
