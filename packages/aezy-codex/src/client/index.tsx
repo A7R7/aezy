@@ -190,7 +190,7 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
     <div style={{ marginBottom: 22 }}>
       <h2 style={{ fontSize: 20, margin: '0 0 6px' }}>Codex runtime</h2>
       <p style={{ color: palette.muted, margin: 0, lineHeight: 1.55 }}>
-        Aezy owns an isolated official Codex App Server and OpenCodex gateway. DeepSeek uses DSH credentials; personal Codex configuration, OAuth and history are not imported. Restart the Host after changing provider settings or credentials.
+        Aezy owns the model gateway and an isolated official Codex App Server. DeepSeek uses DSH credentials; no OpenCodex process, personal Codex configuration, OAuth or history is imported. Restart the Host after changing provider settings or credentials.
       </p>
     </div>
 
@@ -237,7 +237,7 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
       </div>}
 
       {managed && <div style={{ padding: 16, border: `1px solid ${palette.border}`, borderRadius: 10 }}>
-        <div style={{ fontWeight: 650 }}>Aezy managed OpenCodex {snapshot?.runtime?.gateway?.version}</div>
+        <div style={{ fontWeight: 650 }}>Aezy built-in model gateway · {snapshot?.runtime?.gateway?.version}</div>
         <p style={{ color: palette.muted }}>Credentials: {snapshot?.runtime?.gateway?.credentialSource ?? 'DSH (waiting for gateway)'}</p>
         <div>Available models: {snapshot?.models.map(model => model.displayName).join(' · ') || 'Unavailable'}</div>
         <p style={{ color: palette.muted }}>ChatGPT plan limits do not apply to this provider. This adapter does not yet project Codex token usage into DSH; gateway accounting is separate.</p>

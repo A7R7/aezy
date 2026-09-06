@@ -161,7 +161,7 @@ window.__ModuleLoader__.load({
 							margin: 0,
 							lineHeight: 1.55
 						},
-						children: "Aezy owns an isolated official Codex App Server and OpenCodex gateway. DeepSeek uses DSH credentials; personal Codex configuration, OAuth and history are not imported. Restart the Host after changing provider settings or credentials."
+						children: "Aezy owns the model gateway and an isolated official Codex App Server. DeepSeek uses DSH credentials; no OpenCodex process, personal Codex configuration, OAuth or history is imported. Restart the Host after changing provider settings or credentials."
 					})]
 				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 					style: {
@@ -316,7 +316,7 @@ window.__ModuleLoader__.load({
 							children: [
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									style: { fontWeight: 650 },
-									children: ["Aezy managed OpenCodex ", snapshot?.runtime?.gateway?.version]
+									children: ["Aezy built-in model gateway · ", snapshot?.runtime?.gateway?.version]
 								}),
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
 									style: { color: palette.muted },

@@ -76,7 +76,7 @@ export async function prepareCodexRuntime({ dshHome, gateway, environment = proc
     config.model = gateway.models[0].id
     config.model_providers = {
       [provider]: {
-        name: 'Aezy managed OpenCodex', base_url: gateway.endpoint, wire_api: 'responses',
+        name: 'Aezy built-in model gateway', base_url: gateway.endpoint, wire_api: 'responses',
         env_key: 'AEZY_CODEX_GATEWAY_KEY', requires_openai_auth: false, supports_websockets: false,
         request_max_retries: 0, stream_max_retries: 0,
       },

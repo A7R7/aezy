@@ -129,6 +129,7 @@ async function startHost() {
   }
   assert.equal(snapshot.connection.state, 'connected')
   assert.equal(snapshot.runtime.provider, 'aezy-opencodex')
+  assert.equal(snapshot.runtime.gateway.version, 'aezy-responses-v1')
   assert.equal(snapshot.models.every(item => item.id.startsWith('deepseek/')), true)
   const mux = new URL('/api/remote.mux', baseUrl); mux.protocol = 'ws:'
   socket = new WebSocket(mux, { headers: { Cookie: cookie } })
@@ -239,15 +240,19 @@ try {
   await prompt('Continue our existing task. Use dsh.read on sum.mjs, then dsh.bash to run node --test sum.test.mjs. Do not edit anything. Report that the repaired sum still passes.', 3)
   const afterBinding = JSON.parse(await readFile(bindingFile, 'utf8')).bindings[sessionId]
   assert.deepEqual(afterBinding, beforeBinding, 'continuation must resume the same owned Codex Thread')
+  const gatewayDiagnostics = (await aezy('codex')).gatewayDiagnostics
+  assert.ok(gatewayDiagnostics.usageReported > 0, 'real provider usage must reach the gateway')
+  assert.equal(gatewayDiagnostics.usageUnreported, 0)
   const receipt = {
     timestamp: new Date().toISOString(), sessionId, fixture,
-    versions: { dsh: '0.1.2-rc.1', codex: '0.149.0', opencodex: '2.42.0', bun: '1.4.0' },
+    versions: { dsh: '0.1.2-rc.1', codex: '0.149.0', gateway: 'aezy-responses-v1', opencodex: null, bun: null },
     provider: 'aezy-codex', model, credentialOrigin: `existing DSH credentials (${credentialSource})`,
     runtimeId: restarted.runtime.id, threadId: afterBinding.threadId,
     realDevelopment: { baselineFailed: true, changedFiles: ['sum.mjs'], testsPassed: 1, dshDynamicTools: ['read', 'write', 'bash'] },
     approval: 'allowed-once', networkDenial: true, journal: true, review: review.file.status,
     inspector: { backend: trace.backend, completeness: trace.completeness, spans: trace.spans.length },
     historyPagination: true, restart: { sameRuntime: true, sameThread: true, exactHistory: true, realContinuation: true },
+    gatewayDiagnostics,
     limitations: ['Inspector covers the DSH boundary, not all private Codex loop steps', 'Codex usage projection is not implemented in this adapter', 'same-UID OS process access is not a sandbox boundary'],
   }
   await writeFile(join(alphaDshHome, 'aezy', 'opencodex-proof.json'), `${JSON.stringify(receipt, null, 2)}\n`, { mode: 0o600 })

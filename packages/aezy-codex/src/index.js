@@ -126,6 +126,7 @@ export class CodexAccountBridge {
     return {
       connection,
       runtime: this.runtimeView,
+      gatewayDiagnostics: this.gatewayDiagnostics?.() ?? null,
       account: account ? {
         requiresOpenaiAuth: account.requiresOpenaiAuth ?? null,
         type: account.account?.type ?? null,
@@ -213,6 +214,7 @@ export async function apply(ctx, config = {}) {
     client.cwd = runtime.home
     client.appServerArgs = runtime.appServerArgs
     bridge.runtimeView = runtime.view
+    bridge.gatewayDiagnostics = gateway.diagnostics
     await client.start()
   })
   const adapter = new AezyCodexAdapter({

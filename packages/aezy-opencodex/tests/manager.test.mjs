@@ -3,24 +3,17 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import test from 'node:test'
-import { gatewayConfig, OpenCodexManager } from '../src/manager.js'
+import { OpenCodexManager } from '../src/manager.js'
+import { providerEndpoint } from '../src/gateway.js'
 import { createCatalog, BASE_INSTRUCTIONS } from '../src/catalog.js'
 import * as plugin from '../src/index.js'
 import { privateDirectory } from '@aezy/codex/runtime-instance'
 const { resolveDeepSeek } = plugin
 
-test('managed gateway enables only explicit DeepSeek models and no personal integrations', () => {
-  const config = gatewayConfig({ baseURL: 'https://api.deepseek.com', models: ['deepseek-v4-flash'] })
-  assert.deepEqual(Object.keys(config.providers), ['deepseek'])
-  assert.equal(config.providers.deepseek.apiKey, '${AEZY_OPENCODEX_PROVIDER_API_KEY}')
-  assert.equal(config.providers.deepseek.codexToolMode, 'shell')
-  assert.equal(config.codexAutoStart, false)
-  assert.equal(config.codexShimAutoRestore, false)
-  assert.equal(config.syncResumeHistory, false)
-  assert.equal(config.agentTaskRecovery.enabled, false)
-  assert.deepEqual(config.subagentModels, [])
-  assert.throws(() => gatewayConfig({ baseURL: 'https://key@example.com', models: ['x'] }), /embedded credentials/)
-  assert.throws(() => gatewayConfig({ baseURL: 'https://example.com', models: [] }), /explicit/)
+test('provider endpoint rejects credential-bearing URLs and retains explicit base paths', () => {
+  assert.equal(providerEndpoint('https://api.deepseek.com/'), 'https://api.deepseek.com/chat/completions')
+  assert.equal(providerEndpoint('https://provider.example/v1'), 'https://provider.example/v1/chat/completions')
+  for (const url of ['file:///tmp/foo', 'https://key@example.com', 'https://example.com?key=test']) assert.throws(() => providerEndpoint(url), /invalid_provider_endpoint/)
 })
 
 test('Aezy owns a narrow catalog, with no vendor CLI, prompts or inflated capabilities', () => {
@@ -54,7 +47,7 @@ test('missing credential fails closed before spawning or persisting a configurat
   t.after(() => rm(dshHome, { recursive: true, force: true }))
   const manager = new OpenCodexManager({ dshHome })
   await assert.rejects(manager.start({}), /no personal fallback/)
-  assert.equal(manager.children.size, 0)
+  assert.equal(manager.server, null)
   await assert.rejects(readFile(`${manager.root}/config.json`), { code: 'ENOENT' })
 })
 
@@ -67,7 +60,7 @@ test('a second owner cannot overwrite configuration or remove the first owner lo
   await writeFile(lock, 'existing-owner')
   await assert.rejects(manager.start({ apiKey: 'test' }), { code: 'EEXIST' })
   assert.equal(await readFile(lock, 'utf8'), 'existing-owner')
-  assert.equal(manager.children.size, 0)
+  assert.equal(manager.server, null)
 })
 
 test('actual Cordis service mounts and disposes even when credentials are missing', async () => {

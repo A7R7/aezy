@@ -230,3 +230,39 @@ Cloud/Remote/PR、Side Chat 或 merge-back。
 使用 Aezy 自写的短 coding instructions，不复制 OpenCodex 的 vendor prompt，也不声称提示词
 等价。官方 Codex 0.149.0 实进程读取目录、无 OAuth、双启动身份一致测试通过；六项插件测试通过。
 本步骤仍使用原网关处理模型请求，未提升开发 profile；内置网关与真实开发复验仍 pending。
+
+第二步：新增 Aezy 自写的 Node HTTP/Responses 网关，完全不加载 OpenCodex 或 Bun。目录/指令、
+请求翻译、SSE、取消、鉴权、错误和传输 replay 都在外置插件内；不执行工具，不运行第二层
+Agent，不存会话或响应历史，不复制 DSH 内核。`@aezy/opencodex` 包名与内部 provider ID 暂时保留
+为现有 composition 标识，不代表仍使用 OpenCodex，也没有旧网关 fallback。
+
+- `127.0.0.1` 动态端口始终校验每次启动随机 bearer，拒绝浏览器 Origin；无 admin/global API。
+- 独立 `DSH_HOME/aezy/model-gateway` 只持有 catalog、owner lock 与 32-byte replay key。
+  provider key 仅在 Host 内存中，不写文件、不传给 Codex。旧 OpenCodex home 不读、不改。
+- Responses 仅接受固定 DeepSeek 文本、namespaced function/custom tools 和完整 input replay；
+  image/search/remote compaction/previous_response_id/non-streaming 等未支持路径明确拒绝。
+- SSE 有输入/输出/事件/工具参数上限；整个工具批次完整校验后才发 executable items；断流、
+  不完整 JSON、未声明工具、重复 call ID 不产生可执行输出。length 明示 incomplete。
+- reasoning 使用 AES-256-GCM transport envelope，绑定官方 `thread-id` header 与 model，由 Codex
+  自己持久化；网关没有 replay/history cache。重启复用私有 key，跨 Thread/model 解密失败。
+- HTTP 取消/Host stop 传到上游 AbortSignal；不跟随 provider redirect，不重试、轮换或 fallback。
+- gateway 保留无内容的内存诊断计数，真实 usage 转 Responses、未知 usage 保持 null；本切片
+  尚不将 Codex usage 汇总进 DSH billing。未新增持久 usage store。
+
+真实失败与修复：首个 Codex 请求证明身份字段是 `thread-id`，不是 `session_id`；DeepSeek 工具
+分片可能重复完整函数名，不能直接逐段拼接。修复使用稳定名称/namespace 映射并正确处理重复
+名称，没有放宽 undeclared-tool admission。失败未触发 fallback 或自动重试。
+
+第二步实机签收于 `2026-09-06T08:00:31.603Z`，独立
+`/tmp/aezy-opencodex-e2e-native-imUspG/dsh` / `aezy-native-gateway-proof`，fixture
+`/tmp/aezy-governed-project-G3pjmG`：
+
+- Session `aezy-owned-deepseek-mtpiunx7` / Codex Thread `01a075bb-817f-7e63-8381-e3f76128c4fe`；
+  `deepseek/deepseek-v4-flash`，凭据来自既有 DSH owner，不读 OAuth。
+- 原有真实修复/失败基线→read→approved write→test（1 pass，仅 sum.mjs 改动）、Security deny、
+  Journal/Review、16-span partial Inspector、分页和 Host restart 同 Thread continuation 全通过。
+- restart 后 3 次模型请求全部 completed，3 次有真实 usage、0 次 unknown；无错误或 fallback。
+- 全量本地回归 136 pass / 0 fail / 3 opt-in skipped；3 个官方 Codex 实进程门禁另行通过，含
+  namespaced dynamic tools + encrypted replay + tokenUsage notification、turn/interrupt 传播、双启动。
+
+第三步仍 pending：删除 OpenCodex/Bun 依赖、复验无旧包 profile，再提升正式开发 profile。
