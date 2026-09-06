@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import test from 'node:test'
 import { OpenCodexManager } from '../src/manager.js'
 import { CodexAppServerClient } from '@aezy/codex'
-import { prepareCodexRuntime } from '@aezy/codex/runtime-instance'
+import { bindGatewayLifecycle, prepareCodexRuntime } from '@aezy/codex/runtime-instance'
 
 const sse = chunks => new Response(chunks.map(chunk => `data: ${JSON.stringify(chunk)}\n\n`).join('') + 'data: [DONE]\n\n', { headers: { 'content-type': 'text/event-stream' } })
 const chunk = (delta, finish_reason = null) => ({ choices: [{ index: 0, delta, finish_reason }] })
@@ -13,7 +13,7 @@ test('official Codex turn/interrupt aborts the active gateway provider request',
 }, async t => {
   const root = await mkdtemp('/tmp/aezy-native-cancel-contract-')
   t.after(() => rm(root, { recursive: true, force: true }))
-  let providerSignal, client
+  let providerSignal, client, unbind
   const manager = new OpenCodexManager({ dshHome: root, gatewayOptions: { fetchImpl: async (_url, init) => {
     providerSignal = init.signal
     return new Response(new ReadableStream({ start(controller) {
@@ -25,6 +25,7 @@ test('official Codex turn/interrupt aborts the active gateway provider request',
     const gateway = await manager.start({ baseURL: 'https://provider.invalid', models: ['deepseek-v4-flash'], apiKey: 'test-only', credentialRef: 'TEST', credentialSource: 'test' })
     const runtime = await prepareCodexRuntime({ dshHome: root, gateway })
     client = new CodexAppServerClient({ env: runtime.env, cwd: root, appServerArgs: runtime.appServerArgs })
+    unbind = bindGatewayLifecycle(client, gateway)
     await client.start()
     const notifications = []
     client.on('notification', message => notifications.push(message))
@@ -34,10 +35,10 @@ test('official Codex turn/interrupt aborts the active gateway provider request',
     assert.ok(providerSignal)
     await client.request('turn/interrupt', { threadId: thread.id, turnId: turn.id })
     for (let i = 0; i < 500 && (!providerSignal.aborted || !notifications.some(row => row.method === 'turn/completed')); i++) await new Promise(resolve => setTimeout(resolve, 10))
-    assert.equal(providerSignal.aborted, true)
+    assert.equal(providerSignal.aborted, true, JSON.stringify({ gateway: manager.server.status(), events: notifications.map(row => ({ method: row.method, status: row.params?.turn?.status })) }))
     assert.equal(notifications.find(row => row.method === 'turn/completed')?.params.turn.status, 'interrupted')
     assert.equal(manager.server.status().completed, 0)
-  } finally { await client?.close(); await manager.stop() }
+  } finally { await client?.close(); unbind?.(); await manager.stop() }
 })
 
 test('official Codex performs namespaced dynamic-tool roundtrip through the native Responses gateway', {

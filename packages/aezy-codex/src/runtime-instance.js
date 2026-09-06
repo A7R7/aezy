@@ -24,6 +24,25 @@ export function isolatedChildEnv(source = process.env) {
   return env
 }
 
+// Public App Server terminal facts also cancel owned transport. An early
+// interrupt can finish the Turn before Codex closes its idle HTTP response.
+// This keeps no Turn state and exposes no HTTP control/cancel endpoint.
+export function bindGatewayLifecycle(client, gateway) {
+  const notification = message => {
+    if (message.method === 'turn/completed' && ['interrupted', 'failed'].includes(message.params?.turn?.status)) {
+      gateway.cancelThread(message.params.threadId)
+    }
+  }
+  const status = value => { if (value.state !== 'connected' && value.state !== 'starting') gateway.cancelAll() }
+  client.on('notification', notification)
+  client.on('status', status)
+  return () => {
+    client.off('notification', notification)
+    client.off('status', status)
+    gateway.cancelAll()
+  }
+}
+
 export async function privateDirectory(path) {
   if (!isAbsolute(path) || resolve(path) !== path) throw new Error('Runtime state directory must be absolute and normalized')
   const missing = []

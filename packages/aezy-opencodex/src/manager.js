@@ -57,6 +57,8 @@ export class OpenCodexManager {
         models: catalog.models.map(row => ({ id: row.slug })),
         routeId: createHash('sha256').update(JSON.stringify({ root: this.root, baseURL, credentialRef, models, version: GATEWAY_VERSION, catalog: CATALOG_REVISION })).digest('hex'),
         diagnostics: () => this.server.status(),
+        cancelThread: threadId => this.server.cancelThread(threadId),
+        cancelAll: () => this.server.cancelAll(),
       }
     } catch (error) { await this.stop(); this.state = 'failed'; throw error }
   }

@@ -1,8 +1,28 @@
 import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
 import { mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import test from 'node:test'
-import { isolatedChildEnv, prepareCodexRuntime, privateDirectory } from '../src/runtime-instance.js'
+import { bindGatewayLifecycle, isolatedChildEnv, prepareCodexRuntime, privateDirectory } from '../src/runtime-instance.js'
+
+test('gateway transport follows only official interrupted/failed Turn and process lifecycle facts', () => {
+  const client = new EventEmitter(), cancelled = []
+  let all = 0
+  const unbind = bindGatewayLifecycle(client, { cancelThread: id => cancelled.push(id), cancelAll: () => all++ })
+  for (const status of ['inProgress', 'completed', 'interrupted', 'failed']) {
+    client.emit('notification', { method: 'turn/completed', params: { threadId: status, turn: { status } } })
+  }
+  client.emit('notification', { method: 'unrelated', params: { threadId: 'other', turn: { status: 'interrupted' } } })
+  assert.deepEqual(cancelled, ['interrupted', 'failed'])
+  for (const state of ['starting', 'connected']) client.emit('status', { state })
+  assert.equal(all, 0)
+  client.emit('status', { state: 'connection-failed' })
+  assert.equal(all, 1)
+  unbind()
+  assert.equal(all, 2)
+  assert.equal(client.listenerCount('notification'), 0)
+  assert.equal(client.listenerCount('status'), 0)
+})
 
 test('child environment drops personal routes and credentials but preserves explicit network policy', () => {
   const env = isolatedChildEnv({ PATH: '/usr/bin', HOME: '/personal', CODEX_HOME: '/personal/codex',

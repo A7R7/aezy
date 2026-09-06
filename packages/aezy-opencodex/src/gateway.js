@@ -37,7 +37,7 @@ export function providerEndpoint(baseURL) {
 
 export async function startGateway({ baseURL, models, apiKey, dataKey, replayKey,
   fetchImpl = fetch, timeoutMs = 120000, maxConcurrent = 8, observeRequest }) {
-  const endpoint = providerEndpoint(baseURL), active = new Set()
+  const endpoint = providerEndpoint(baseURL), active = new Map()
   const counts = { started: 0, completed: 0, failed: 0, cancelled: 0, usageReported: 0, usageUnreported: 0 }
   let stopping = false
   const server = createServer(async (req, res) => {
@@ -47,7 +47,7 @@ export async function startGateway({ baseURL, models, apiKey, dataKey, replayKey
     if (req.url !== '/v1/responses' || req.method !== 'POST') { json(res, 404, { error: { code: 'unsupported_gateway_endpoint' } }); return }
     if (stopping || active.size >= maxConcurrent) { json(res, 503, { error: { code: 'gateway_busy' } }); return }
     const controller = new AbortController()
-    active.add(controller)
+    active.set(controller, null)
     let terminal = false, upstream, timer
     const abort = () => { if (!terminal) controller.abort(new Error('Codex connection closed')) }
     res.once('close', abort)
@@ -60,6 +60,7 @@ export async function startGateway({ baseURL, models, apiKey, dataKey, replayKey
       const scope = req.headers['thread-id']
       observeRequest?.({ headers: Object.keys(req.headers), scope, body }) // Explicit test seam; omitted in production.
       if (typeof scope !== 'string' || !/^[A-Za-z0-9_.:-]{1,160}$/.test(scope)) fail('thread_scope_required')
+      active.set(controller, scope)
       const translated = translateRequest(body, { models, key: replayKey, scope })
       controller.signal.throwIfAborted()
       counts.started++
@@ -108,10 +109,17 @@ export async function startGateway({ baseURL, models, apiKey, dataKey, replayKey
   return {
     endpoint: `http://127.0.0.1:${server.address().port}/v1`,
     status: () => ({ active: active.size, ...counts }),
+    cancelThread(threadId) {
+      if (typeof threadId !== 'string' || !threadId) return
+      for (const [controller, scope] of active) if (scope === threadId) controller.abort(new Error('Codex Turn interrupted'))
+    },
+    cancelAll() {
+      for (const controller of active.keys()) controller.abort(new Error('Codex connection unavailable'))
+    },
     async stop() {
       if (stopping) return
       stopping = true
-      for (const controller of active) controller.abort(new Error('Aezy Host shutdown'))
+      for (const controller of active.keys()) controller.abort(new Error('Aezy Host shutdown'))
       await new Promise(resolve => { server.close(resolve); server.closeAllConnections() })
     },
   }

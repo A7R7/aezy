@@ -10,7 +10,7 @@ import { join } from 'node:path'
 import { CodexAppServerClient } from './app-server-client.js'
 import { CodexBindingStore } from './binding-store.js'
 import { AezyCodexAdapter, CODEX_PROVIDER } from './dsh-adapter.js'
-import { prepareCodexRuntime } from './runtime-instance.js'
+import { bindGatewayLifecycle, prepareCodexRuntime } from './runtime-instance.js'
 
 export { CodexBindingStore } from './binding-store.js'
 export { AezyCodexAdapter, CODEX_PROVIDER } from './dsh-adapter.js'
@@ -206,6 +206,7 @@ export async function apply(ctx, config = {}) {
   const bridge = new CodexAccountBridge(client, { owner: 'aezy', provider: runtime.provider })
   const bindings = new CodexBindingStore(config.bindingFile ?? join(home, 'aezy', 'codex-bindings.json'))
   let disposed = false
+  let unbindGateway
   const ready = ctx.aezyOpenCodex.ready.then(async gateway => {
     if (disposed) throw new Error('Aezy Codex was disposed during gateway startup')
     Object.assign(runtime, await prepareCodexRuntime({ dshHome: home, gateway }))
@@ -215,6 +216,7 @@ export async function apply(ctx, config = {}) {
     client.appServerArgs = runtime.appServerArgs
     bridge.runtimeView = runtime.view
     bridge.gatewayDiagnostics = gateway.diagnostics
+    unbindGateway = bindGatewayLifecycle(client, gateway)
     await client.start()
   })
   const adapter = new AezyCodexAdapter({
@@ -240,6 +242,7 @@ export async function apply(ctx, config = {}) {
     return async () => {
       disposed = true
       await client.close()
+      unbindGateway?.()
     }
   }, 'aezy-codex: official app-server lifecycle')
   ctx.effect(() => {
