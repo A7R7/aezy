@@ -26,7 +26,30 @@
 - id: llm-pi-ai
   config:
     providers:
-      openai-codex: {}
+      openai-codex:
+        # rc.1's catalog predates Astra. Public models configuration keeps the
+        # seven installed models (inheriting their metadata) and adds Astra
+        # without replacing the provider-owned Responses/OAuth implementation.
+        # Source: https://developers.openai.com/api/docs/models/gpt-6-astra
+        models:
+          - id: gpt-5.3-codex-spark
+          - id: gpt-5.4
+          - id: gpt-5.4-mini
+          - id: gpt-5.5
+          - id: gpt-5.6-luna
+          - id: gpt-5.6-sol
+          - id: gpt-5.6-terra
+          - id: gpt-6-astra
+            name: GPT-6 Astra
+            contextWindow: 1050000
+            maxTokens: 128000
+            input: [text, image]
+            reasoningEfforts:
+              low: low
+              medium: medium
+              high: high
+              xhigh: xhigh
+              max: max
 
 # llm-pi-ai already registers its provider-owned login flows through this
 # public seam. The alpha Web bundle does not mount the seam itself yet, so the

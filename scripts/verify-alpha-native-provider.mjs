@@ -59,7 +59,9 @@ try {
   // Match the product's load order: DSH base mounts llm-pi-ai first and the
   // Aezy overlay supplies authorization later. ctx.inject() must connect them
   // without Aezy re-registering or copying the provider's OAuth flow.
-  await ctx.plugin(LlmPiAi, { providers: { 'openai-codex': {} } })
+  const { parse } = await import(pathToFileURL(requireFromDsh.resolve('yaml')).href)
+  const patch = parse(await readFile(new URL('../packages/aezy-base/cordis.patch.yml', import.meta.url), 'utf8'))
+  await ctx.plugin(LlmPiAi, patch.find(row => row.id === 'llm-pi-ai').config)
   await ctx.plugin(Authorization)
 
   const providers = ctx.llm.listProviders()
@@ -67,6 +69,11 @@ try {
   const models = await ctx.llm.listModels('openai-codex')
   assert.ok(models.length > 0, 'openai-codex catalog is empty')
   assert.ok(models.some(model => model.id === 'gpt-5.6-sol'), 'pinned catalog has no gpt-5.6-sol')
+  assert.equal(models.length, 8)
+  const astra = await ctx.llm.resolveModelInfo('openai-codex', 'gpt-6-astra')
+  assert.equal(astra.name, 'GPT-6 Astra')
+  assert.deepEqual(astra.reasoning.efforts.map(effort => effort.id), ['low', 'medium', 'high', 'xhigh', 'max'])
+  assert.ok(astra.reasoning.defaultEffort === undefined || astra.reasoning.efforts.some(effort => effort.id === astra.reasoning.defaultEffort))
 
   const key = LlmPiAi.recordKeyFor('openai-codex')
   const flow = ctx.authorization.describe(key)

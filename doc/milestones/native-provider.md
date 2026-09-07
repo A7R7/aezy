@@ -5,6 +5,19 @@
 > Runtime：DSH `dsh-v0.1.2-rc.1` / `a66e4702047846cdaa10c66c9d3df3951f5ea70d`，
 > `~/.aezy-alpha/dsh`，profile `aezy-alpha`，Host `127.0.0.1:3091`
 
+## 2026-09-07：Astra 目录补全
+
+固定 DSH rc.1 的 pi-ai 目录只有七个旧模型。Aezy 使用公开 `providers.openai-codex.models`
+配置保留全部七项并添加 `gpt-6-astra`，没有修改或升级 DSH、pi-ai 或 OAuth owner。
+按 [官方 Astra 文档](https://developers.openai.com/api/docs/models/gpt-6-astra) 声明
+1,050,000 context、128,000 output、text/image，以及 low/medium/high/xhigh/max；不提供
+Off/minimal。模型调用继续走原有 provider-owned Responses，不改为 Chat Completions。
+
+`scripts/verify-alpha-native-provider.mjs` 从实际 Aezy YAML 加载配置，在全新空凭据目录中
+经真实 DSH `listModels` / `resolveModelInfo` 验证八模型、Astra efforts、原 authorization key
+与未发起 OAuth。这是目录/配置验证，不是 Astra 账户可用性或真实付费 Turn 签收。
+Codex App Server 的模型目录是另一 owner，不用这份 YAML 伪造 App Server entitlement。
+
 ## 目标与边界
 
 本切片验证“OpenAI/Codex 模型”和“Codex App Server agent loop”可以独立存在。Aezy 不增加
