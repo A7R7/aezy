@@ -1,5 +1,5 @@
 import { createServer } from 'node:http'
-import { timingSafeEqual } from 'node:crypto'
+import { timingSafeEqual, randomUUID } from 'node:crypto'
 import { once } from 'node:events'
 import { GatewayError, fail, translateRequest } from './protocol.js'
 import { streamResponse } from './stream.js'
@@ -36,7 +36,7 @@ export function providerEndpoint(baseURL) {
 }
 
 export async function startGateway({ baseURL, models, apiKey, dataKey, replayKey,
-  fetchImpl = fetch, timeoutMs = 120000, maxConcurrent = 8, observeRequest }) {
+  fetchImpl = fetch, timeoutMs = 120000, maxConcurrent = 8, observeRequest, observation }) {
   const endpoint = providerEndpoint(baseURL), active = new Map()
   const counts = { started: 0, completed: 0, failed: 0, cancelled: 0, usageReported: 0, usageUnreported: 0 }
   let stopping = false
@@ -49,6 +49,8 @@ export async function startGateway({ baseURL, models, apiKey, dataKey, replayKey
     const controller = new AbortController()
     active.set(controller, null)
     let terminal = false, upstream, timer
+    const observed = { requestId: randomUUID(), timestamp: Date.now(), surface: 'codex-gateway', surfaceLabel: 'Codex gateway', provider: 'deepseek', unit: 'request', status: 500 }
+    const safeObserve = fn => { try { fn(observation) } catch { /* diagnostics never controls transport */ } }
     const abort = () => { if (!terminal) controller.abort(new Error('Codex connection closed')) }
     res.once('close', abort)
     req.once('aborted', abort)
@@ -62,8 +64,14 @@ export async function startGateway({ baseURL, models, apiKey, dataKey, replayKey
       if (typeof scope !== 'string' || !/^[A-Za-z0-9_.:-]{1,160}$/.test(scope)) fail('thread_scope_required')
       active.set(controller, scope)
       const translated = translateRequest(body, { models, key: replayKey, scope })
+      Object.assign(observed, { model: translated.model, requestModel: translated.request.model, conversationId: scope, requestedEffort: body.reasoning?.effort })
+      safeObserve(o => {
+        o?.inbound({ surface: observed.surface, model: observed.model, effort: observed.requestedEffort, hasSystem: !!body.instructions })
+        o?.debug('injection', { event: 'responses_translation', requestId: observed.requestId, surface: observed.surface, inputItems: Array.isArray(body.input) ? body.input.length : 1, tools: translated.request.tools?.length })
+      })
       controller.signal.throwIfAborted()
       counts.started++
+      observed.attemptObserved = true
       upstream = await fetchImpl(endpoint, {
         method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
         body: JSON.stringify(translated.request), signal: controller.signal, redirect: 'error',
@@ -77,15 +85,22 @@ export async function startGateway({ baseURL, models, apiKey, dataKey, replayKey
       const result = await streamResponse(upstream, translated, {
         key: replayKey, signal: controller.signal,
         emit: async event => {
+          if (observed.firstOutputMs === undefined && /delta$/.test(event.type)) observed.firstOutputMs = Date.now() - observed.timestamp
           controller.signal.throwIfAborted()
           if (!res.write(`event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`)) await once(res, 'drain', { signal: controller.signal })
         },
-        onUsage: value => { counts[value ? 'usageReported' : 'usageUnreported']++ },
+        onUsage: value => {
+          counts[value ? 'usageReported' : 'usageUnreported']++
+          if (value) observed.usage = { inputTokens: value.input_tokens, outputTokens: value.output_tokens, totalTokens: value.total_tokens, cachedInputTokens: value.input_tokens_details?.cached_tokens, reasoningOutputTokens: value.output_tokens_details?.reasoning_tokens }
+        },
       })
       counts[result.status === 'completed' ? 'completed' : 'failed']++
+      observed.status = result.status === 'completed' ? 200 : 500
       terminal = true
       res.end()
     } catch (error) {
+      observed.status = controller.signal.aborted ? 499 : error instanceof GatewayError ? error.status : 502
+      observed.errorCode = controller.signal.aborted ? 'aborted' : error instanceof GatewayError ? error.code : 'gateway_transport_failed'
       counts[controller.signal.aborted ? 'cancelled' : 'failed']++
       if (!res.destroyed) {
         if (!res.headersSent) json(res, error instanceof GatewayError ? error.status : 502, {
@@ -94,6 +109,7 @@ export async function startGateway({ baseURL, models, apiKey, dataKey, replayKey
         else res.end()
       }
     } finally {
+      safeObserve(o => o?.record({ ...observed, durationMs: Date.now() - observed.timestamp }))
       terminal = true
       clearTimeout(timer)
       controller.abort()

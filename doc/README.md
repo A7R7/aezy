@@ -24,6 +24,7 @@
 | Codex-backed self-development / Aezy 内置网关与个人配置隔离 | [`milestones/codex.md`](milestones/codex.md) |
 | Alpha DSH-native Codex provider spike | [`milestones/native-provider.md`](milestones/native-provider.md) |
 | Agent modes、模型/推理选择器 | [`milestones/mode-presets.md`](milestones/mode-presets.md) |
+| Logs & Debug / Usage | [`milestones/observability.md`](milestones/observability.md) |
 | E0 / CI.0 read-only Loop Inspector | [`milestones/loop-inspector.md`](milestones/loop-inspector.md) |
 | E1 internal Codex-inspired Agent Loop | [`milestones/codex-inspired.md`](milestones/codex-inspired.md) |
 

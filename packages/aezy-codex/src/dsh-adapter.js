@@ -4,6 +4,7 @@ import {
   createToolResultMessage,
 } from '@deepseek-ai/dsh-llm'
 import { codexModelInfo, readCodexModels } from './model-catalog.js'
+import { observeOfficialTurn } from './observability.js'
 
 export const CODEX_PROVIDER = 'aezy-codex'
 const MAX_PROJECTED_TEXT_BYTES = 512 * 1024
@@ -431,9 +432,11 @@ export class AezyCodexAdapter extends LlmAdapter {
     const threadId = await this.ensureThread(sessionId, cwd, options.model, permissions, dynamicTools)
     const boundary = currentBoundary(agent.session)
     const queue = new ActivityQueue(options.signal)
+    const observation = observeOfficialTurn(this.observation, { provider: this.runtime?.provider, model: options.model, conversationId: sessionId, effort: options.reasoningEffort })
+    let observedStatus = 499
     const listener = message => {
       const owner = message.params?.threadId ?? message.params?.thread?.id
-      if (owner === threadId) queue.push(message)
+      if (owner === threadId) { observation.notification(message); queue.push(message) }
     }
     this.client.on('notification', listener)
     const active = {
@@ -484,6 +487,7 @@ export class AezyCodexAdapter extends LlmAdapter {
             for (const chunk of this.completeItem(active, state, item)) yield chunk
           }
           completed = params.turn
+          observedStatus = completed.status === 'failed' ? 500 : completed.status === 'interrupted' ? 499 : 200
         }
       }
       for (const block of state.blocks.values()) {
@@ -497,6 +501,7 @@ export class AezyCodexAdapter extends LlmAdapter {
         yield { type: 'finish', reason: { kind: 'stop' }, replayState: { threadId, turnId } }
       }
     } catch (error) {
+      observedStatus = options.signal?.aborted ? 499 : 500
       if (options.signal?.aborted) {
         if (turnId !== null) await this.client.request('turn/interrupt', { threadId, turnId }).catch(() => {})
         yield { type: 'finish', reason: { kind: 'aborted', failure: { message: 'Codex turn cancelled', code: 'ABORTED' } } }
@@ -504,6 +509,7 @@ export class AezyCodexAdapter extends LlmAdapter {
       }
       throw error
     } finally {
+      observation.finish(observedStatus)
       if (this.activeTurns.get(threadId)?.token === active.token) this.activeTurns.delete(threadId)
       this.client.off('notification', listener)
       queue.finish(new Error('Codex turn stream disposed'))
@@ -693,8 +699,10 @@ export class AezyCodexAdapter extends LlmAdapter {
     this.assertThreadRoute(thread)
     const threadId = thread.thread?.id
     const queue = new ActivityQueue(options.signal)
+    const observation = observeOfficialTurn(this.observation, { provider: this.runtime?.provider, model: options.model, conversationId: sessionId, effort: options.reasoningEffort })
+    let observedStatus = 499
     const listener = message => {
-      if ((message.params?.threadId ?? message.params?.thread?.id) === threadId) queue.push(message)
+      if ((message.params?.threadId ?? message.params?.thread?.id) === threadId) { observation.notification(message); queue.push(message) }
     }
     this.client.on('notification', listener)
     let turnId = null
@@ -723,10 +731,15 @@ export class AezyCodexAdapter extends LlmAdapter {
           for (const chunk of completeText(state, params.item, 'text', params.item.text ?? '')) yield chunk
         } else if (message.method === 'turn/completed' && params.turn?.id === turnId) completed = params.turn
       }
+      observedStatus = completed.status === 'failed' ? 500 : completed.status === 'interrupted' ? 499 : 200
       yield completed.status === 'failed'
         ? { type: 'finish', reason: { kind: 'error', failure: { message: completed.error?.message ?? 'Codex auxiliary turn failed', code: 'CODEX_AUXILIARY_FAILED' } } }
         : { type: 'finish', reason: { kind: 'stop' } }
+    } catch (error) {
+      observedStatus = options.signal?.aborted ? 499 : 500
+      throw error
     } finally {
+      observation.finish(observedStatus)
       this.client.off('notification', listener)
       queue.finish(new Error('Codex auxiliary stream disposed'))
       if (threadId) await this.client.request('thread/unsubscribe', { threadId }).catch(() => {})

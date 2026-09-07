@@ -205,6 +205,13 @@ export function createCodexHandler(bridge, channels = {}) {
 }
 
 export async function apply(ctx, config = {}) {
+  let observer
+  ctx.inject(['aezyObservability'], observing => {
+    observer = observing.aezyObservability
+    observer.registerSurface('codex-app-server', 'Codex App Server')
+    observing.effect(() => () => { observer = undefined })
+  })
+  const observation = Object.fromEntries(['registerSurface', 'record'].map(method => [method, (...args) => observer?.[method](...args)]))
   const home = process.env.DSH_HOME ?? join(homedir(), '.aezy', 'dsh')
   const runtime = { provider: 'aezy-opencodex' }
   const client = new CodexAppServerClient()
@@ -252,6 +259,7 @@ export async function apply(ctx, config = {}) {
     allowedAgentPresets: Array.isArray(config.allowedAgentPresets) ? config.allowedAgentPresets : [],
     legacyAgentPresets: Array.isArray(config.legacyAgentPresets) ? config.legacyAgentPresets : [],
   })
+  openaiAdapter.observation = observation
   const adapter = new CodexModelRoutes({ gateway: gatewayAdapter, openai: openaiAdapter })
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',

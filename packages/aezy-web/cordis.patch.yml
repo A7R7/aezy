@@ -72,6 +72,9 @@
 # Official Codex App Server process/account projection plus a DSH LLM adapter.
 # DSH retains Session/Turn/approval truth; Codex retains its Thread and agent loop.
 - insert:
+    - id: aezy-observability
+      name: '@aezy/observability'
+
     - id: aezy-opencodex
       name: '@aezy/opencodex'
 

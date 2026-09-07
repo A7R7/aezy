@@ -21,6 +21,7 @@
     "@aezy/brand": "workspace:*",
     "@aezy/inspector": "workspace:*",
     "@aezy/layout": "workspace:*",
+    "@aezy/observability": "workspace:*",
     "@aezy/project": "workspace:*",
     "@aezy/security": "workspace:*"
   }

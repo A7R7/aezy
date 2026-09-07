@@ -17,7 +17,7 @@ adapter 提供，并尽量复用 DSH 的 Session、Agent、PTY、Subagent、appr
 `~/.aezy-alpha/dsh/`，profile 为 `aezy-alpha`；当前开发线不承诺兼容 rc.2 runtime。
 
 rc.1 已作为 immutable GitHub tag/release 和完整官方 npm family 发布。selector 精确安装并逐包
-校验 242 个 `0.1.2-rc.1` public DSH packages 的 SHA-512 integrity，只把 12 个 Aezy 外置包作为
+校验 242 个 `0.1.2-rc.1` public DSH packages 的 SHA-512 integrity，只把 13 个 Aezy 外置包作为
 本地 tarball；不消费源码 release artifacts，也不建立长期双 runtime compatibility layer。
 alpha.4 → rc.1 迁移先在独立 `/tmp` DSH_HOME/profile/3395 验证，再提升 `~/.aezy-alpha/dsh` 的 `aezy-alpha`
 profile；credentials、JSONL Sessions 与其他 DSH_HOME 状态保留。
@@ -46,6 +46,9 @@ reference/runtime 分离状态由 `compatibility/dsh.json` 记录。完整影响
   旧包名只是 composition 标识；当前支持 Node 24 / Linux/WSL x64。
 - `packages/aezy-mode/`：alpha-only 的原生 preset 装配、Codex system preset overlay、
   分组运行方式、统一模型身份/兼容 route 投影与 Host provider fence；不拥有 Agent/Session/tool loop。
+- `packages/aezy-observability/`：Settings 上方的 Logs & Debug / Usage；限定移植 OpenCodex
+  MIT UI，通过 DSH public hooks 和现有网关/App Server 事实展示请求、诊断与用量，不连接
+  个人 OpenCodex。动态 surface、隐私化有界存储；不另建 billing/usage/agent 内核。
 - `packages/aezy-inspector/`：从权威 durable Session events 纯投影 `LoopTrace`，提供 Session
   header、revision 3 双 backend full logic graph（owner lanes、可选择 guard/source）与独立
   evidence timeline；不拥有 loop、history、usage 或控制状态。
@@ -88,12 +91,16 @@ pnpm run alpha:web -- --host 127.0.0.1 --port 3091 --no-open
 ```
 
 selector 会先校验 242-package 官方 public npm family manifest，再精确安装同版 registry closure并逐包核对
-profile lock 的 SHA-512 integrity；只有 12 个 Aezy 外置包使用本地 pack/override。只有依赖安装、
+profile lock 的 SHA-512 integrity；只有 13 个 Aezy 外置包使用本地 pack/override。只有依赖安装、
 受审 native scripts、完整 family 与 alpha CLI 版本验证全部成功才写 completion marker；本分支的
 `profile:sync`/`profile:dump`/`aezy:web`
 直接指向该 alpha profile，`alpha:*` 只是等价的显式别名。
 
 ## 独立 Codex / Aezy 内置模型网关
+
+Logs & Debug / Usage 新切片已通过隔离 profile 验证，代码提供 Settings 上方入口；
+**现有 3090 部署仍等待本次服务重启授权，尚未同步**。动态 surfaces、用量覆盖、隐私边界与
+验证/部署门槛见 [`observability milestone`](doc/milestones/observability.md)。
 
 2026-09-08：legacy `aezy` 模式已退役，运行方式只保留四个 DSH preset 与 Codex App Server。
 封存的 codex-inspired 不再有活动测试 Session 或正式 profile dogfood 入口。相关旧 Session

@@ -79,6 +79,7 @@ publication gate 与路线影响见
 | Multimodal attachment / request projection | DSH owner | 消费 normalized attachment、request variant、route offload 与 provider transport | 自建 image encoder/cache、provider Files index 或 text-only history rewrite |
 | Activity / Status / Usage / Notifications | 原实验废弃；未来拆入 Traffic/Task Board | 需要时投影各 runtime 的权威事件与 usage | 继续旧 Activity 提交；用小状态页代替完整 Board |
 | Loop Inspector | Aezy 只读 observability layer；backend/DSH events 是 truth | static backend blueprint + runtime overlay、provenance、evidence timeline、restart rebuild | 驱动 loop；复制 event/usage store；展示 reasoning/secret/raw arguments |
+| Logs & Debug / Usage | Aezy UI + owner-reported request/usage projection | 有界脱敏诊断、动态 surfaces、模型/provider 聚合、明确估价与缺失覆盖 | 复制 billing/usage 内核；导入个人日志；从 UI 接管 routing/retry/agent loop |
 | Custom Agent Workflow Editor | Aezy macro workflow 产品面 + DSH/backend runtime owner | immutable declarative definition、validator/capability resolver、preset/workflow compiler | 编辑或复制 model→tool→approval→result micro-loop；执行任意代码；扩大权限 |
 | ChatGPT Auth / Codex runtime | Codex `app-server` owner + Aezy 外置 adapter | 发起 managed browser/device login；投影 account/plan/rate/usage；映射 thread/turn/approval stream | 读取 OAuth token；自写 refresh/credential store；假定 Pro 是通用 API key |
 | Codex-inspired DSH backend | DSH Session/provider/tool/approval owner + Aezy adapter | 在同一 runtime contract 后增加可替换 backend，并复用 DSH 事实 | 为追求 Codex 外观复制 Session/Subagent/Task/PTY/compaction 内核 |
@@ -309,6 +310,11 @@ OAuth/history，也不兼容旧 personal/OpenCodex Thread binding；保留旧 bi
 网关 Session。保留的旧目录只是历史数据，不是第二条 runtime 路径。
 
 ### 7. 暂缓产品面
+
+2026-09-08 单独授权的 Logs & Debug / Usage 是有界观测切片，界面参考固定 OpenCodex
+v2.33.0，数据只消费 Aezy/DSH/Codex owner 事实。它不恢复旧 Activity dashboard，不代表
+Traffic Board、账户池、调度或 quota 控制已经立项。详细状态见
+[`observability.md`](../milestones/observability.md)。
 
 - Traffic Board：未来按统一 provider proxy/control plane 立项，覆盖 provider/model/account pool、
   routing、request logs、quota/usage 与控制；

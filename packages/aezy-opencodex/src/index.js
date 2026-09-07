@@ -21,7 +21,14 @@ export async function resolveDeepSeek(ctx) {
 }
 
 export function apply(ctx) {
-  const manager = new OpenCodexManager({ dshHome: process.env.DSH_HOME ?? join(homedir(), '.aezy', 'dsh') })
+  let observer
+  ctx.inject(['aezyObservability'], observing => {
+    observer = observing.aezyObservability
+    observer.registerSurface('codex-gateway', 'Codex gateway')
+    observing.effect(() => () => { observer = undefined })
+  })
+  const observation = Object.fromEntries(['record', 'inbound', 'debug'].map(method => [method, (...args) => observer?.[method](...args)]))
+  const manager = new OpenCodexManager({ dshHome: process.env.DSH_HOME ?? join(homedir(), '.aezy', 'dsh'), gatewayOptions: { observation } })
   const ready = resolveDeepSeek(ctx).then(connection => manager.start(connection))
   // A missing key must not take down native DSH modes. The dependent Codex
   // adapter stays unavailable and reports this error, without personal fallback.

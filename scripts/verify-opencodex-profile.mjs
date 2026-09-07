@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { alphaDshHome, alphaProfileName, runAlphaDsh } from './lib/alpha-runtime.mjs'
@@ -91,6 +92,7 @@ try {
     retirement = { presets, sessions: sessions.length, retiredSessionsAbsent: true }
   }
   let astraTurn = null
+  let observations = null
   if (process.env.AEZY_ASTRA_REAL_PROOF === '1') {
     assert.ok(openai.account.type, 'Aezy GPT must already be logged in; this proof does not import credentials')
     let sequence = 0
@@ -104,13 +106,23 @@ try {
       return envelope.result.value
     }
     astraTurn = await verifyAstraSelectionTurn({ rpc, catalog: catalogEnvelope.result.value })
-    if (process.env.AEZY_ASTRA_PROOF_RECEIPT) await writeFile(process.env.AEZY_ASTRA_PROOF_RECEIPT, `${JSON.stringify(astraTurn, null, 2)}\n`, { mode: 0o600 })
+    if (process.env.AEZY_OBSERVABILITY_PROOF === '1') {
+      const logs = await (await fetch(`${base}/aezy/observability/api/logs`, { headers: { Cookie: cookie, 'X-Aezy-Client': 'web' } })).json()
+      const conversation = createHash('sha256').update(astraTurn.sessionId).digest('hex').slice(0, 24)
+      const rows = logs.logs.filter(row => row.surface === 'codex-app-server' && row.model === 'gpt-6-astra' && row.conversationId === conversation)
+      assert.ok(rows.some(row => row.unit === 'usage-notification' && row.usage?.totalTokens > 0), 'Astra must project real official usage notifications')
+      const usage = await (await fetch(`${base}/aezy/observability/api/usage?surface=codex-app-server`, { headers: { Cookie: cookie, 'X-Aezy-Client': 'web' } })).json()
+      assert.ok(usage.summary.measuredRequests > 0)
+      observations = { realAstraUsage: true, rows: rows.map(row => ({ model: row.model, unit: row.unit, usage: row.usage })), summary: usage.summary }
+      await rpc('workspace/archiveSession', { request: { sessionId: astraTurn.sessionId } })
+    }
+    if (process.env.AEZY_ASTRA_PROOF_RECEIPT) await writeFile(process.env.AEZY_ASTRA_PROOF_RECEIPT, `${JSON.stringify({ ...astraTurn, observations }, null, 2)}\n`, { mode: 0o600 })
   }
   const after = await stat(credentialFile).catch(() => null)
   assert.equal(after?.mtimeMs, before?.mtimeMs, 'smoke must not modify the DSH credential document')
   console.log(JSON.stringify({ profile: alphaProfileName, dshHome: alphaDshHome, host: base, connection: result.connection.state, runtime: result.runtime, models: result.models.map(row => row.id),
     openai: { connection: openai.connection.state, runtime: openai.runtime, accountConfigured: Boolean(openai.account.type), models: openai.models.map(row => row.id) },
-    nativeModels, codexModels, credentialFileUnchanged: true, web: true, astraTurn, retirement,
+    nativeModels, codexModels, credentialFileUnchanged: true, web: true, astraTurn, retirement, observations,
     ...(astraTurn ? { paidModelTurn: true } : { paidModelCalls: 0 }) }, null, 2))
 } finally {
   if (child.exitCode === null && child.signalCode === null) {

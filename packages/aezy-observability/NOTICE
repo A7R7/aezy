@@ -1,0 +1,6 @@
+UI components/helpers/styles under src/client/vendor are adapted from OpenCodex
+v2.33.0, commit ec51e42d745d2645bcb22cb67855fa053ba1778e.
+Copyright (c) 2026 opencodex contributors. MIT License (LICENSE.opencodex).
+Changes: Aezy API/auth, dynamic surfaces, React 18 compatibility, scoped styles,
+metadata-only diagnostics, explicit owner coverage and failure states.
+No OpenCodex server, routing core, account store, OAuth or personal data is used.
