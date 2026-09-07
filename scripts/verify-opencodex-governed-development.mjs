@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { alphaDshHome, alphaProfileDir, alphaProfileName, runAlphaDsh } from './lib/alpha-runtime.mjs'
 import { projectLoopTrace } from '../packages/aezy-inspector/src/trace.js'
+import { compatibleSelection, resolveModelDirectory } from '../packages/aezy-mode/src/model-routing.js'
 
 // Real, paid provider test. Never run against the user's working profile.
 const isolated = alphaDshHome.startsWith('/tmp/aezy-opencodex-e2e-')
@@ -47,8 +48,12 @@ try {
 } finally { await ctx.fiber.dispose() }
 
 const fixture = await mkdtemp('/tmp/aezy-governed-project-')
-const sessionId = `aezy-owned-deepseek-${Date.now().toString(36)}`
-const model = 'deepseek/deepseek-v4-flash'
+const native = process.env.AEZY_MODEL_PROOF_ENGINE === 'dsh'
+assert.ok(process.env.AEZY_MODEL_PROOF_ENGINE === undefined || ['dsh', 'codex'].includes(process.env.AEZY_MODEL_PROOF_ENGINE))
+const preset = native ? 'standard' : 'codex-app-server'
+const provider = native ? 'deepseek-official' : 'aezy-codex'
+const sessionId = `aezy-owned-deepseek-${native ? 'dsh-' : ''}${Date.now().toString(36)}`
+const model = native ? 'deepseek-v4-flash' : 'deepseek/deepseek-v4-flash'
 await writeFile(join(fixture, 'sum.mjs'), 'export function sum(a, b) { return a - b }\n')
 await writeFile(join(fixture, 'sum.test.mjs'), "import assert from 'node:assert/strict'\nimport test from 'node:test'\nimport {sum} from './sum.mjs'\ntest('sum handles positive and negative integers', () => { assert.equal(sum(2, 3), 5); assert.equal(sum(-2, 3), 1) })\n")
 execFileSync('git', ['init', '--quiet'], { cwd: fixture })
@@ -173,6 +178,7 @@ async function records(maxMessages = 240) {
   return result
 }
 async function prompt(text, turn) {
+  if (native) text = text.replaceAll('dsh.', '').replace('Use only dsh tools, not native Codex tools.', 'Use the tools provided by this DSH Session.')
   await rpc('session/prompt', { request: { requestId: `${sessionId}-${turn}`, sessionId, mode: 'queue', content: [{ type: 'text', text }], clientTimeZone: 'Asia/Shanghai' } })
   const deadline = Date.now() + 120_000
   while (Date.now() < deadline) {
@@ -194,13 +200,19 @@ async function prompt(text, turn) {
 
 try {
   const firstRuntime = await startHost()
-  console.log(JSON.stringify({ stage: 'owned-host-ready', baseUrl, provider: 'aezy-opencodex', model, credentialSource }))
+  console.log(JSON.stringify({ stage: 'owned-host-ready', baseUrl, provider, model, credentialSource }))
   await aezy(`project?${new URLSearchParams({ cwd: fixture })}`)
   await aezy('security/rules', { cwd: fixture, effect: 'ask', scope: 'repository', tool: '*' })
   await aezy('security/network', { cwd: fixture, scope: 'repository', mode: 'ask' })
   const workspace = await rpc('workspace/create', { request: { path: fixture } })
-  await rpc('session/create', { request: { workspaceId: workspace.workspace.workspaceId, sessionId, agentPreset: 'codex-app-server' } })
-  await rpc('session/selectModel', { request: { sessionId, provider: 'aezy-codex', model, reasoningEffort: 'low' } })
+  await rpc('session/create', { request: { workspaceId: workspace.workspace.workspaceId, sessionId, agentPreset: preset } })
+  const catalog = await rpc('session/modelCatalog', {})
+  const identity = 'deepseek/deepseek-v4-flash'
+  const row = resolveModelDirectory(catalog, preset, null).flatMap(group => group.models).find(row => row.id === identity)
+  const selection = compatibleSelection(row, { reasoningEffort: 'low' })
+  assert.equal(selection.provider, provider)
+  assert.equal(selection.model, model)
+  await rpc('session/selectModel', { request: { sessionId, ...selection } })
   const entries = await prompt('In this repository, read sum.mjs and sum.test.mjs using dsh.read. Fix sum.mjs using dsh.write to contain exactly: export function sum(a, b) { return a + b } followed by a newline. Run exactly node --test sum.test.mjs using dsh.bash with default permissions. Use only dsh tools, not native Codex tools. Do not change the test, add files or use the network. If any tool is denied, stop immediately without retrying or bypassing it. Report the test result.', 1)
   const events = entries.map(row => row.event)
   assert.ok(events.some(event => event.type === 'tool/call' && event.data.name === 'read'))
@@ -209,7 +221,7 @@ try {
   assert.ok(bash, 'model must run the test through DSH')
   const bashResult = events.find(event => event.type === 'tool/result' && event.data.message?.source?.callId === bash.data.callId)
   assert.ok(bashResult)
-  assert.equal(bashResult.data.meta?.aezyCodex?.type, 'dynamicTool')
+  assert.equal(bashResult.data.meta?.aezyCodex?.type, native ? undefined : 'dynamicTool')
   assert.match(JSON.stringify(bashResult.data.message.content), /pass 1/)
   const testOutput = execFileSync(process.execPath, ['--test', 'sum.test.mjs'], { cwd: fixture, encoding: 'utf8' })
   assert.match(testOutput, /pass 1/)
@@ -223,41 +235,43 @@ try {
   const review = await aezy(`project/turn-review?${new URLSearchParams({ cwd: fixture, sessionId, turn: '1', path: 'sum.mjs' })}`)
   assert.equal(review.file.status, 'modified')
   console.log(JSON.stringify({ stage: 'governed-development-passed', sessionId, fixture, approvals: approvals.length, test: '1 passed', journal: true }))
+  await assert.rejects(rpc('agentPresets/select', { agentId: sessionId, agentPreset: native ? 'codex-app-server' : 'standard' }),
+    /agent-preset\/locked/, 'started Sessions must not silently switch execution engines')
 
   await aezy('security/network', { cwd: fixture, scope: 'repository', mode: 'deny' })
   await prompt('Use dsh.bash exactly once with command curl https://example.com. The repository network policy should deny it. Do not retry, bypass the policy or use any other tool. Report the denial.', 2)
   const security = await aezy(`security?${new URLSearchParams({ cwd: fixture })}`)
   assert.ok(security.audit.some(row => row.sessionId === sessionId && row.tool === 'bash' && row.source === 'network' && row.decision === 'deny'))
   const bindingFile = join(alphaDshHome, 'aezy', 'codex-bindings.json')
-  const beforeBinding = JSON.parse(await readFile(bindingFile, 'utf8')).bindings[sessionId]
+  const beforeBinding = native ? null : JSON.parse(await readFile(bindingFile, 'utf8')).bindings[sessionId]
   const before = await records(2)
-  const trace = projectLoopTrace({ sessionId, mode: 'codex-app-server', entries: before, hasMore: false, running: false })
-  assert.equal(trace.backend, 'codex-app-server')
-  assert.equal(trace.completeness, 'partial')
+  const trace = projectLoopTrace({ sessionId, mode: preset, entries: before, hasMore: false, running: false })
+  assert.equal(trace.backend, native ? 'dsh-native' : 'codex-app-server')
+  if (!native) assert.equal(trace.completeness, 'partial')
   await aezy('security/network', { cwd: fixture, scope: 'repository', mode: 'ask' })
   await stopHost()
   const restarted = await startHost()
   assert.equal(restarted.runtime.id, firstRuntime.runtime.id)
   assert.deepEqual(await records(2), before, 'DSH history must survive Host restart exactly')
   await prompt('Continue our existing task. Use dsh.read on sum.mjs, then dsh.bash to run node --test sum.test.mjs. Do not edit anything. Report that the repaired sum still passes.', 3)
-  const afterBinding = JSON.parse(await readFile(bindingFile, 'utf8')).bindings[sessionId]
+  const afterBinding = native ? null : JSON.parse(await readFile(bindingFile, 'utf8')).bindings[sessionId]
   assert.deepEqual(afterBinding, beforeBinding, 'continuation must resume the same owned Codex Thread')
   const gatewayDiagnostics = (await aezy('codex')).gatewayDiagnostics
-  assert.ok(gatewayDiagnostics.usageReported > 0, 'real provider usage must reach the gateway')
+  if (!native) assert.ok(gatewayDiagnostics.usageReported > 0, 'real provider usage must reach the gateway')
   assert.equal(gatewayDiagnostics.usageUnreported, 0)
   const receipt = {
     timestamp: new Date().toISOString(), sessionId, fixture,
     versions: { dsh: '0.1.2-rc.1', codex: '0.153.4', gateway: 'aezy-responses-v1', opencodex: null, bun: null },
-    provider: 'aezy-codex', model, credentialOrigin: `existing DSH credentials (${credentialSource})`,
-    runtimeId: restarted.runtime.id, threadId: afterBinding.threadId,
+    provider, model, modelIdentity: identity, preset, credentialOrigin: `existing DSH credentials (${credentialSource})`,
+    runtimeId: native ? null : restarted.runtime.id, threadId: afterBinding?.threadId ?? null,
     realDevelopment: { baselineFailed: true, changedFiles: ['sum.mjs'], testsPassed: 1, dshDynamicTools: ['read', 'write', 'bash'] },
-    approval: 'allowed-once', networkDenial: true, journal: true, review: review.file.status,
+    approval: 'allowed-once', networkDenial: true, journal: true, review: review.file.status, startedPresetLocked: true,
     inspector: { backend: trace.backend, completeness: trace.completeness, spans: trace.spans.length },
-    historyPagination: true, restart: { sameRuntime: true, sameThread: true, exactHistory: true, realContinuation: true },
+    historyPagination: true, restart: { sameRuntime: true, sameThread: native ? null : true, exactHistory: true, realContinuation: true },
     gatewayDiagnostics,
-    limitations: ['Inspector covers the DSH boundary, not all private Codex loop steps', 'Codex usage projection is not implemented in this adapter', 'same-UID OS process access is not a sandbox boundary'],
+    limitations: [...native ? [] : ['Inspector covers the DSH boundary, not all private Codex loop steps', 'Codex usage projection is not implemented in this adapter'], 'same-UID OS process access is not a sandbox boundary'],
   }
-  await writeFile(join(alphaDshHome, 'aezy', 'opencodex-proof.json'), `${JSON.stringify(receipt, null, 2)}\n`, { mode: 0o600 })
+  await writeFile(join(alphaDshHome, 'aezy', native ? 'dsh-deepseek-proof.json' : 'opencodex-proof.json'), `${JSON.stringify(receipt, null, 2)}\n`, { mode: 0o600 })
   console.log(JSON.stringify(receipt, null, 2))
 } catch (error) {
   console.error(sanitized(hostLogs))

@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react'
 import { Button, IconChevronDownOutline14, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Context } from '@deepseek-ai/cordis'
+import { compatibleSelection, engineForPreset, engineForProvider, modelIdentity, resolveModelDirectory } from '../model-routing.js'
+import { installRunMethodMenu } from './run-method.js'
+export { installRunMethodMenu } from './run-method.js'
 
 export const CODEX_APP_SERVER_PRESET = 'codex-app-server'
 export const CODEX_PROVIDER = 'aezy-codex'
 
 type Selection = { provider: string; model: string; reasoningEffort?: string }
-type Model = { id: string; name: string; description?: string; reasoning?: { efforts: Array<{ id: string; name: string }>; defaultEffort?: string } }
+type Model = { id: string; name: string; description?: string; route?: Selection | null; channel?: string; unavailableReason?: string | null; reasoning?: { efforts: Array<{ id: string; name: string }>; defaultEffort?: string } }
 const defaultEffort = (model: Model) => model.reasoning?.defaultEffort ?? model.reasoning?.efforts[0]?.id
 type Group = { id: string; name: string; models: Model[] }
 type Catalog = { default: Selection; routableProviders: string[]; groups: Group[]; failures: Array<{ id: string; name: string; message: string }> }
@@ -65,7 +68,9 @@ export class ModeModelDirectory {
   })
   private catalog: Catalog | null = null
   private disposed = false
-  private selectingDefault = false
+  private selecting = false
+  private loadRevision = 0
+  private acknowledged: { base: string; selected: Selection } | null = null
   private readonly stops: Array<() => void>
 
   constructor(
@@ -75,24 +80,25 @@ export class ModeModelDirectory {
     private readonly modelProjection: ObservableSnapshot<unknown>,
   ) {
     this.stops = [
-      presetProjection.subscribe(() => { this.sync() }),
-      modelProjection.subscribe(() => { this.sync() }),
+      presetProjection.subscribe(() => { this.sync(); void this.reconcile() }),
+      modelProjection.subscribe(() => { this.sync(); void this.reconcile() }),
     ]
     this.sync()
   }
 
   async load(): Promise<void> {
     if (this.disposed) return
+    const revision = ++this.loadRevision
     this.store.update(state => { state.status = 'loading'; state.error = null })
     try {
       const result = await this.remote.modelCatalog()
-      if (this.disposed) return
+      if (this.disposed || revision !== this.loadRevision) return
       if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`)
       this.catalog = result.value
       this.sync()
-      await this.ensureCodexDefault()
+      await this.reconcile()
     } catch (error) {
-      this.reportError(error)
+      if (revision === this.loadRevision) this.reportError(error)
     }
   }
 
@@ -103,20 +109,32 @@ export class ModeModelDirectory {
 
   async select(selection: Selection): Promise<void> {
     if (this.disposed) return
+    if (this.selecting) throw new Error('Model selection is already in progress')
+    const preset = projection<string | null>(this.presetProjection) ?? null
     try {
-      const preset = projection<string | null>(this.presetProjection) ?? null
-      const codexMode = preset === CODEX_APP_SERVER_PRESET
-      if ((selection.provider === CODEX_PROVIDER) !== codexMode) {
-        throw new Error(`provider ${selection.provider} is unavailable in preset ${preset ?? '(none)'}`)
+      const row = this.store.getSnapshot().groups.flatMap(group => group.models).find(model =>
+        model.id === modelIdentity(selection.provider, selection.model))
+      if (engineForProvider(selection.provider) !== engineForPreset(preset, this.store.getSnapshot().current)
+        || row?.route?.provider !== selection.provider || row?.route?.model !== selection.model) {
+        throw new Error('This model has no compatible channel for the selected run method; no fallback was used')
       }
+      this.selecting = true
+      const base = JSON.stringify(projection<{ next: Selection | null }>(this.modelProjection)?.next ?? null)
       this.store.update(state => { state.status = 'selecting'; state.error = null })
       const result = await this.remote.selectModel({ sessionId: this.sessionId, ...selection })
       if (this.disposed) return
       if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`)
+      this.acknowledged = { base, selected: result.value.selected }
       this.store.update(state => { state.current = result.value.selected; state.status = 'ready'; state.error = null })
     } catch (error) {
       this.reportError(error)
       throw error
+    } finally {
+      this.selecting = false
+      if (preset !== (projection<string | null>(this.presetProjection) ?? null)) {
+        this.sync()
+        void this.reconcile()
+      }
     }
   }
 
@@ -129,39 +147,28 @@ export class ModeModelDirectory {
     if (this.disposed) return
     const preset = projection<string | null>(this.presetProjection) ?? null
     const projected = projection<{ next: Selection | null }>(this.modelProjection)
-    const codexMode = preset === CODEX_APP_SERVER_PRESET
-    const groups = (this.catalog?.groups ?? []).filter(group => (
-      (group.id === CODEX_PROVIDER) === codexMode
-    ))
-    const fallback = this.catalog?.default ?? null
-    const selected = projected?.next ?? fallback
-    const current = selected !== null && ((selected.provider === CODEX_PROVIDER) === codexMode)
-      ? selected
-      : null
+    const wire = JSON.stringify(projected?.next ?? null)
+    if (this.acknowledged && wire !== this.acknowledged.base) this.acknowledged = null
+    const current = this.acknowledged?.selected ?? projected?.next ?? this.catalog?.default ?? null
+    const groups = this.catalog ? resolveModelDirectory(this.catalog, preset, current) : []
+    const selectedRow = groups.flatMap(group => group.models).find(model => current && model.id === modelIdentity(current.provider, current.model))
     this.store.set({
       preset,
       current,
       groups,
-      status: this.catalog === null ? 'idle' : 'ready',
-      error: null,
+      status: this.selecting ? 'selecting' : this.catalog === null ? 'idle' : 'ready',
+      error: selectedRow?.unavailableReason ?? null,
     })
   }
 
-  private async ensureCodexDefault(): Promise<void> {
+  private async reconcile(): Promise<void> {
     const state = this.store.getSnapshot()
-    if (state.preset !== CODEX_APP_SERVER_PRESET || state.current?.provider === CODEX_PROVIDER) return
-    const model = state.groups[0]?.models[0]
-    if (model === undefined || this.selectingDefault) return
-    this.selectingDefault = true
+    if (this.disposed || this.selecting || !state.current) return
+    const model = state.groups.flatMap(group => group.models).find(model => model.id === modelIdentity(state.current!.provider, state.current!.model))
+    if (!model?.route || (model.route.provider === state.current.provider && model.route.model === state.current.model)) return
     try {
-      await this.select({
-        provider: CODEX_PROVIDER,
-        model: model.id,
-        ...defaultEffort(model) === undefined ? {} : { reasoningEffort: defaultEffort(model) },
-      })
-    } finally {
-      this.selectingDefault = false
-    }
+      await this.select(compatibleSelection(model, state.current))
+    } catch (error) { this.reportError(error) }
   }
 }
 
@@ -180,8 +187,8 @@ export function ModeModelSelect({ useModeModels, load, select }: ComponentProps)
   useEffect(() => { load() }, [load])
   useEffect(() => { setOpen(null) }, [state.preset])
   const entries = state.groups.flatMap(group => group.models.map(model => ({ group, model })))
-  const selectedIndex = entries.findIndex(({ group, model }) => (
-    state.current?.provider === group.id && state.current.model === model.id
+  const selectedIndex = entries.findIndex(({ model }) => (
+    state.current && modelIdentity(state.current.provider, state.current.model) === model.id
   ))
   const current = selectedIndex < 0 ? undefined : entries[selectedIndex]
   const efforts = current?.model.reasoning?.efforts ?? []
@@ -190,14 +197,15 @@ export function ModeModelSelect({ useModeModels, load, select }: ComponentProps)
   const choose = (selection: Selection) => { setOpen(null); void select(selection).catch(() => {}) }
   const items: MenuEntry[] = state.groups.flatMap(group => [
     { type: 'label' as const, id: `group:${group.id}`, text: group.name },
-    ...group.models.map(model => ({ id: `${group.id}\u0000${model.id}`, label: model.name })),
+    ...group.models.map(model => ({ id: model.id, disabled: !model.route,
+      label: <span>{model.name}{model.unavailableReason && <small style={{ display: 'block', maxWidth: 300, whiteSpace: 'normal' }}>{model.unavailableReason}</small>}</span> })),
   ])
   const effort = state.current?.reasoningEffort ?? (current && defaultEffort(current.model))
   return <span data-aezy-mode-model style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
     <Menu open={open === 'model'} portal side="top" align="end" compact
       anchor={<Button variant="toolbar" size="sm" aria-label="Model" aria-haspopup="menu"
         aria-expanded={open === 'model'} disabled={busy}
-        title={current ? `${current.group.name} · ${current.model.name}` : 'Select model'}
+        title={current ? `${current.model.name} · ${current.model.channel}` : 'Select model'}
         onClick={() => setOpen(open === 'model' ? null : 'model')}>
         <span style={{ maxWidth: 210, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {busy ? 'Loading…' : current?.model.name ?? 'Select model'}
@@ -205,17 +213,13 @@ export function ModeModelSelect({ useModeModels, load, select }: ComponentProps)
       </Button>}
       items={items.length ? items : [{ type: 'label', id: 'empty', text: 'No models available' }]}
       footer={[{ id: 'refresh', label: 'Refresh models' }]}
-      selectedId={current ? `${current.group.id}\u0000${current.model.id}` : undefined}
+      selectedId={current?.model.id}
       onClose={() => setOpen(null)}
       onSelect={id => {
         if (id === 'refresh') { setOpen(null); load(); return }
-        const entry = entries.find(({ group, model }) => `${group.id}\u0000${model.id}` === id)
-        if (entry === undefined) return
-        choose({
-          provider: entry.group.id,
-          model: entry.model.id,
-          ...defaultEffort(entry.model) === undefined ? {} : { reasoningEffort: defaultEffort(entry.model) },
-        })
+        const entry = entries.find(({ model }) => model.id === id)
+        if (!entry?.model.route) return
+        choose(compatibleSelection(entry.model, state.current))
       }}
     />
     {efforts.length > 0 && <Menu open={open === 'effort'} portal side="top" align="end" compact
@@ -226,8 +230,8 @@ export function ModeModelSelect({ useModeModels, load, select }: ComponentProps)
       </Button>}
       items={efforts.map(item => ({ id: item.id, label: item.name }))} selectedId={effort}
       onClose={() => setOpen(null)} onSelect={id => {
-        if (current === undefined) return
-        choose({ provider: current.group.id, model: current.model.id, reasoningEffort: id })
+        if (!current?.model.route) return
+        choose({ ...current.model.route, reasoningEffort: id })
       }}
     />}
     {state.error && <span role="alert" style={{ color: 'var(--dsw-alias-state-error-primary, #d84848)', fontSize: 12, maxWidth: 280 }}>{state.error}</span>}
@@ -237,6 +241,7 @@ export function ModeModelSelect({ useModeModels, load, select }: ComponentProps)
 export const inject = ['commandUi', 'remote', 'remote.session', 'sessions', 'slots']
 
 export function apply(ctx: Context): void {
+  installRunMethodMenu(ctx)
   const directories = new Map<string, ModeModelDirectory>()
   const directoryFor = (sessionId: string): ModeModelDirectory => {
     const existing = directories.get(sessionId)
@@ -257,7 +262,7 @@ export function apply(ctx: Context): void {
 
   ctx.effect(() => ctx.commandUi.register({
     name: 'model',
-    description: 'Choose a model allowed by this Session mode',
+    description: 'Choose a model through a compatible execution channel',
     available: session => ctx.sessions.subagentAddress(session.sessionId) === undefined,
     ui: {
       kind: 'popupSelect',
@@ -265,20 +270,18 @@ export function apply(ctx: Context): void {
         const directory = directoryFor(String(session.sessionId))
         await directory.load()
         return directory.store.getSnapshot().groups.flatMap(group => group.models.map(model => ({
-          id: `${group.id}\u0000${model.id}`,
+          id: model.id,
           label: model.name,
-          detail: group.name,
-          active: directory.store.getSnapshot().current?.provider === group.id
-            && directory.store.getSnapshot().current?.model === model.id,
+          detail: model.channel ?? group.name,
+          active: Boolean(directory.store.getSnapshot().current && modelIdentity(directory.store.getSnapshot().current!.provider,
+            directory.store.getSnapshot().current!.model) === model.id),
         })))
       },
       onSelect: async (option, session) => {
         const directory = directoryFor(String(session.sessionId))
-        const [provider, model] = option.id.split('\u0000', 2)
-        if (provider === undefined || model === undefined) throw new Error('stale model option')
-        const entry = directory.store.getSnapshot().groups.find(group => group.id === provider)?.models.find(item => item.id === model)
+        const entry = directory.store.getSnapshot().groups.flatMap(group => group.models).find(item => item.id === option.id)
         if (!entry) throw new Error('stale model option')
-        await directory.select({ provider, model, ...defaultEffort(entry) === undefined ? {} : { reasoningEffort: defaultEffort(entry) } })
+        await directory.select(compatibleSelection(entry, directory.store.getSnapshot().current))
       },
     },
   }), 'aezy-mode: /model projection')

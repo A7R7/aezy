@@ -2,7 +2,7 @@
   "name": "@aezy/mode",
   "version": "0.0.0",
   "private": true,
-  "description": "Aezy alpha Agent-mode policy and preset-scoped model projection",
+  "description": "Aezy run-method presentation and model identity/channel projection",
   "type": "module",
   "main": "src/index.js",
   "exports": {
@@ -20,6 +20,7 @@
         "@deepseek-ai/dsh-api-remotes",
         "@deepseek-ai/dsh-api-session-controller",
         "@deepseek-ai/dsh-client-ui-commands",
+        "@deepseek-ai/dsh-client-ui-agent-preset",
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-client-ui-session"
       ],

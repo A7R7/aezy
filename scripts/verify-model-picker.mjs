@@ -55,6 +55,12 @@ try {
   })
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 }, colorScheme: 'dark' })
   const errors = []
+  const persistedSelections = []
+  page.on('response', async response => {
+    if (new URL(response.url()).pathname !== '/api/session/selectModel') return
+    const result = (await response.json().catch(() => null))?.result
+    if (result?.ok && result.value?.selected) persistedSelections.push(result.value.selected)
+  })
   page.on('pageerror', error => errors.push(error.message))
   page.on('pageerror', error => browserErrors.push(error.stack ?? error.message))
   page.on('console', message => { if (message.type() === 'error') browserErrors.push(message.text()) })
@@ -73,9 +79,13 @@ try {
   if (await notice.isVisible()) await notice.getByRole('button', { name: 'Continue', exact: true }).click()
   // DSH intentionally collapses blank Sessions to a single "New Session"
   // row, even after rename. Exercise the public blank-session preset menu.
-  const preset = page.getByTitle('Agent preset for the session you are about to start', { exact: true })
+  const preset = page.getByRole('button', { name: '运行方式', exact: true })
   await preset.click()
-  await page.getByRole('menuitem', { name: /^Standard/ }).click()
+  await page.getByText('DSH 工作预设', { exact: true }).waitFor()
+  await page.getByText('Codex 执行引擎', { exact: true }).waitFor()
+  assert.equal(await page.getByRole('button', { name: '运行方式', exact: true }).count(), 1)
+  await page.screenshot({ path: join(artifacts, 'run-methods.png') })
+  await page.getByRole('menuitem', { name: /^(Standard|标准)/ }).click()
   const model = page.getByRole('button', { name: 'Model', exact: true })
   await model.click()
   await page.getByRole('menuitem', { name: 'GPT-6 Astra', exact: true }).waitFor()
@@ -101,19 +111,39 @@ try {
   await preset.click()
   await page.getByRole('menuitem', { name: /^Codex App Server/ }).click()
   await model.click()
-  await page.getByRole('menuitem', { name: /GPT-6-Astra/i }).waitFor()
+  await page.getByRole('menuitem', { name: 'GPT-6 Astra', exact: true }).waitFor()
   const codexLabels = await page.getByRole('menuitem').allTextContents()
   assert.ok(codexLabels.some(text => /deepseek/i.test(text)))
   assert.ok(codexLabels.some(text => /GPT/i.test(text)))
   await page.screenshot({ path: join(artifacts, 'codex-models.png') })
-  await page.getByRole('menuitem', { name: /GPT-6-Astra/i }).click()
-  await page.waitForFunction(() => /GPT-6-Astra/i.test(document.querySelector('[aria-label="Model"]')?.textContent ?? ''))
+  await page.getByRole('menuitem', { name: 'GPT-6 Astra', exact: true }).click()
+  await page.waitForFunction(() => document.querySelector('[aria-label="Model"]')?.title.includes('Codex'))
   await page.getByRole('button', { name: 'Reasoning effort', exact: true }).click()
   await page.getByRole('menuitem', { name: 'high', exact: true }).click()
   await page.waitForFunction(() => document.querySelector('[aria-label="Reasoning effort"]')?.textContent.includes('high'))
   await model.click()
   await page.getByRole('menuitem', { name: 'Refresh models', exact: true }).click()
-  await page.waitForFunction(() => /GPT-6-Astra/i.test(document.querySelector('[aria-label="Model"]')?.textContent ?? ''))
+  await page.waitForFunction(() => document.querySelector('[aria-label="Model"]')?.textContent.includes('GPT-6 Astra'))
+  // One model identity, two owned execution paths; DSH work presets do not
+  // alter the choice. Verify the actual selector route, not just its label.
+  await model.click()
+  await page.getByRole('menuitem', { name: /DeepSeek.*Flash/i }).click()
+  await page.waitForFunction(() => /flash/i.test(document.querySelector('[aria-label="Model"]')?.textContent ?? '')
+    && document.querySelector('[aria-label="Model"]')?.title.includes('Codex') && !document.querySelector('[aria-label="Model"]')?.disabled)
+  for (const name of [/^(Standard|标准)/, /^PTC/, /^(Minimal|极简)/]) {
+    await preset.click()
+    await page.getByRole('menuitem', { name }).click()
+    await page.waitForFunction(() => /flash/i.test(document.querySelector('[aria-label="Model"]')?.textContent ?? '')
+      && document.querySelector('[aria-label="Model"]')?.title.includes('DSH') && !document.querySelector('[aria-label="Model"]')?.disabled)
+  }
+  await preset.click()
+  await page.getByRole('menuitem', { name: /^Codex App Server/ }).click()
+  await page.waitForFunction(() => /flash/i.test(document.querySelector('[aria-label="Model"]')?.textContent ?? '')
+    && document.querySelector('[aria-label="Model"]')?.title.includes('Codex') && !document.querySelector('[aria-label="Model"]')?.disabled)
+  assert.ok(persistedSelections.some(row => row.provider === 'deepseek-official' && row.model === 'deepseek-v4-flash'))
+  assert.ok(persistedSelections.some(row => row.provider === 'aezy-codex' && row.model === 'deepseek/deepseek-v4-flash'))
+  assert.equal(await page.locator('[data-aezy-mode-model] [role="alert"]').count(), 0)
+  await page.screenshot({ path: join(artifacts, 'deepseek-preserved.png') })
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByRole('button', { name: 'Codex', exact: true }).click()
   await page.getByRole('button', { name: 'Open browser login', exact: true }).waitFor()
@@ -123,7 +153,8 @@ try {
   assert.deepEqual(errors, [])
   const receipt = { timestamp: new Date().toISOString(), profile: alphaProfileName,
     paidModelCalls: 0, nativeSelectCount: 0, svgChevrons: true, standardAstra: true, codexAstra: true, astraEfforts: effortLabels,
-    codexModels: codexLabels, selectionAndRefresh: true, loginEntry: true, themedMenu: style, typography,
+    codexModels: codexLabels, selectionAndRefresh: true, groupedRunMethod: true, deepseekPreservedAcrossPresets: true,
+    persistedSelections, loginEntry: true, themedMenu: style, typography,
     testFontSubstitution: Boolean(process.env.AEZY_QA_FONT_PATH), pageErrors: errors, artifacts }
   await writeFile(join(artifacts, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`)
   console.log(JSON.stringify(receipt, null, 2))

@@ -77,10 +77,10 @@ test('mode package ships only the clickable codex-app-server system preset', asy
   assert.doesNotMatch(`${preset}\n${composition}\n${patch}`, /codex-inspired/)
 })
 
-test('client projection filters Codex bidirectionally and owns the replacement model surface', async () => {
+test('client resolves model identities while retaining an engine compatibility fence', async () => {
   const source = await readFile(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
-  assert.match(source, /group\.id === CODEX_PROVIDER\) === codexMode/)
-  assert.match(source, /selection\.provider === CODEX_PROVIDER\) !== codexMode/)
+  assert.match(source, /resolveModelDirectory/)
+  assert.match(source, /engineForProvider\(selection.provider\) !== engineForPreset\(preset,/)
   assert.match(source, /name: 'conversation\.input\.model'/)
   assert.match(source, /name: 'model'/)
   assert.doesNotMatch(source, /codex-inspired/)
