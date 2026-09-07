@@ -6,6 +6,11 @@
 
 ## 2026-09-07：模型选择器修复
 
+后续修正：模型与 effort 按钮的 `⌄` 字符替换为公开
+`IconChevronDownOutline14` SVG（固定图标尺寸、禁止 flex 压缩，不依赖字体字形）。
+`2026-09-07T03:32:29.855Z` 浏览器回归检查两个按钮均有 SVG，Codex 模式可选 Astra/high
+并刷新保持，旧 GPT/DeepSeek 仍在目录，0 page errors。截图/receipt 路径同下。
+
 Aezy 替换面板曾使用两个没有主题样式的原生 `<select>`，现改为公开 DSH `Menu` / `Button`：
 模型按 provider 分组，当前项选中，菜单以 portal 避免 composer 裁剪，带 refresh、错误提示、
 Escape/outside-click dismissal。推理强度来自模型能力，不自行补齐 Off；新选择和 `/model`

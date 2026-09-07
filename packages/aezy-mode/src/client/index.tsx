@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, IconChevronDownOutline14, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Context } from '@deepseek-ai/cordis'
 
@@ -201,7 +201,7 @@ export function ModeModelSelect({ useModeModels, load, select }: ComponentProps)
         onClick={() => setOpen(open === 'model' ? null : 'model')}>
         <span style={{ maxWidth: 210, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {busy ? 'Loading…' : current?.model.name ?? 'Select model'}
-        </span><span aria-hidden="true">⌄</span>
+        </span><span aria-hidden="true" style={{ display: 'inline-flex', flexShrink: 0 }}><IconChevronDownOutline14 /></span>
       </Button>}
       items={items.length ? items : [{ type: 'label', id: 'empty', text: 'No models available' }]}
       footer={[{ id: 'refresh', label: 'Refresh models' }]}
@@ -222,7 +222,7 @@ export function ModeModelSelect({ useModeModels, load, select }: ComponentProps)
       anchor={<Button variant="toolbar" size="sm" aria-label="Reasoning effort" aria-haspopup="menu"
         aria-expanded={open === 'effort'} disabled={busy}
         onClick={() => setOpen(open === 'effort' ? null : 'effort')}>
-        {efforts.find(item => item.id === effort)?.name ?? 'Reasoning'}<span aria-hidden="true">⌄</span>
+        {efforts.find(item => item.id === effort)?.name ?? 'Reasoning'}<span aria-hidden="true" style={{ display: 'inline-flex', flexShrink: 0 }}><IconChevronDownOutline14 /></span>
       </Button>}
       items={efforts.map(item => ({ id: item.id, label: item.name }))} selectedId={effort}
       onClose={() => setOpen(null)} onSelect={id => {

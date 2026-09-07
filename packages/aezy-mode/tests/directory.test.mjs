@@ -58,6 +58,8 @@ test('late catalog response cannot update a disposed Session directory', async (
 test('composer consumes public themed controls, not native select or copied DSH UI', async () => {
   const source = await readFile(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /<select\b|<option\b/)
+  assert.doesNotMatch(source, /⌄/)
+  assert.match(source, /<IconChevronDownOutline14/)
   assert.match(source, /<Menu open=/)
   assert.match(source, /portal side="top"/)
   assert.match(source, /Refresh models/)

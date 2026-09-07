@@ -216,7 +216,11 @@ window.__ModuleLoader__.load({
 								children: busy ? "Loading…" : current?.model.name ?? "Select model"
 							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								"aria-hidden": "true",
-								children: "⌄"
+								style: {
+									display: "inline-flex",
+									flexShrink: 0
+								},
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, {})
 							})]
 						}),
 						items: items.length ? items : [{
@@ -261,7 +265,11 @@ window.__ModuleLoader__.load({
 							onClick: () => setOpen(open === "effort" ? null : "effort"),
 							children: [efforts.find((item) => item.id === effort)?.name ?? "Reasoning", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 								"aria-hidden": "true",
-								children: "⌄"
+								style: {
+									display: "inline-flex",
+									flexShrink: 0
+								},
+								children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, {})
 							})]
 						}),
 						items: efforts.map((item) => ({
