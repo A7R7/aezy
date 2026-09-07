@@ -41,6 +41,7 @@ test('official GPT process owns separate auth/catalog/config and stable identity
       assert.equal(account.account, null)
       const config = (await client.request('config/read', { includeLayers: false })).config
       assert.equal(config.model_provider, 'openai')
+      assert.ok(config.openai_base_url == null, 'The effective official config must not force API-key routing')
       assert.equal(config.sqlite_home, runtime.home)
       assert.equal(config.model_catalog_json, null)
       const params = { cwd: root, model: 'gpt-6-astra', modelProvider: runtime.provider,

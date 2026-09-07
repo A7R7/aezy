@@ -104,7 +104,10 @@ export async function prepareCodexRuntime({ dshHome, gateway, environment = proc
     }
     env.AEZY_CODEX_GATEWAY_KEY = gateway.dataKey
   } else {
-    config.openai_base_url = 'https://api.openai.com/v1'
+    // Leave the built-in provider's API override unset: Codex must choose its
+    // endpoint from the authenticated account. Forcing api.openai.com sends a
+    // ChatGPT subscription token to the API-key endpoint (401 missing scopes).
+    // Our owned config and child allowlist already exclude personal overrides.
     config.chatgpt_base_url = 'https://chatgpt.com/backend-api'
   }
   const id = createHash('sha256').update(JSON.stringify({ home, provider, route: gateway?.routeId ?? 'native' })).digest('hex')

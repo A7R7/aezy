@@ -81,7 +81,7 @@ governed write、alpha.4 Session/cache carryover 和 cold restart。Aezy runtime
   loopback 端口；凭据由 DSH `llm-deepseek` settings / credentials owner 提供且仅留在 Host 内存。
   Codex 仍拥有 agent loop，写操作仍回 DSH approval/Security/Journal。
 - `packages/aezy-mode`：alpha-only 原生 preset 装配、`codex-app-server` system overlay、
-  per-preset catalog UI 与 Host provider fence。
+  分组运行方式、统一模型身份/兼容 route 投影与 Host provider fence。
 - `packages/aezy-inspector`：只读 Session event projector、LoopTrace contract、header 与
   revision 3 双 backend full logic graph / runtime overlay / evidence timeline；40/59 与 41/54
   topology 按 owner lane 呈现，不拥有 loop、history、usage 或控制状态。
@@ -138,7 +138,7 @@ native `openai-codex` 用公开 models 配置补齐 Astra（保留旧七项，�
 现固定官方 npm Codex **0.153.4**，官方目录原生返回 Astra，不自造 catalog/entitlement。
 两个下拉按钮的 `⌄` 改为 DSH 公开 `IconChevronDownOutline14` SVG。
 153 项测试（含四项官方进程测试）、真实 DeepSeek governed write/deny/restart、浏览器交互均通过。
-新 GPT 实际 Turn 与 Astra 账户权限未签收，不能以历史或 DeepSeek 证据替代。
+后续统一模型切片已补签 Astra 真实受治理只读 Turn（见下），GPT 写闭环仍未签收。
 
 接手时最容易误解的语义：
 
@@ -174,7 +174,14 @@ Astra，Codex 两个 DeepSeek + 六个 GPT（含 Astra），双通道 connected�
 已验证且保留的独立 profile 为 `.local/aezy-model-fixes-XqAlLV/dsh` / `aezy-model-fixes`，
 隔离及 3091 测试 Host 已停止，开发 3090 保持运行。详细 receipt/重放命令见各 milestone。
 本次浏览器 receipt 为 `2026-09-07T03:32:29.855Z`；真实 DeepSeek 开发/restart receipt 为
-`2026-09-07T03:33:55.979Z`。153 项测试通过；尚未把 GPT/Astra 真实 Turn 签收。
+`2026-09-07T03:33:55.979Z`。该阶段 153 项测试通过，GPT/Astra 真实 Turn 当时尚未签收。
+
+后续 receipt `2026-09-07T10:08:39.846Z` 补签 Astra：真实验证先发现 Aezy 的
+`openai_base_url` 强制 API Key 端点导致 401 missing scopes。已撤掉覆盖，让官方 Codex
+按登录账户路由；独立 home/环境隔离仍在，没有读取 OAuth。相同现有登录完成
+`aezy-astra-route-mtr2var9` 的 DSH read + 文件 marker 回答，started preset 锁正常。
+163 项自动测试全过；开发 profile 再同步、3091 双通道与真实 Turn smoke 后恢复 3090。
+路由修正与模型菜单切片分开提交；完整证据见 `doc/milestones/codex.md`。
 下面的 3091 smoke 是 **2026-09-06 历史工作版本** 的事实，不是本次修复部署结果。
 
 本次独立 Aezy 内置网关/DeepSeek 真实开发闭环已通过后，同一插件已同步至
@@ -254,6 +261,13 @@ E0.1 revision 3 浏览器门禁：DSH-native 为 5 lanes / 40 nodes / 59 edges�
 保持 OPAQUE。80%/100%、edge Guard、两 workspace/Session、Host restart 与 `pageErrors=[]` 通过。
 
 ## 6. 下一步与所有权
+
+2026-09-07 新增：单个“运行方式”菜单仅分组表达 DSH 工作预设 / Codex 执行引擎，没有独立
+引擎选择框。模型身份目录统一，跨空白 Session preset 保留同一模型并解析兼容 route；没有
+route 则禁用并解释，既有 Thread 和已开始 Session 不迁移。上游 seat controller / model
+selection 持久化仍是 owner。浏览器与 native/Codex DeepSeek 完整闭环已有成功证据；native
+另一次补跑请求了测试合同外的目录探测命令，被安全拒绝，不宣称模型稳定性已签收。
+163 项自动测试通过。详细语义、隔离 receipt 与限制见 `doc/milestones/mode-presets.md`。
 
 当前目标已验证：由 Aezy 外置插件内置有限模型网关，使用既有 DSH DeepSeek 凭据驱动官方
 Codex App Server，完成真实受审批开发、测试、Journal/Review、网络 deny、历史分页与 Host

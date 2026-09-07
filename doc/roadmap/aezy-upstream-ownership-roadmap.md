@@ -279,6 +279,13 @@ contract，不为未来 Editor 提前泛化已签收切片。
 
 ### 6.5. Aezy 内置模型网关：模型与 Codex harness 解耦
 
+2026-09-07：模型身份与执行通道已做薄投影分离。单个“运行方式”菜单分组表达 DSH 工作
+预设与 Codex 执行引擎，暂不增加独立引擎选择框。跨空白会话 preset 保留同一模型身份，
+无兼容通道则禁用并说明，不消灭真实 capability/auth 差异。DSH 继续拥有 preset staging、
+durable selection 与 started-session lock；没有新增模型 registry、引擎调度或 Thread 迁移层。
+native/Codex 两条 DeepSeek 真实开发/restart 与浏览器证据见
+[`mode-presets.md`](../milestones/mode-presets.md)。
+
 2026-09-05 先证明受管 OpenCodex；2026-09-06 按用户批准的收敛路线，将固定 Codex + DeepSeek
 文本所需的网关能力用 Aezy 原创代码内置。外置 `@aezy/opencodex` 只保留 composition 包名，
 不再加载 OpenCodex/Bun，不维护完整产品 fork，不留旧实现 fallback。Aezy 拥有 model catalog、

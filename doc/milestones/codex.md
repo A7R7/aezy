@@ -9,7 +9,31 @@
 `0.1.2-rc.1`；2026-09-06 已从受管 OpenCodex 切换为 Aezy 内置 Node 网关 / DeepSeek，当前路径与新增证据见
 本文对应日期的小节。不要把历史个人账户路径当作当前配置要求。
 
-## 2026-09-07：修正登录后仍缺 Astra 的 runtime pin
+## 2026-09-07：Astra 真实 Turn 与账户路由修正
+
+模型身份统一后的真实 Astra 验证发现：已登录 home 的请求被 Aezy 显式设置的
+`openai_base_url = "https://api.openai.com/v1"` 强制发往 API Key 端点，返回 401 /
+`Missing scopes: api.responses.write`。目录可见、account/read 和 thread/start 都无法发现
+这个错误。移除该覆盖，由官方内置 provider 按账户决定推理路由；继续保留独立 CODEX_HOME、
+白名单环境、官方 ChatGPT 地址及 model_provider，不导入个人配置或 OAuth，不改变 runtime pin。
+官方文档将此项定义为可选路由覆盖，而不是必须写入的默认地址：
+[Advanced Configuration](https://learn.chatgpt.com/docs/config-file/config-advanced)、
+[Sample Configuration](https://learn.chatgpt.com/docs/config-file/config-sample)。
+
+复验 receipt `2026-09-07T10:08:39.846Z`：`aezy-astra-route-mtr2var9`，
+`aezy-codex/gpt-6-astra/low`，经同一个 Aezy 已登录 owner 完成真实 Turn；只调用一次 DSH
+`read`，返回未在 prompt 中提供的临时文件 marker，`dynamicTool` durable 证据和 started
+preset lock 均通过。没有访问用户工程、读取/复制 OAuth、重登或修改 DSH credentials document。
+这是 **GPT 受治理只读 Turn** 签收，不等于 GPT 写操作、所有模型 entitlement 或完整 loop parity。
+
+测试：163 项全过；官方进程 `config/read` 断言没有 API 地址覆盖。增强 smoke 默认依然
+0 模型调用，只有显式 `AEZY_ASTRA_REAL_PROOF=1` 才运行上述真实 Turn；可用
+`AEZY_ASTRA_PROOF_RECEIPT` 指定 receipt 路径。本次 receipt 保留于
+`.local/aezy-model-fixes-XqAlLV/dsh/aezy/astra-route-proof.json`。
+开发 profile 已同步；3091 双通道/Web/catalog/真实 Turn smoke 完成后关闭临时 Host，恢复 3090。
+该账户路由修正与分组运行方式/统一模型 UI 分成独立提交。
+
+## 2026-09-07：修正登录后仍缺 Astra 的 runtime pin（历史记录）
 
 通过 Aezy 官方 App Server 的 `account/read(refreshToken: false)` 已确认新 home 登录成功
 （`type: chatgpt`），但 0.149.0 的 `model/list(includeHidden: true, limit: 100)` 全量目录无

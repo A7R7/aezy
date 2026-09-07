@@ -4,7 +4,48 @@
 > 日期：2026-09-05<br>
 > Runtime：DSH `0.1.2-rc.1` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
 
-## 2026-09-07：模型选择器修复
+## 2026-09-07：统一模型身份与分组运行方式
+
+仅在现有“运行方式”菜单内区分 **DSH 工作预设** 与 **Codex 执行引擎**，不增加独立引擎
+选择框。外置 client 通过公开 slots `entries/subscribe/StoredEntry.inject` 复用原生 seat
+business face，只替换渲染；上游 controller 继续拥有 staging、blank Session、creator draft、
+durable preset 与首个 Turn 后锁定。原生 Session header 不替换。
+
+模型菜单和 `/model` 使用 Host catalog 的统一模型身份并集，不再按模式隐藏另一套目录。
+仅合并明确拥有的 GPT 与 DeepSeek Flash/Pro route alias；同名第三方 provider 不自动合并。
+切换空白会话的 standard/PTC/minimal/创造模式保留模型；跨 Codex 时由同一身份选择实际
+兼容 route，经 DSH `session/selectModel` 持久化，不换模型、不借用另一通道凭据。
+没有兼容 route 的条目保留、禁用并显示原因；effort 采用实际 route metadata，保留仍受支持的值。
+历史 `aezy` Codex Session 不自动迁到 native。已有 Turn 的 preset 锁与 Codex Thread/runtime
+归属仍有效，跨已有 Thread 的 GPT/DeepSeek 通道请新建会话。这是薄投影，不是多 runtime 调度器。
+
+隔离 profile `.local/aezy-model-fixes-XqAlLV/dsh` / `aezy-model-fixes`：
+
+- 浏览器 receipt `2026-09-07T09:54:10.048Z`：一个分组运行方式按钮，Astra/high 刷新保持，
+  Flash 在 standard→PTC→minimal→Codex 往返保持，实际 RPC 回执验证 native/Codex provider；
+  不兼容项禁用，SVG 箭头正常，0 page errors、0 模型调用。截图/receipt 在
+  `aezy/model-picker-proof/`；测试字体替代沿用下方说明。
+- native DeepSeek receipt `2026-09-07T09:48:50.821Z`：`deepseek-official/deepseek-v4-flash`，
+  修复、4 次审批、测试、网络拒绝、Journal/Review、完整 Inspector、分页和重启续跑通过；
+  网关调用数为 0。receipt：`aezy/dsh-deepseek-proof.json`。
+- Codex DeepSeek receipt `2026-09-07T09:55:58.386Z`：同一模型身份，经 `aezy-codex` 路由，
+  相同开发门禁及同 Thread 重启续跑通过，已开始的 preset 切换返回 `agent-preset/locked`；
+  Inspector 如实为 partial。receipt：`aezy/opencodex-proof.json`。
+
+补跑 native Session `aezy-owned-deepseek-dsh-mtr2pnb6` 未通过：模型先请求
+`pwd && ls -la /tmp/aezy-governed-project-uXdmtc`，偏离本测试只允许 read/write/精确 test
+命令的审批白名单，被拒绝并中止，未执行该命令。此前成功 receipt 保留；这说明真实模型
+指令遵循有波动，不把一次成功宣称为稳定性签收，也不为了通过测试扩宽审批。
+163 项自动测试全部通过（含官方进程测试、selection race/stale refresh 和 slot 卸载重载契约）。
+
+开发 profile 已同步，3091 最小 smoke 通过并恢复 3090。Astra 也已通过同一身份解析器选择
+官方通道并完成真实 DSH read Turn；验证发现的账户路由覆盖错误独立修正，详见
+[`codex.md`](codex.md)。本切片没有升级 DSH/Codex，也没有修改只读 reference。
+
+测试入口：`verify-model-picker.mjs` 与 `verify-opencodex-governed-development.mjs`；后者显式
+`AEZY_MODEL_PROOF_ENGINE=dsh|codex` 选择一次性真实验证，不建立产品双 runtime 兼容层。
+
+## 2026-09-07：模型选择器修复（历史记录）
 
 后续修正：模型与 effort 按钮的 `⌄` 字符替换为公开
 `IconChevronDownOutline14` SVG（固定图标尺寸、禁止 flex 压缩，不依赖字体字形）。
@@ -47,8 +88,8 @@ Session header 的模式名称由原生 `ui-agent-preset` 读取 durable `agentP
 - runtime selector 从**已安装、checksum-pinned 的官方 DSH package**读取其 shipped `standard`
   composition，再追加 Aezy preset ownership overlay，生成 `codex-app-server` composition；
   Aezy 不复制或维护 DSH 的 plan、tool、compaction、workflow、Subagent 配置；
-- 浏览器替换 Host-global 的上游 model selector，只投影当前 Session 允许的目录：
-  `codex-app-server` 仅显示 `aezy-codex`，其他模式隐藏 `aezy-codex`；
+- 浏览器替换 Host-global 的上游 model selector，显示统一身份目录并解析当前运行方式允许的
+  route；不兼容模型保留但禁用，`codex-app-server` 仍只执行 `aezy-codex`；
 - Host `llm/stream` hook 在 DSH 完成 Session model selection 后拒绝 Codex mode 内的非 Codex
   route；preset-scoped `agent/request` 只验证自身 preset 归属；
 - `@aezy/codex` adapter 在 App Server turn/thread I/O 前再次按 Session header 拒绝越界执行；

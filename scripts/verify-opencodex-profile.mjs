@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
-import { stat } from 'node:fs/promises'
+import { stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { alphaDshHome, alphaProfileName, runAlphaDsh } from './lib/alpha-runtime.mjs'
+import { verifyAstraSelectionTurn } from './verify-astra-selection-turn.mjs'
 
-// No model Turn, credential read, or personal OpenCodex API request. The normal
-// DSH owner resolves the existing DeepSeek key for its own managed gateway.
+// Default smoke makes no model Turn, credential read, or personal OpenCodex API
+// request. An explicit opt-in verifies Astra via the already authenticated owner.
+// DSH resolves the existing DeepSeek key for its own managed gateway.
 const credentialFile = join(alphaDshHome, '.credentials.yaml')
 const before = await stat(credentialFile).catch(() => null)
 let url, output = ''
@@ -71,11 +73,28 @@ try {
   const codexModels = catalogEnvelope.result.value.groups.find(group => group.id === 'aezy-codex').models.map(model => model.id)
   assert.ok(codexModels.some(id => id.startsWith('gpt-')) && codexModels.some(id => id.startsWith('deepseek/')))
   assert.ok(codexModels.includes('gpt-6-astra'))
+  let astraTurn = null
+  if (process.env.AEZY_ASTRA_REAL_PROOF === '1') {
+    assert.ok(openai.account.type, 'Aezy GPT must already be logged in; this proof does not import credentials')
+    let sequence = 0
+    const rpc = async (method, args) => {
+      const response = await fetch(`${base}/api/${method}`, { method: 'POST',
+        headers: { Cookie: cookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ type: 'client-request', rpcId: `astra-${++sequence}`, method, payload: { args } }),
+        signal: AbortSignal.timeout(30_000) })
+      const envelope = await response.json()
+      assert.equal(envelope.result?.ok, true, `${method}: ${JSON.stringify(envelope.result?.error)}`)
+      return envelope.result.value
+    }
+    astraTurn = await verifyAstraSelectionTurn({ rpc, catalog: catalogEnvelope.result.value })
+    if (process.env.AEZY_ASTRA_PROOF_RECEIPT) await writeFile(process.env.AEZY_ASTRA_PROOF_RECEIPT, `${JSON.stringify(astraTurn, null, 2)}\n`, { mode: 0o600 })
+  }
   const after = await stat(credentialFile).catch(() => null)
   assert.equal(after?.mtimeMs, before?.mtimeMs, 'smoke must not modify the DSH credential document')
   console.log(JSON.stringify({ profile: alphaProfileName, dshHome: alphaDshHome, host: base, connection: result.connection.state, runtime: result.runtime, models: result.models.map(row => row.id),
     openai: { connection: openai.connection.state, runtime: openai.runtime, accountConfigured: Boolean(openai.account.type), models: openai.models.map(row => row.id) },
-    nativeModels, codexModels, credentialFileUnchanged: true, web: true, paidModelCalls: 0 }, null, 2))
+    nativeModels, codexModels, credentialFileUnchanged: true, web: true, astraTurn,
+    ...(astraTurn ? { paidModelTurn: true } : { paidModelCalls: 0 }) }, null, 2))
 } finally {
   if (child.exitCode === null && child.signalCode === null) {
     child.kill('SIGTERM')

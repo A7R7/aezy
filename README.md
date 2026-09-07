@@ -45,7 +45,7 @@ reference/runtime 分离状态由 `compatibility/dsh.json` 记录。完整影响
   网关只做模型协议转换；可变操作仍经 DSH tools/approval、Aezy Security 与 Journal。
   旧包名只是 composition 标识；当前支持 Node 24 / Linux/WSL x64。
 - `packages/aezy-mode/`：alpha-only 的原生 preset 装配、Codex system preset overlay、
-  per-preset model directory 与 Host provider fence；不拥有 Agent/Session/tool loop。
+  分组运行方式、统一模型身份/兼容 route 投影与 Host provider fence；不拥有 Agent/Session/tool loop。
 - `packages/aezy-inspector/`：从权威 durable Session events 纯投影 `LoopTrace`，提供 Session
   header、revision 3 双 backend full logic graph（owner lanes、可选择 guard/source）与独立
   evidence timeline；不拥有 loop、history、usage 或控制状态。
@@ -110,6 +110,11 @@ DSH 保持 0.1.2-rc.1。两个下拉箭头改用 DSH 公共 SVG 图标，不再�
 `DSH_HOME/aezy/codex-openai-runtime` 和官方 OpenAI 路由；在 Settings → Codex 中独立登录
 ChatGPT。缺 DeepSeek key 或网关启动失败不会隐藏 GPT；两条通道均不会回退到个人路由。
 模型选择器使用主题化菜单；标准模式已通过 DSH 公开配置补齐 `gpt-6-astra`，不提供不受支持的 Off。
+现有“运行方式”菜单分组显示 DSH 工作预设与 Codex 执行引擎，不增加独立引擎选择框。
+模型菜单显示统一身份并集：空白会话切换运行方式时保留模型，选择该身份的兼容通道；没有
+兼容通道则保留条目、禁用并说明，不静默换模型。推理强度和鉴权仍属于实际通道，已有 Turn
+的会话仍由 DSH 锁定 preset。真实 DeepSeek native/Codex 双路径证据见
+[`mode-presets.md`](doc/milestones/mode-presets.md)。
 
 DeepSeek 的模型 catalog 与短 coding instructions 由 Aezy 生成，不复制 vendor prompt。provider key 只保留
 在 Host 内存；Codex 仅获得每次启动轮换的本地 bearer。网关没有工具执行器、会话历史或第二层
@@ -126,8 +131,10 @@ GPT 目录来自官方 App Server 的完整分页结果，登录后可刷新模�
 已用非 OpenAI 模型证明真实 read → approved write → test → Journal/Review → deny → restart /
 同 Thread continuation。Inspector 仍只诚实展示 DSH 边界的 partial trace，Codex token usage
 已通过 Responses / 官方 token-usage notification 契约，但尚未投影到 DSH billing；未知值不伪装成零。
-固定 Codex `0.149.0` 下 Flash 已真实付费验证，Pro 仅目录/契约验证；新增独立 GPT 通道已完成
-未登录进程/目录验证，真实 GPT Turn 需用户在新目录登录后再签收。image、search、remote
+固定 Codex `0.153.4` 下 Flash 的 native/Codex 开发闭环均有真实证据，Pro 仅目录/契约验证。
+独立 GPT 通道已完成 Astra 真实 DSH 只读 Turn；验证发现并移除了强制 API Key 地址的错误
+`openai_base_url` 覆盖，由官方 Codex 按登录账户选择路由，不重登或读取 OAuth。
+GPT governed write 尚未签收。image、search、remote
 compaction、任意 provider 路由和完整 Subagent parity 不在已签收范围。详细证据见
 [`Codex milestone`](doc/milestones/codex.md)，依赖 pin 见
 [`opencodex-runtime.json`](compatibility/opencodex-runtime.json)。Codex-inspired revision 1 原样保留，
@@ -286,7 +293,7 @@ tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原�
 [`relay-dsh-plugin-codex-0.1.2-compatibility.md`](doc/reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)。
 
 rc.1 开发 runtime 保持上游 Agent preset UI，并把 Codex App Server 收口为独立 system preset，
-完成 per-preset catalog UI 过滤、Host 执行门禁与 Session header 模式显示；证据见
+完成统一模型身份/兼容通道投影、Host 执行门禁与 Session header 模式显示；证据见
 [`mode-presets.md`](doc/milestones/mode-presets.md)。alpha.4 合入 main 后，rc.1 又以独立
 runtime migration 通过隔离 3395 与正式 3091 smoke；完整 codex-inspired parity 仍是进入可点击产品面的
 release gate。已完成闭环只按真实 dogfood 故障做 Worktree dependency bootstrap 与 App Server

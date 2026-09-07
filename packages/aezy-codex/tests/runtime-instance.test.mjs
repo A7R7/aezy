@@ -40,6 +40,8 @@ test('runtime owns its home and forces the same configuration on every startup',
   assert.equal(runtime.env.CODEX_HOME, join(root, 'aezy/codex-openai-runtime'))
   assert.equal(runtime.env.CODEX_SQLITE_HOME, runtime.home)
   assert.equal(runtime.config.cli_auth_credentials_store, 'file')
+  assert.equal(runtime.config.openai_base_url, undefined, 'Codex owns account-aware inference routing')
+  assert.equal(runtime.appServerArgs.some(value => value.startsWith('openai_base_url=')), false)
   assert.equal(runtime.appServerArgs.includes('model_provider="openai"'), true)
   assert.equal((await prepareCodexRuntime({ dshHome: root })).id, runtime.id)
   assert.match(await readFile(join(runtime.home, 'config.toml'), 'utf8'), /model_provider = "openai"/)
