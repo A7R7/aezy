@@ -104,7 +104,7 @@ function safeExternalUrl(value: string | undefined): string | null {
   }
 }
 
-export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
+function CodexChannel({ route }: { route: 'openai' | 'gateway' }) {
   const [snapshot, setSnapshot] = useState<AccountSnapshot | null>(null)
   const [pending, setPending] = useState<LoginStart | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -112,14 +112,14 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
 
   const refresh = useCallback(async () => {
     try {
-      const next = await requestJson<AccountSnapshot>(ROUTE)
+      const next = await requestJson<AccountSnapshot>(`${ROUTE}?route=${route}`)
       setSnapshot(next)
       setError(next.error)
       if (next.account?.type === 'chatgpt') setPending(null)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
     }
-  }, [])
+  }, [route])
 
   useEffect(() => { void refresh() }, [refresh])
   useEffect(() => {
@@ -132,7 +132,7 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
     setBusy(mode)
     setError(null)
     try {
-      const login = await requestJson<LoginStart>(`${ROUTE}/login/start`, {
+      const login = await requestJson<LoginStart>(`${ROUTE}/login/start?route=${route}`, {
         method: 'POST',
         body: JSON.stringify({ mode }),
       })
@@ -151,7 +151,7 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
     setBusy('cancel')
     setError(null)
     try {
-      await requestJson(`${ROUTE}/login/cancel`, {
+      await requestJson(`${ROUTE}/login/cancel?route=${route}`, {
         method: 'POST',
         body: JSON.stringify({ loginId: pending.loginId }),
       })
@@ -169,7 +169,7 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
     setBusy('logout')
     setError(null)
     try {
-      await requestJson(`${ROUTE}/logout`, { method: 'POST', body: '{}' })
+      await requestJson(`${ROUTE}/logout?route=${route}`, { method: 'POST', body: '{}' })
       setPending(null)
       await refresh()
     } catch (reason) {
@@ -183,14 +183,16 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
   const summary = snapshot?.usage?.summary ?? null
   const externalHref = safeExternalUrl(pending?.authUrl ?? pending?.verificationUrl)
   const connected = snapshot?.connection.state === 'connected'
-  const managed = snapshot?.runtime?.provider === 'aezy-opencodex'
+  const managed = route === 'gateway'
   const primaryReset = resetLabel(snapshot?.rateLimits?.primary)
 
-  return <section data-aezy-codex-settings style={{ color: palette.text, maxWidth: 760, paddingBottom: 32 }}>
+  return <section data-aezy-codex-channel={route} style={{ color: palette.text, maxWidth: 760, paddingBottom: 32 }}>
     <div style={{ marginBottom: 22 }}>
-      <h2 style={{ fontSize: 20, margin: '0 0 6px' }}>Codex runtime</h2>
+      <h2 style={{ fontSize: 20, margin: '0 0 6px' }}>{managed ? 'DeepSeek · Aezy gateway' : 'GPT · OpenAI'}</h2>
       <p style={{ color: palette.muted, margin: 0, lineHeight: 1.55 }}>
-        Aezy owns the model gateway and an isolated official Codex App Server. DeepSeek uses DSH credentials; no OpenCodex process, personal Codex configuration, OAuth or history is imported. Restart the Host after changing provider settings or credentials.
+        {managed
+          ? 'DeepSeek uses existing DSH credentials through the Aezy gateway. Restart the Host after changing provider settings or credentials.'
+          : 'This official Codex App Server has its own Aezy login, configuration and history. Personal Codex/OpenCodex configuration and OAuth are never imported. Sign in here to use GPT; model availability depends on this account.'}
       </p>
     </div>
 
@@ -207,6 +209,14 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
           <button type="button" disabled={busy !== null} onClick={() => { void refresh() }} style={buttonStyle}>Refresh</button>
         </div>
       </div>
+
+      {!managed && <div style={{ padding: 16, border: `1px solid ${palette.border}`, borderRadius: 10 }}>
+        <div style={{ fontWeight: 650, marginBottom: 8 }}>Official model catalog</div>
+        <div style={{ color: palette.muted, lineHeight: 1.7 }}>
+          {snapshot?.models.map(model => model.displayName).join(' · ') || 'Unavailable'}
+        </div>
+        {!account?.type && <p style={{ color: palette.muted }}>Catalog visibility is not authorization. Sign in before starting a GPT turn.</p>}
+      </div>}
 
       {!managed && account?.type !== 'chatgpt' && <div style={{ padding: 16, border: `1px solid ${palette.border}`, borderRadius: 10 }}>
         <div style={{ fontWeight: 650, marginBottom: 6 }}>Sign in with ChatGPT</div>
@@ -272,6 +282,16 @@ export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
       {error !== null && <p role="alert" style={{ color: palette.danger, margin: 0 }}>{error}</p>}
     </div>
   </section>
+}
+
+export function CodexSettingsSection(_props: SettingsSectionOwnerProps) {
+  return <div data-aezy-codex-settings>
+    <p style={{ color: palette.muted, maxWidth: 760, lineHeight: 1.6 }}>
+      Codex mode offers both GPT and DeepSeek. Start a new Session when changing channels: existing Sessions keep their original runtime-bound Thread and history. Refresh models in the composer after signing in.
+    </p>
+    <CodexChannel route="openai" />
+    <CodexChannel route="gateway" />
+  </div>
 }
 
 export const inject = ['slots']

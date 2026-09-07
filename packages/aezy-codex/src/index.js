@@ -11,6 +11,8 @@ import { CodexAppServerClient } from './app-server-client.js'
 import { CodexBindingStore } from './binding-store.js'
 import { AezyCodexAdapter, CODEX_PROVIDER } from './dsh-adapter.js'
 import { bindGatewayLifecycle, prepareCodexRuntime } from './runtime-instance.js'
+import { readCodexModels } from './model-catalog.js'
+import { CodexModelRoutes } from './model-routes.js'
 
 export { CodexBindingStore } from './binding-store.js'
 export { AezyCodexAdapter, CODEX_PROVIDER } from './dsh-adapter.js'
@@ -121,7 +123,7 @@ export class CodexAccountBridge {
       this.client.request('account/read', { refreshToken: false }).catch(() => null),
       this.client.request('account/rateLimits/read', {}).catch(() => null),
       this.client.request('account/usage/read', {}).catch(() => null),
-      this.client.request('model/list', { cursor: null, limit: 100 }).catch(() => ({ data: [] })),
+      readCodexModels(this.client).catch(() => []),
     ])
     return {
       connection,
@@ -137,7 +139,7 @@ export class CodexAccountBridge {
         summary: usage.summary ?? null,
         dailyBucketCount: Array.isArray(usage.dailyUsageBuckets) ? usage.dailyUsageBuckets.length : null,
       } : null,
-      models: (models.data ?? []).map(model => ({
+      models: models.map(model => ({
         id: model.id,
         displayName: model.displayName ?? model.id,
         isDefault: Boolean(model.isDefault),
@@ -172,7 +174,7 @@ export class CodexAccountBridge {
   }
 }
 
-export function createCodexHandler(bridge) {
+export function createCodexHandler(bridge, channels = {}) {
   return async (req, res) => {
     if (!requireWebClient(req)) {
       json(res, 403, { error: 'This endpoint accepts only Aezy Web requests.' })
@@ -180,15 +182,18 @@ export function createCodexHandler(bridge) {
     }
     const url = new URL(req.url ?? '/', 'http://aezy.local')
     try {
+      const route = url.searchParams.get('route')
+      const selected = route === null ? bridge : channels[route]
+      if (!selected || (route !== null && !Object.hasOwn(channels, route))) throw new Error('Unknown Aezy Codex channel')
       if (req.method === 'GET' && url.pathname === ROUTE) {
-        json(res, 200, await bridge.snapshot())
+        json(res, 200, await selected.snapshot())
         return
       }
       if (req.method === 'POST') {
         const body = await readJson(req)
-        if (url.pathname === `${ROUTE}/login/start`) json(res, 200, await bridge.startLogin(body.mode))
-        else if (url.pathname === `${ROUTE}/login/cancel`) json(res, 200, await bridge.cancelLogin(body.loginId))
-        else if (url.pathname === `${ROUTE}/logout`) json(res, 200, await bridge.logout())
+        if (url.pathname === `${ROUTE}/login/start`) json(res, 200, await selected.startLogin(body.mode))
+        else if (url.pathname === `${ROUTE}/login/cancel`) json(res, 200, await selected.cancelLogin(body.loginId))
+        else if (url.pathname === `${ROUTE}/logout`) json(res, 200, await selected.logout())
         else json(res, 404, { error: 'Unknown Aezy Codex endpoint.' })
         return
       }
@@ -219,7 +224,7 @@ export async function apply(ctx, config = {}) {
     unbindGateway = bindGatewayLifecycle(client, gateway)
     await client.start()
   })
-  const adapter = new AezyCodexAdapter({
+  const gatewayAdapter = new AezyCodexAdapter({
     client,
     ready,
     bindings,
@@ -229,19 +234,42 @@ export async function apply(ctx, config = {}) {
     legacyAgentPresets: Array.isArray(config.legacyAgentPresets) ? config.legacyAgentPresets : [],
     runtime,
   })
+  const openaiRuntime = { provider: 'openai' }
+  const openaiClient = new CodexAppServerClient()
+  const openaiBridge = new CodexAccountBridge(openaiClient, { owner: 'aezy', provider: 'openai' })
+  // GPT startup does not await DeepSeek credentials or the gateway process.
+  const openaiReady = (async () => {
+    Object.assign(openaiRuntime, await prepareCodexRuntime({ dshHome: home }))
+    if (disposed) throw new Error('Aezy Codex was disposed during GPT runtime preparation')
+    openaiClient.env = openaiRuntime.env
+    openaiClient.cwd = openaiRuntime.home
+    openaiClient.appServerArgs = openaiRuntime.appServerArgs
+    openaiBridge.runtimeView = openaiRuntime.view
+    await openaiClient.start()
+  })()
+  const openaiAdapter = new AezyCodexAdapter({
+    client: openaiClient, ready: openaiReady, runtime: openaiRuntime, bindings, ctx, logger: ctx.logger,
+    allowedAgentPresets: Array.isArray(config.allowedAgentPresets) ? config.allowedAgentPresets : [],
+    legacyAgentPresets: Array.isArray(config.legacyAgentPresets) ? config.legacyAgentPresets : [],
+  })
+  const adapter = new CodexModelRoutes({ gateway: gatewayAdapter, openai: openaiAdapter })
   ctx.effect(() => ctx.webServer.register({
     kind: 'prefix',
     path: ROUTE,
-    handler: createCodexHandler(bridge),
+    handler: createCodexHandler(bridge, { gateway: bridge, openai: openaiBridge }),
   }), 'aezy-codex: account API')
   ctx.effect(() => {
     void ready.catch((error) => {
       bridge.recordStartError(error)
       if (!disposed) ctx.logger.warn(error instanceof Error ? error : new Error(String(error)))
     })
+    void openaiReady.catch(error => {
+      openaiBridge.recordStartError(error)
+      if (!disposed) ctx.logger.warn(error instanceof Error ? error : new Error(String(error)))
+    })
     return async () => {
       disposed = true
-      await client.close()
+      await Promise.all([client.close(), openaiClient.close()])
       unbindGateway?.()
     }
   }, 'aezy-codex: official app-server lifecycle')
@@ -258,5 +286,6 @@ export async function apply(ctx, config = {}) {
       adapter.dispose()
     }
   }, 'aezy-codex: DSH Session to official Thread adapter')
-  ctx.provide('aezyCodex', { client, account: bridge, adapter, bindings })
+  ctx.provide('aezyCodex', { client, account: bridge, adapter, bindings,
+    openai: { client: openaiClient, account: openaiBridge } })
 }

@@ -37,7 +37,7 @@ test('runtime owns its home and forces the same configuration on every startup',
   const root = await mkdtemp('/tmp/aezy-runtime-test-')
   t.after(() => rm(root, { recursive: true, force: true }))
   const runtime = await prepareCodexRuntime({ dshHome: root, environment: { CODEX_HOME: '/personal' } })
-  assert.equal(runtime.env.CODEX_HOME, join(root, 'aezy/codex-runtime'))
+  assert.equal(runtime.env.CODEX_HOME, join(root, 'aezy/codex-openai-runtime'))
   assert.equal(runtime.env.CODEX_SQLITE_HOME, runtime.home)
   assert.equal(runtime.config.cli_auth_credentials_store, 'file')
   assert.equal(runtime.appServerArgs.includes('model_provider="openai"'), true)

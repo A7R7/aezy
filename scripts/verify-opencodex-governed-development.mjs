@@ -3,13 +3,15 @@ import { execFileSync } from 'node:child_process'
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { join, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { alphaDshHome, alphaProfileDir, alphaProfileName, runAlphaDsh } from './lib/alpha-runtime.mjs'
 import { projectLoopTrace } from '../packages/aezy-inspector/src/trace.js'
 
 // Real, paid provider test. Never run against the user's working profile.
-if (process.env.AEZY_OPENCODEX_REAL_PROOF !== '1' || !alphaDshHome.startsWith('/tmp/aezy-opencodex-e2e-')) {
-  throw new Error('Use AEZY_OPENCODEX_REAL_PROOF=1 and a synced /tmp/aezy-opencodex-e2e-* DSH_HOME')
+const isolated = alphaDshHome.startsWith('/tmp/aezy-opencodex-e2e-')
+  || alphaDshHome.startsWith(fileURLToPath(new URL('../.local/aezy-model-fixes-', import.meta.url)))
+if (process.env.AEZY_OPENCODEX_REAL_PROOF !== '1' || !isolated) {
+  throw new Error('Use AEZY_OPENCODEX_REAL_PROOF=1 and an isolated /tmp/aezy-opencodex-e2e-* or repository .local/aezy-model-fixes-* DSH_HOME')
 }
 const sourceHome = process.env.AEZY_OPENCODEX_SOURCE_DSH_HOME ?? '/home/aaron/.aezy-alpha/dsh'
 assert.notEqual(sourceHome, alphaDshHome)

@@ -58,21 +58,21 @@ window.__ModuleLoader__.load({
 				return null;
 			}
 		}
-		function CodexSettingsSection(_props) {
+		function CodexChannel({ route }) {
 			const [snapshot, setSnapshot] = (0, react.useState)(null);
 			const [pending, setPending] = (0, react.useState)(null);
 			const [busy, setBusy] = (0, react.useState)(null);
 			const [error, setError] = (0, react.useState)(null);
 			const refresh = (0, react.useCallback)(async () => {
 				try {
-					const next = await requestJson(ROUTE);
+					const next = await requestJson(`${ROUTE}?route=${route}`);
 					setSnapshot(next);
 					setError(next.error);
 					if (next.account?.type === "chatgpt") setPending(null);
 				} catch (reason) {
 					setError(reason instanceof Error ? reason.message : String(reason));
 				}
-			}, []);
+			}, [route]);
 			(0, react.useEffect)(() => {
 				refresh();
 			}, [refresh]);
@@ -87,7 +87,7 @@ window.__ModuleLoader__.load({
 				setBusy(mode);
 				setError(null);
 				try {
-					const login = await requestJson(`${ROUTE}/login/start`, {
+					const login = await requestJson(`${ROUTE}/login/start?route=${route}`, {
 						method: "POST",
 						body: JSON.stringify({ mode })
 					});
@@ -105,7 +105,7 @@ window.__ModuleLoader__.load({
 				setBusy("cancel");
 				setError(null);
 				try {
-					await requestJson(`${ROUTE}/login/cancel`, {
+					await requestJson(`${ROUTE}/login/cancel?route=${route}`, {
 						method: "POST",
 						body: JSON.stringify({ loginId: pending.loginId })
 					});
@@ -122,7 +122,7 @@ window.__ModuleLoader__.load({
 				setBusy("logout");
 				setError(null);
 				try {
-					await requestJson(`${ROUTE}/logout`, {
+					await requestJson(`${ROUTE}/logout?route=${route}`, {
 						method: "POST",
 						body: "{}"
 					});
@@ -138,10 +138,10 @@ window.__ModuleLoader__.load({
 			const summary = snapshot?.usage?.summary ?? null;
 			const externalHref = safeExternalUrl(pending?.authUrl ?? pending?.verificationUrl);
 			const connected = snapshot?.connection.state === "connected";
-			const managed = snapshot?.runtime?.provider === "aezy-opencodex";
+			const managed = route === "gateway";
 			const primaryReset = resetLabel(snapshot?.rateLimits?.primary);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-				"data-aezy-codex-settings": true,
+				"data-aezy-codex-channel": route,
 				style: {
 					color: palette.text,
 					maxWidth: 760,
@@ -154,14 +154,14 @@ window.__ModuleLoader__.load({
 							fontSize: 20,
 							margin: "0 0 6px"
 						},
-						children: "Codex runtime"
+						children: managed ? "DeepSeek · Aezy gateway" : "GPT · OpenAI"
 					}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 						style: {
 							color: palette.muted,
 							margin: 0,
 							lineHeight: 1.55
 						},
-						children: "Aezy owns the model gateway and an isolated official Codex App Server. DeepSeek uses DSH credentials; no OpenCodex process, personal Codex configuration, OAuth or history is imported. Restart the Host after changing provider settings or credentials."
+						children: managed ? "DeepSeek uses existing DSH credentials through the Aezy gateway. Restart the Host after changing provider settings or credentials." : "This official Codex App Server has its own Aezy login, configuration and history. Personal Codex/OpenCodex configuration and OAuth are never imported. Sign in here to use GPT; model availability depends on this account."
 					})]
 				}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 					style: {
@@ -203,6 +203,33 @@ window.__ModuleLoader__.load({
 									children: "Refresh"
 								})]
 							})
+						}),
+						!managed && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+							style: {
+								padding: 16,
+								border: `1px solid ${palette.border}`,
+								borderRadius: 10
+							},
+							children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									style: {
+										fontWeight: 650,
+										marginBottom: 8
+									},
+									children: "Official model catalog"
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									style: {
+										color: palette.muted,
+										lineHeight: 1.7
+									},
+									children: snapshot?.models.map((model) => model.displayName).join(" · ") || "Unavailable"
+								}),
+								!account?.type && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+									style: { color: palette.muted },
+									children: "Catalog visibility is not authorization. Sign in before starting a GPT turn."
+								})
+							]
 						}),
 						!managed && account?.type !== "chatgpt" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							style: {
@@ -435,6 +462,23 @@ window.__ModuleLoader__.load({
 						})
 					]
 				})]
+			});
+		}
+		function CodexSettingsSection(_props) {
+			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+				"data-aezy-codex-settings": true,
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						style: {
+							color: palette.muted,
+							maxWidth: 760,
+							lineHeight: 1.6
+						},
+						children: "Codex mode offers both GPT and DeepSeek. Start a new Session when changing channels: existing Sessions keep their original runtime-bound Thread and history. Refresh models in the composer after signing in."
+					}),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(CodexChannel, { route: "openai" }),
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(CodexChannel, { route: "gateway" })
+				]
 			});
 		}
 		const inject = ["slots"];

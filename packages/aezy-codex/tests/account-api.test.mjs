@@ -122,3 +122,21 @@ test('HTTP account and login routes require Aezy Web authority', async () => {
   foreign.headers['x-aezy-client'] = 'other'
   assert.equal((await invoke(handler, foreign)).status, 403)
 })
+
+test('explicit GPT login route never touches the gateway; unknown routes fail closed', async () => {
+  const gatewayClient = new FakeClient(), openaiClient = new FakeClient()
+  const gateway = new CodexAccountBridge(gatewayClient, { provider: 'aezy-opencodex' })
+  const openai = new CodexAccountBridge(openaiClient, { provider: 'openai' })
+  const handler = createCodexHandler(gateway, { gateway, openai })
+  assert.equal((await invoke(handler, request('/aezy/api/codex/login/start?route=openai', {
+    method: 'POST', body: { mode: 'browser' },
+  }))).status, 200)
+  assert.equal(openaiClient.calls[0].method, 'account/login/start')
+  assert.deepEqual(gatewayClient.calls, [])
+  assert.equal((await invoke(handler, request('/aezy/api/codex/login/start?route=gateway', {
+    method: 'POST', body: { mode: 'browser' },
+  }))).status, 400)
+  for (const route of ['foreign', '__proto__', 'constructor']) {
+    assert.equal((await invoke(handler, request(`/aezy/api/codex?route=${route}`))).status, 400)
+  }
+})

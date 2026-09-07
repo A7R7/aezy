@@ -39,7 +39,7 @@ reference/runtime 分离状态由 `compatibility/dsh.json` 记录。完整影响
 - `packages/aezy-terminal/`：复用 DSH PTY registry/platform shell 的 Integrated Terminal
   Host bridge 与右侧 panel。
 - `packages/aezy-codex/`：固定官方 Codex App Server runtime、独立配置目录和 Session↔Thread
-  归属；Settings 显示受管实例与模型目录。当前路由不导入个人配置或 OAuth。
+  归属；Settings 分别显示 GPT 官方登录通道与 DeepSeek 网关。两者均不导入个人配置或 OAuth。
 - `packages/aezy-opencodex/`：Aezy 自写、运行于 Node Host 的内置模型网关，使用 DSH 已有
   DeepSeek settings/credentials；不依赖、启动或同步 OpenCodex/Bun。Codex 继续拥有 agent loop，
   网关只做模型协议转换；可变操作仍经 DSH tools/approval、Aezy Security 与 Journal。
@@ -95,27 +95,35 @@ profile lock 的 SHA-512 integrity；只有 12 个 Aezy 外置包使用本地 pa
 
 ## 独立 Codex / Aezy 内置模型网关
 
+部署状态（2026-09-07）：下述 GPT/Astra/选择器修复已在独立 profile 验证，随后经用户明确
+授权同步到开发 profile；3091 双通道 smoke 通过，保留原有 3090 开发访问端口。
+
 当前 Codex 模式使用 Aezy 自己的 `DSH_HOME/aezy/codex-runtime` 与
 `DSH_HOME/aezy/model-gateway`。它不读取个人 `CODEX_HOME`、OpenCodex catalog、10100 路由或 OAuth，
 也不修改它们；网关在 Host 内监听 `127.0.0.1` 动态端口，每次请求验证 bearer。凭据来自 Web Models
-中已有的 DSH DeepSeek 配置，修改后须重启 Host。缺 key 或启动失败时 Codex 模式不可用，
-不会回退个人路由；原生 DSH modes 仍可独立运行。
+中已有的 DSH DeepSeek 配置，修改后须重启 Host。GPT 则使用独立的
+`DSH_HOME/aezy/codex-openai-runtime` 和官方 OpenAI 路由；在 Settings → Codex 中独立登录
+ChatGPT。缺 DeepSeek key 或网关启动失败不会隐藏 GPT；两条通道均不会回退到个人路由。
+模型选择器使用主题化菜单；标准模式已通过 DSH 公开配置补齐 `gpt-6-astra`，不提供不受支持的 Off。
 
-模型 catalog 与短 coding instructions 由 Aezy 生成，不复制 vendor prompt。provider key 只保留
+DeepSeek 的模型 catalog 与短 coding instructions 由 Aezy 生成，不复制 vendor prompt。provider key 只保留
 在 Host 内存；Codex 仅获得每次启动轮换的本地 bearer。网关没有工具执行器、会话历史或第二层
 Agent；不再需要 OpenCodex 进程、Bun、`ocx sync`、sqlite 或个人配置协同。
 
 旧 Session 的 Thread binding 没有新 runtime 身份或仍绑定旧 OpenCodex 时保留但拒绝自动恢复，请新建 Codex App Server
 Session 并选择 `deepseek/deepseek-v4-flash` 或 `deepseek/deepseek-v4-pro`。迁移不复制旧 Thread
 history，旧 `aezy/opencodex` 状态目录保留但不使用，不建立双运行时兼容层。
+GPT 与 DeepSeek 通道之间也不自动迁移已绑定的 Thread；切换通道请新建 Session。
+GPT 目录来自官方 App Server 的完整分页结果，登录后可刷新模型；目录可见不等于账户授权。
 配置隔离不等于 OS 沙箱：同 UID 的全局 kill/restart 或文件访问
 仍可能干扰；抵御这种干扰需要独立 OS 用户或容器。
 
 已用非 OpenAI 模型证明真实 read → approved write → test → Journal/Review → deny → restart /
 同 Thread continuation。Inspector 仍只诚实展示 DSH 边界的 partial trace，Codex token usage
 已通过 Responses / 官方 token-usage notification 契约，但尚未投影到 DSH billing；未知值不伪装成零。
-本切片只支持固定 Codex `0.149.0` + DeepSeek 文本，Flash 已真实付费验证，Pro 仅目录/契约验证；
-image、search、remote compaction、多 provider 和完整 Subagent parity 不在已签收范围。详细证据见
+固定 Codex `0.149.0` 下 Flash 已真实付费验证，Pro 仅目录/契约验证；新增独立 GPT 通道已完成
+未登录进程/目录验证，真实 GPT Turn 需用户在新目录登录后再签收。image、search、remote
+compaction、任意 provider 路由和完整 Subagent parity 不在已签收范围。详细证据见
 [`Codex milestone`](doc/milestones/codex.md)，依赖 pin 见
 [`opencodex-runtime.json`](compatibility/opencodex-runtime.json)。Codex-inspired revision 1 原样保留，
 新增提示词/parity 复刻暂停，优先用真实工程任务检验内置网关路径。

@@ -77,7 +77,9 @@ export function tomlValue(value) {
 }
 
 export async function prepareCodexRuntime({ dshHome, gateway, environment = process.env }) {
-  const home = await privateDirectory(join(dshHome, 'aezy', 'codex-runtime'))
+  // Preserve existing DeepSeek bindings and state. GPT never shares its auth,
+  // model catalog or sqlite files with the gateway (or with personal Codex).
+  const home = await privateDirectory(join(dshHome, 'aezy', gateway ? 'codex-runtime' : 'codex-openai-runtime'))
   const provider = gateway ? 'aezy-opencodex' : 'openai'
   const config = {
     model_provider: provider,

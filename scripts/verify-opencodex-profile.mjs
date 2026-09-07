@@ -44,9 +44,34 @@ try {
   assert.ok(result.models.some(row => row.id === 'deepseek/deepseek-v4-flash'))
   assert.ok(result.models.every(row => row.id.startsWith('deepseek/')))
   assert.notEqual(new URL(result.runtime.gateway.endpoint).port, '10100')
+  let openai
+  while (Date.now() < deadline) {
+    openai = await (await fetch(`${base}/aezy/api/codex?route=openai`, { headers: { Cookie: cookie, 'X-Aezy-Client': 'web' } })).json()
+    if (openai.error) throw new Error(openai.error)
+    if (openai.connection.state === 'connected') break
+    await new Promise(resolve => setTimeout(resolve, 200))
+  }
+  assert.equal(openai.connection.state, 'connected')
+  assert.equal(openai.runtime.provider, 'openai')
+  assert.notEqual(openai.runtime.home, result.runtime.home)
+  assert.equal(openai.account.requiresOpenaiAuth, true)
+  assert.ok(openai.models.some(row => row.id.startsWith('gpt-')))
+  assert.ok(openai.models.every(row => !row.id.startsWith('deepseek/')))
+  const catalogResponse = await fetch(`${base}/api/session/modelCatalog`, {
+    method: 'POST', headers: { Cookie: cookie, 'content-type': 'application/json' },
+    body: JSON.stringify({ type: 'client-request', rpcId: 'model-fixes-smoke', method: 'session/modelCatalog', payload: { args: {} } }),
+  })
+  const catalogEnvelope = await catalogResponse.json()
+  assert.equal(catalogEnvelope.result?.ok, true)
+  const nativeModels = catalogEnvelope.result.value.groups.find(group => group.id === 'openai-codex').models.map(model => model.id)
+  assert.ok(nativeModels.includes('gpt-6-astra'))
+  const codexModels = catalogEnvelope.result.value.groups.find(group => group.id === 'aezy-codex').models.map(model => model.id)
+  assert.ok(codexModels.some(id => id.startsWith('gpt-')) && codexModels.some(id => id.startsWith('deepseek/')))
   const after = await stat(credentialFile).catch(() => null)
   assert.equal(after?.mtimeMs, before?.mtimeMs, 'smoke must not modify the DSH credential document')
-  console.log(JSON.stringify({ profile: alphaProfileName, dshHome: alphaDshHome, host: base, connection: result.connection.state, runtime: result.runtime, models: result.models.map(row => row.id), credentialFileUnchanged: true, web: true, paidModelCalls: 0 }, null, 2))
+  console.log(JSON.stringify({ profile: alphaProfileName, dshHome: alphaDshHome, host: base, connection: result.connection.state, runtime: result.runtime, models: result.models.map(row => row.id),
+    openai: { connection: openai.connection.state, runtime: openai.runtime, accountConfigured: Boolean(openai.account.type), models: openai.models.map(row => row.id) },
+    nativeModels, codexModels, credentialFileUnchanged: true, web: true, paidModelCalls: 0 }, null, 2))
 } finally {
   if (child.exitCode === null && child.signalCode === null) {
     child.kill('SIGTERM')

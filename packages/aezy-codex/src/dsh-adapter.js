@@ -3,6 +3,7 @@ import {
   createAssistantMessage,
   createToolResultMessage,
 } from '@deepseek-ai/dsh-llm'
+import { codexModelInfo, readCodexModels } from './model-catalog.js'
 
 export const CODEX_PROVIDER = 'aezy-codex'
 const MAX_PROJECTED_TEXT_BYTES = 512 * 1024
@@ -328,32 +329,14 @@ export class AezyCodexAdapter extends LlmAdapter {
 
   async listModels() {
     await this.ready
-    const result = await this.client.request('model/list', { cursor: null, limit: 100 })
-    return (result.data ?? []).map(model => ({
-      provider: CODEX_PROVIDER,
-      id: model.id,
-      name: model.displayName ?? model.id,
-      description: model.description,
-      inputModalities: ['text'],
-    }))
+    return (await readCodexModels(this.client)).map(model => codexModelInfo(CODEX_PROVIDER, model))
   }
 
   async resolveModel(provider, model) {
     await this.ready
-    const catalog = await this.client.request('model/list', { cursor: null, limit: 100 })
-    const raw = (catalog.data ?? []).find(candidate => candidate.id === model)
+    const raw = (await readCodexModels(this.client)).find(candidate => candidate.id === model)
     if (!raw && this.runtime) throw new Error('Model is not in the Aezy-owned Codex catalog; no personal fallback is permitted')
-    const efforts = (raw?.supportedReasoningEfforts ?? []).map(value => value.reasoningEffort ?? value.id ?? value)
-    return compact({
-      provider,
-      id: model,
-      name: raw?.displayName ?? model,
-      inputModalities: ['text'],
-      reasoning: efforts.length === 0 ? undefined : {
-        efforts: efforts.map(id => ({ id, name: String(id) })),
-        defaultEffort: raw?.defaultReasoningEffort,
-      },
-    })
+    return codexModelInfo(provider, raw ?? { id: model })
   }
 
   assertAllowedPreset(options) {

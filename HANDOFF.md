@@ -1,6 +1,6 @@
 # Aezy 项目交接
 
-> 更新日期：2026-09-06<br>
+> 更新日期：2026-09-07<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`main`（`alpha` 已 fast-forward 合入）<br>
 > 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
@@ -74,8 +74,8 @@ governed write、alpha.4 Session/cache carryover 和 cold restart。Aezy runtime
 - `packages/aezy-security`：Approval Rules、Network Policy 与审计。
 - `packages/aezy-terminal`：DSH PTY 的 Session-scoped Host bridge 与右侧 Terminal panel。
 - `packages/aezy-codex`：官方 App Server process/protocol client、独立 Codex home、runtime-bound
-  Session↔Thread/Turn、stream/activity/cancel/resume 薄适配。当前 Settings 显示受管路由与模型，
-  不导入个人 OAuth，受管网关模式拒绝 ChatGPT login/logout。
+  Session↔Thread/Turn、stream/activity/cancel/resume 薄适配。代码已恢复 GPT 官方独立通道，
+  Settings 分别显示 GPT 登录与 DeepSeek 网关；不导入个人 OAuth。已授权同步正式开发 profile。
 - `packages/aezy-opencodex`：Aezy 自写、Host 内置 Node 网关 `aezy-responses-v1`，旧包名仅作
   composition 标识；不依赖或启动 OpenCodex/Bun/CLI sync。独立 catalog/replay-key/动态鉴权
   loopback 端口；凭据由 DSH `llm-deepseek` settings / credentials owner 提供且仅留在 Host 内存。
@@ -128,7 +128,15 @@ Codex Session。旧 `aezy/opencodex` 目录保留但不读、不使用。仅 Nod
 native read-only 权限。Aezy 拥有短 coding instructions，不声称 vendor prompt 等价。provider
 配置/凭据变动后须重启 Host；usage 已经 Responses/官方 notification 验证但尚未映射到 DSH billing，
 Inspector 仍诚实标记 partial。Flash 已真实验证，Pro 只有目录/契约覆盖；image/search/remote
-compaction/多 provider/完整 Subagent parity 尚未签收。详细证据与复验命令见 Codex milestone。
+compaction/任意 provider 路由/完整 Subagent parity 尚未签收。详细证据与复验命令见 Codex milestone。
+
+2026-09-07 三项修复已实现并通过隔离验证：模型/effort 原生 select 改为 DSH 主题化 Menu/Button；
+native `openai-codex` 用公开 models 配置补齐 Astra（保留旧七项，不提供 Off/minimal）；
+`aezy-codex` 增加独立 `aezy/codex-openai-runtime`，GPT 与现有 DeepSeek 目录/凭据/Thread 不混用。
+已经绑定 Thread 的 Session 换通道必须新建，不自动迁移历史；GPT 必须在 Settings → Codex
+新目录独立登录。0.149.0 未登录官方目录尚无 Astra，不伪造其 App Server entitlement。
+153 项测试（含四项官方进程测试）、真实 DeepSeek governed write/deny/restart、浏览器交互均通过。
+新 GPT 实际 Turn 与 Astra 账户权限未签收，不能以历史或 DeepSeek 证据替代。
 
 接手时最容易误解的语义：
 
@@ -150,20 +158,30 @@ compaction/多 provider/完整 Subagent parity 尚未签收。详细证据与复
 
 ## 4. 当前 Git 与 Host 状态
 
-Tracked worktree clean；无需保留历史 dogfood fixture。
+本次修复在 `main` 以选择器/Astra/GPT 通道三个独立提交维护。
+
+**部署已完成**：2026-09-07 初次同步被安全审批拦截，用户随后明确回复“允许”，才同步
+`~/.aezy-alpha/dsh` / `aezy-alpha`。增强的 `scripts/verify-opencodex-profile.mjs` 已在 3091
+通过：native 八模型含 Astra，Codex 两个 DeepSeek + 五个 GPT，双通道 connected，DSH
+凭据文件 mtime 不变、0 付费调用。GPT 新目录 accountConfigured=false，需用户独立登录。
+实际旧开发 Host 运行在 3090 而非 3091；确认其 PID/profile 后正常终止，锁由 owner 自行
+释放，没有删除活跃锁。验证后新版 Host 恢复在 **3090**，不把旧个人配置引入任何通道。
+
+已验证且保留的独立 profile 为 `.local/aezy-model-fixes-XqAlLV/dsh` / `aezy-model-fixes`，
+隔离及 3091 测试 Host 已停止，开发 3090 保持运行。详细 receipt/重放命令见各 milestone。
+下面的 3091 smoke 是 **2026-09-06 历史工作版本** 的事实，不是本次修复部署结果。
 
 本次独立 Aezy 内置网关/DeepSeek 真实开发闭环已通过后，同一插件已同步至
 `~/.aezy-alpha/dsh` / `aezy-alpha`。正式 3091 最小 Web/runtime smoke 返回 connected，
 Host 内置 gateway 为 `127.0.0.1` 动态端口，模型仅 `deepseek-v4-flash` / `deepseek-v4-pro`，
 凭据来源 `DSH credentials (file)`，凭据文件 mtime 未变。smoke 没有付费模型请求。
-验证后所有本次 Host 已停止，3091 未监听；新会话须重新检查，不能仅相信此处的运行时状态。
+该次验证后的停止状态属于历史记录；当前端口以本节上方的 2026-09-07 状态和实际检查为准。
 
-alpha Host 已完成本次 rc.1 启动/重启与 governed write 验收后停止；新会话仍必须重新检查。
-其
+新会话须重新检查进程与端口，不能并发启动两个使用同一 profile 的网关 owner。其
 DSH_HOME/profile 与主线历史状态完全分离，启动命令为：
 
 ```bash
-pnpm run alpha:web -- --host 127.0.0.1 --port 3091 --no-open
+pnpm run alpha:web -- --host 127.0.0.1 --port 3090 --no-open
 ```
 
 历史 managed ChatGPT/3090 验收由 `doc/milestones/codex.md` 保留，不代表现在使用个人账户。

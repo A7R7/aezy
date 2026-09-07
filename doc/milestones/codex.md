@@ -7,7 +7,42 @@
 
 上方日期/runtime 是首个 managed ChatGPT 自开发闭环的历史签收。当前开发 runtime 为 DSH
 `0.1.2-rc.1`；2026-09-06 已从受管 OpenCodex 切换为 Aezy 内置 Node 网关 / DeepSeek，当前路径与新增证据见
-本文最后一节。不要把历史个人账户路径当作当前配置要求。
+本文对应日期的小节。不要把历史个人账户路径当作当前配置要求。
+
+## 2026-09-07：恢复隔离 GPT 通道（真实 GPT Turn pending login）
+
+修复 Codex 模式只剩 DeepSeek：`aezy-codex` 外置 adapter 现在将 `deepseek/*` 与 `gpt-*`
+分发到同一固定官方 Codex engine 的两个隔离连接。DeepSeek 原有 `aezy/codex-runtime` / runtimeId
+保持不变，GPT 使用全新的 `aezy/codex-openai-runtime`。独立启动、独立 model catalog、独立
+登录，任一通道失败不隐藏另一通道；绝不跨 provider fallback。绑定后的 Session 换通道仍拒绝
+resume，必须新建 Session，不复制历史，不建立旧 runtime 兼容层或多-runtime 编排产品。
+
+Settings 同时展示两条通道；GPT 的 browser/device login/logout 只调用该进程的官方 account
+RPC。默认 `/aezy/api/codex` 继续返回网关快照，新增显式 `?route=openai|gateway`。
+个人 config/OAuth 未读取、复制或修改。目录读取完整分页并保留 reasoning metadata；目前
+0.149.0 未登录内置目录没有 Astra，不伪造其官方 prompt/catalog。登录后以官方目录为准。
+
+验证：153 项测试通过（含四项 opt-in 官方 Codex 进程测试）；新增覆盖双向路由、缺凭据、
+无 fallback、登录目标、分页、reasoning、独立 GPT 配置及 restart 稳定 runtimeId。
+未登录空 Thread 没有 Codex rollout，不能把空 Thread 的启动当作真实 history resume 证明。
+
+隔离磁盘 profile：`.local/aezy-model-fixes-XqAlLV/dsh` / `aezy-model-fixes`。
+2026-09-07T02:26:21.912Z 真实 DeepSeek 回归 Session `aezy-owned-deepseek-mtqmcrw0`，
+Thread `01a079af-eefc-7e31-8a4a-3f0e91bbd87b`：修复 sum、一次测试通过、4 次显式批准、
+网络拒绝、Journal/Review、Inspector partial、分页、cold restart 同 Thread/精确历史继续均通过。
+receipt 位于该 profile 的 `aezy/opencodex-proof.json`。此前失败安装只清理了本次生成的
+`/tmp/aezy-model-fixes-zqErJq`，未删除既有 profile 或历史证据。
+
+剩余边界：用户须在 Settings → Codex → GPT 登录新目录，随后才能真实签收 GPT/Astra
+账户可用性和 GPT governed Turn。DSH-native Astra 的配置证据见 native-provider milestone，
+不得借用历史 ChatGPT 或 DeepSeek 证据宣称新 GPT 通道已经付费验证。
+
+部署状态：第一次同步被审批阻止后，用户明确回复“允许”，随后同步默认 `~/.aezy-alpha/dsh`
+成功。旧开发 Host 实际运行在 3090，确认 owner PID/profile 后正常终止并自行释放锁；没有
+删除活跃锁或干预个人进程。增强的 3091 smoke 通过：Web、两条 Codex channel connected、
+native 八模型含 Astra、Codex 两个 DeepSeek + 五个 GPT、凭据文件 mtime 未变、0 付费调用。
+GPT 新 home 为 `aezy/codex-openai-runtime`，accountConfigured=false；验证后开发 Host
+恢复到原有 3090 端口。隔离 profile 保留可复验。
 
 ## Outcome
 
