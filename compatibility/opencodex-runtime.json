@@ -12,7 +12,7 @@
     "models": ["deepseek-v4-flash", "deepseek-v4-pro"]
   },
   "retiredRuntime": { "package": "@bitkyc08/opencodex", "version": "2.42.0", "bun": "1.4.0", "runtimeDependency": false },
-  "codex": "0.149.0",
+  "codex": "0.153.4",
   "dsh": "0.1.2-rc.1",
   "provider": "DSH llm-deepseek settings and credentials/reference owner",
   "interfaces": ["DSH settings/credentials", "Aezy-generated model catalog", "Responses HTTP/SSE", "official Codex App Server stdio"],

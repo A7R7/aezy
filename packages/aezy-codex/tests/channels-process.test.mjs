@@ -31,6 +31,10 @@ test('official GPT process owns separate auth/catalog/config and stable identity
       await client.start()
       const models = await readCodexModels(client)
       assert.ok(models.some(model => model.id === 'gpt-5.6-sol'))
+      const astra = models.find(model => model.id === 'gpt-6-astra')
+      assert.ok(astra, 'The pinned official runtime must expose Astra without a custom catalog')
+      assert.equal(astra.hidden, false)
+      assert.ok(astra.supportedReasoningEfforts.some(value => value.reasoningEffort === 'high'))
       assert.ok(models.every(model => !model.id.startsWith('deepseek/')))
       const account = await client.request('account/read', { refreshToken: false })
       assert.equal(account.requiresOpenaiAuth, true)
@@ -39,12 +43,13 @@ test('official GPT process owns separate auth/catalog/config and stable identity
       assert.equal(config.model_provider, 'openai')
       assert.equal(config.sqlite_home, runtime.home)
       assert.equal(config.model_catalog_json, null)
-      const params = { cwd: root, model: 'gpt-5.6-sol', modelProvider: runtime.provider,
+      const params = { cwd: root, model: 'gpt-6-astra', modelProvider: runtime.provider,
         config: runtime.config, permissions: ':read-only', approvalPolicy: 'never' }
       // An empty unauthenticated Thread has no persisted rollout in Codex.
       // This probes thread configuration, not a paid Turn or history resume.
       const result = await client.request('thread/start', params)
       assert.equal(result.modelProvider, 'openai')
+      assert.equal(result.model, 'gpt-6-astra')
       assert.ok(result.thread.id)
     } finally { await client.close() }
     assert.equal(await readFile(`${deepseek.home}/config.toml`, 'utf8'), gatewayConfig)

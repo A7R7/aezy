@@ -134,7 +134,9 @@ compaction/任意 provider 路由/完整 Subagent parity 尚未签收。详细�
 native `openai-codex` 用公开 models 配置补齐 Astra（保留旧七项，不提供 Off/minimal）；
 `aezy-codex` 增加独立 `aezy/codex-openai-runtime`，GPT 与现有 DeepSeek 目录/凭据/Thread 不混用。
 已经绑定 Thread 的 Session 换通道必须新建，不自动迁移历史；GPT 必须在 Settings → Codex
-新目录独立登录。0.149.0 未登录官方目录尚无 Astra，不伪造其 App Server entitlement。
+新目录独立登录。后续已通过公开 account/read 确认登录成功，但 0.149.0 完整目录仍无 Astra；
+现固定官方 npm Codex **0.153.4**，官方目录原生返回 Astra，不自造 catalog/entitlement。
+两个下拉按钮的 `⌄` 改为 DSH 公开 `IconChevronDownOutline14` SVG。
 153 项测试（含四项官方进程测试）、真实 DeepSeek governed write/deny/restart、浏览器交互均通过。
 新 GPT 实际 Turn 与 Astra 账户权限未签收，不能以历史或 DeepSeek 证据替代。
 
@@ -158,17 +160,21 @@ native `openai-codex` 用公开 models 配置补齐 Astra（保留旧七项，�
 
 ## 4. 当前 Git 与 Host 状态
 
-本次修复在 `main` 以选择器/Astra/GPT 通道三个独立提交维护。
+初次三项修复在 `main` 以选择器/Astra/GPT 通道三个独立提交维护；本次追加 SVG 箭头与
+Codex 0.153.4/Astra 两个独立精确提交。
 
 **部署已完成**：2026-09-07 初次同步被安全审批拦截，用户随后明确回复“允许”，才同步
 `~/.aezy-alpha/dsh` / `aezy-alpha`。增强的 `scripts/verify-opencodex-profile.mjs` 已在 3091
-通过：native 八模型含 Astra，Codex 两个 DeepSeek + 五个 GPT，双通道 connected，DSH
-凭据文件 mtime 不变、0 付费调用。GPT 新目录 accountConfigured=false，需用户独立登录。
+通过；随后本次 0.153.4 升级再次完成隔离验证、同步和增强的 3091 smoke：native 八模型含
+Astra，Codex 两个 DeepSeek + 六个 GPT（含 Astra），双通道 connected，DSH 凭据文件 mtime
+不变、smoke 0 付费调用。GPT 目录 accountConfigured=true，用户已独立登录，无需重新登录。
 实际旧开发 Host 运行在 3090 而非 3091；确认其 PID/profile 后正常终止，锁由 owner 自行
 释放，没有删除活跃锁。验证后新版 Host 恢复在 **3090**，不把旧个人配置引入任何通道。
 
 已验证且保留的独立 profile 为 `.local/aezy-model-fixes-XqAlLV/dsh` / `aezy-model-fixes`，
 隔离及 3091 测试 Host 已停止，开发 3090 保持运行。详细 receipt/重放命令见各 milestone。
+本次浏览器 receipt 为 `2026-09-07T03:32:29.855Z`；真实 DeepSeek 开发/restart receipt 为
+`2026-09-07T03:33:55.979Z`。153 项测试通过；尚未把 GPT/Astra 真实 Turn 签收。
 下面的 3091 smoke 是 **2026-09-06 历史工作版本** 的事实，不是本次修复部署结果。
 
 本次独立 Aezy 内置网关/DeepSeek 真实开发闭环已通过后，同一插件已同步至
@@ -257,7 +263,7 @@ restart 后同 Thread continuation。OpenCodex/Bun 已从根/profile closure 删
 首选 owner/seam 是官方 Codex `app-server`，不是 Aezy 自写 OAuth 或立即复制 Codex agent
 loop。官方接口已提供 ChatGPT managed OAuth（浏览器与 device-code）、凭据持久化/刷新、
 `planType`、rate limits/usage、conversation history、approval 和 streamed agent events。Aezy
-只通过外置 runtime adapter 启动/连接该进程并投影协议事实。当前固定 npm Codex `0.149.0`，
+只通过外置 runtime adapter 启动/连接该进程并投影协议事实。当前固定 npm Codex `0.153.4`，
 个人 CLI 版本不是权威；内置网关/目录版本与退役依赖记录固定于 `compatibility/opencodex-runtime.json`。
 不把 App Server 协议散入现有 M0–M4/Terminal 包。
 

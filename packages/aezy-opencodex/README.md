@@ -34,7 +34,7 @@ DSH tools/approval and Aezy Security/Journal/Review.
 
 ## Explicit protocol scope
 
-Codex `0.149.0`, Node `24`, Linux/WSL x64; DeepSeek V4 Flash/Pro text only. Flash
+Codex `0.153.4`, Node `24`, Linux/WSL x64; DeepSeek V4 Flash/Pro text only. Flash
 has the real paid engineering proof; Pro is catalog/contract coverage only.
 Aezy owns a short coding instruction and conservative 128k catalog operating
 limit, not a vendor prompt replica. Reasoning levels are low/high/max.

@@ -247,7 +247,7 @@ try {
   assert.equal(gatewayDiagnostics.usageUnreported, 0)
   const receipt = {
     timestamp: new Date().toISOString(), sessionId, fixture,
-    versions: { dsh: '0.1.2-rc.1', codex: '0.149.0', gateway: 'aezy-responses-v1', opencodex: null, bun: null },
+    versions: { dsh: '0.1.2-rc.1', codex: '0.153.4', gateway: 'aezy-responses-v1', opencodex: null, bun: null },
     provider: 'aezy-codex', model, credentialOrigin: `existing DSH credentials (${credentialSource})`,
     runtimeId: restarted.runtime.id, threadId: afterBinding.threadId,
     realDevelopment: { baselineFailed: true, changedFiles: ['sum.mjs'], testsPassed: 1, dshDynamicTools: ['read', 'write', 'bash'] },

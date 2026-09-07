@@ -37,6 +37,7 @@ try {
   }
   assert.equal(result.connection.state, 'connected')
   assert.equal(result.runtime.owner, 'aezy')
+  assert.equal(result.runtime.version, '0.153.4')
   assert.equal(result.runtime.provider, 'aezy-opencodex')
   assert.equal(result.runtime.gateway.version, 'aezy-responses-v1')
   assert.equal(new URL(result.runtime.gateway.endpoint).hostname, '127.0.0.1')
@@ -53,9 +54,11 @@ try {
   }
   assert.equal(openai.connection.state, 'connected')
   assert.equal(openai.runtime.provider, 'openai')
+  assert.equal(openai.runtime.version, '0.153.4')
   assert.notEqual(openai.runtime.home, result.runtime.home)
   assert.equal(openai.account.requiresOpenaiAuth, true)
   assert.ok(openai.models.some(row => row.id.startsWith('gpt-')))
+  assert.ok(openai.models.some(row => row.id === 'gpt-6-astra'))
   assert.ok(openai.models.every(row => !row.id.startsWith('deepseek/')))
   const catalogResponse = await fetch(`${base}/api/session/modelCatalog`, {
     method: 'POST', headers: { Cookie: cookie, 'content-type': 'application/json' },
@@ -67,6 +70,7 @@ try {
   assert.ok(nativeModels.includes('gpt-6-astra'))
   const codexModels = catalogEnvelope.result.value.groups.find(group => group.id === 'aezy-codex').models.map(model => model.id)
   assert.ok(codexModels.some(id => id.startsWith('gpt-')) && codexModels.some(id => id.startsWith('deepseek/')))
+  assert.ok(codexModels.includes('gpt-6-astra'))
   const after = await stat(credentialFile).catch(() => null)
   assert.equal(after?.mtimeMs, before?.mtimeMs, 'smoke must not modify the DSH credential document')
   console.log(JSON.stringify({ profile: alphaProfileName, dshHome: alphaDshHome, host: base, connection: result.connection.state, runtime: result.runtime, models: result.models.map(row => row.id),

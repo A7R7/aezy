@@ -118,7 +118,7 @@ export async function prepareCodexRuntime({ dshHome, gateway, environment = proc
   return {
     id, home, provider, config, env,
     appServerArgs: ['app-server', ...Object.entries(config).flatMap(([key, value]) => ['-c', `${key}=${tomlValue(value)}`])],
-    view: { id, owner: 'aezy', engine: 'codex', version: '0.149.0', provider, home,
+    view: { id, owner: 'aezy', engine: 'codex', version: '0.153.4', provider, home,
       gateway: gateway ? { owner: 'aezy', version: gateway.version, endpoint: gateway.endpoint, credentialSource: gateway.credentialSource } : null },
   }
 }

@@ -11,7 +11,9 @@ function fixture() {
     listBackends: () => ['shell'],
     list: agent => [...(byOwner.get(agent) ?? [])],
     async spawn(agent, request) {
-      const snapshot = { sessionId: `pty-${++next}`, name: request.name, type: request.type, pid: 100 + next, status: { kind: 'running' } }
+      // This mock has no OS process. A fabricated positive pid can resolve to
+      // an unrelated real process under /proc during App Server process tests.
+      const snapshot = { sessionId: `pty-${++next}`, name: request.name, type: request.type, status: { kind: 'running' } }
       byOwner.get(agent).push(snapshot)
       return { ...snapshot, motd: 'dsh> ' }
     },

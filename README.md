@@ -98,6 +98,11 @@ profile lock 的 SHA-512 integrity；只有 12 个 Aezy 外置包使用本地 pa
 部署状态（2026-09-07）：下述 GPT/Astra/选择器修复已在独立 profile 验证，随后经用户明确
 授权同步到开发 profile；3091 双通道 smoke 通过，保留原有 3090 开发访问端口。
 
+后续已定位 Astra 缺失根因：Aezy 已登录的 Codex 0.149.0 全量官方目录仍无 Astra。
+固定官方 Codex 升至 **0.153.4** 后目录原生包含 `gpt-6-astra`，无需复制/伪造 model catalog；
+DSH 保持 0.1.2-rc.1。两个下拉箭头改用 DSH 公共 SVG 图标，不再使用字符字形。
+隔离浏览器与真实 DeepSeek governed write/restart 回归通过；证据见 Codex milestone。
+
 当前 Codex 模式使用 Aezy 自己的 `DSH_HOME/aezy/codex-runtime` 与
 `DSH_HOME/aezy/model-gateway`。它不读取个人 `CODEX_HOME`、OpenCodex catalog、10100 路由或 OAuth，
 也不修改它们；网关在 Host 内监听 `127.0.0.1` 动态端口，每次请求验证 bearer。凭据来自 Web Models

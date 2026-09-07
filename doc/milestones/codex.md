@@ -9,7 +9,39 @@
 `0.1.2-rc.1`；2026-09-06 已从受管 OpenCodex 切换为 Aezy 内置 Node 网关 / DeepSeek，当前路径与新增证据见
 本文对应日期的小节。不要把历史个人账户路径当作当前配置要求。
 
-## 2026-09-07：恢复隔离 GPT 通道（真实 GPT Turn pending login）
+## 2026-09-07：修正登录后仍缺 Astra 的 runtime pin
+
+通过 Aezy 官方 App Server 的 `account/read(refreshToken: false)` 已确认新 home 登录成功
+（`type: chatgpt`），但 0.149.0 的 `model/list(includeHidden: true, limit: 100)` 全量目录无
+`gpt-6-astra`，且 `nextCursor: null`。因此不是 UI 过滤、漏分页或用户未登录；此前“登录后
+以目录为准”没有解决固定旧 engine 的问题。没有读取 OAuth 文件，也没有复制个人配置。
+
+仅将官方 npm Codex 精确 pin 升到稳定版 0.153.4，lock 锁定主包与平台包 SHA-512；DSH
+完整官方 family 仍为 0.1.2-rc.1。新进程无自定义 GPT catalog 即返回可见 Astra，保留官方
+reasoning metadata（App Server 目录与 native API 配置分别消费各自能力，不互相硬编码覆盖）。
+GPT/DeepSeek 的 home、runtimeId 和路由边界不变。目录按官方公开 `model/list` 发现，不伪造
+entitlement 或复制旧模型 prompt；参考 https://learn.chatgpt.com/docs/app-server#models。
+
+验证：153 项测试通过（含四项官方进程测试）；Astra 的 model/list、thread/start、独立 home
+及双启动均通过。修正了一处 Terminal mock 使用虚构正 PID 命中真实 `/proc` 进程的测试污染，
+不改变 Terminal 产品行为。浏览器 receipt `2026-09-07T03:32:29.855Z` 证明 Codex 菜单同时
+有 Astra、旧 GPT 与两个 DeepSeek，可选择 Astra/high、刷新并保持；模型/effort 箭头为公共
+SVG，无字符 `⌄`，0 page errors。测试字体替代仍显式记录。
+
+0.153.4 的真实 DeepSeek 开发回归 receipt `2026-09-07T03:33:55.979Z`：Session
+`aezy-owned-deepseek-mtqorlx5`，Thread `01a079ed-bf5e-7032-ba12-e00f2ca3ff9b`，sum 修复、
+4 次批准、测试通过、网络拒绝、Journal/Review、Inspector partial、分页、同 Thread cold
+restart 与精确历史续跑均通过。receipt 仍位于隔离 profile 的 `aezy/opencodex-proof.json`。
+以上不等于真实 GPT/Astra 付费 Turn 或 GPT governed write 已验证。
+Inspector 的静态 Codex source blueprint 仍明确标记 rust-v0.149.0 审计来源；本次只验证
+公开事件边界，不把旧源码图改标签冒充 0.153.4 的完整内核审计。
+
+部署完成：默认 `~/.aezy-alpha/dsh` / `aezy-alpha` 已同步，增强的 3091 smoke 确认两条
+通道版本均 0.153.4、connected；原 GPT 登录保留（accountConfigured=true），Codex 目录
+两个 DeepSeek + 六个 GPT（含 Astra），native 八模型仍含 Astra。DSH 凭据文件 mtime
+未变，smoke 0 模型 Turn；停止临时 3091 并恢复 3090 开发服务。
+
+## 2026-09-07：恢复隔离 GPT 通道（历史初次部署记录）
 
 修复 Codex 模式只剩 DeepSeek：`aezy-codex` 外置 adapter 现在将 `deepseek/*` 与 `gpt-*`
 分发到同一固定官方 Codex engine 的两个隔离连接。DeepSeek 原有 `aezy/codex-runtime` / runtimeId
