@@ -1,4 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { Button, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { Context } from '@deepseek-ai/cordis'
 
 export const CODEX_APP_SERVER_PRESET = 'codex-app-server'
@@ -6,6 +8,7 @@ export const CODEX_PROVIDER = 'aezy-codex'
 
 type Selection = { provider: string; model: string; reasoningEffort?: string }
 type Model = { id: string; name: string; description?: string; reasoning?: { efforts: Array<{ id: string; name: string }>; defaultEffort?: string } }
+const defaultEffort = (model: Model) => model.reasoning?.defaultEffort ?? model.reasoning?.efforts[0]?.id
 type Group = { id: string; name: string; models: Model[] }
 type Catalog = { default: Selection; routableProviders: string[]; groups: Group[]; failures: Array<{ id: string; name: string; message: string }> }
 type RemoteResult<T> = { ok: true; value: T } | { ok: false; error: { code: string; message: string } }
@@ -81,29 +84,40 @@ export class ModeModelDirectory {
   async load(): Promise<void> {
     if (this.disposed) return
     this.store.update(state => { state.status = 'loading'; state.error = null })
-    const result = await this.remote.modelCatalog()
-    if (!result.ok) {
-      this.store.update(state => { state.status = 'error'; state.error = `${result.error.code}: ${result.error.message}` })
-      return
+    try {
+      const result = await this.remote.modelCatalog()
+      if (this.disposed) return
+      if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`)
+      this.catalog = result.value
+      this.sync()
+      await this.ensureCodexDefault()
+    } catch (error) {
+      this.reportError(error)
     }
-    this.catalog = result.value
-    this.sync()
-    await this.ensureCodexDefault()
+  }
+
+  private reportError(error: unknown): void {
+    if (this.disposed) return
+    this.store.update(state => { state.status = 'error'; state.error = error instanceof Error ? error.message : String(error) })
   }
 
   async select(selection: Selection): Promise<void> {
-    const preset = projection<string | null>(this.presetProjection) ?? null
-    const codexMode = preset === CODEX_APP_SERVER_PRESET
-    if ((selection.provider === CODEX_PROVIDER) !== codexMode) {
-      throw new Error(`provider ${selection.provider} is unavailable in preset ${preset ?? '(none)'}`)
+    if (this.disposed) return
+    try {
+      const preset = projection<string | null>(this.presetProjection) ?? null
+      const codexMode = preset === CODEX_APP_SERVER_PRESET
+      if ((selection.provider === CODEX_PROVIDER) !== codexMode) {
+        throw new Error(`provider ${selection.provider} is unavailable in preset ${preset ?? '(none)'}`)
+      }
+      this.store.update(state => { state.status = 'selecting'; state.error = null })
+      const result = await this.remote.selectModel({ sessionId: this.sessionId, ...selection })
+      if (this.disposed) return
+      if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`)
+      this.store.update(state => { state.current = result.value.selected; state.status = 'ready'; state.error = null })
+    } catch (error) {
+      this.reportError(error)
+      throw error
     }
-    this.store.update(state => { state.status = 'selecting'; state.error = null })
-    const result = await this.remote.selectModel({ sessionId: this.sessionId, ...selection })
-    if (!result.ok) {
-      this.store.update(state => { state.status = 'error'; state.error = `${result.error.code}: ${result.error.message}` })
-      throw new Error(result.error.message)
-    }
-    this.store.update(state => { state.current = result.value.selected; state.status = 'ready'; state.error = null })
   }
 
   dispose(): void {
@@ -143,7 +157,7 @@ export class ModeModelDirectory {
       await this.select({
         provider: CODEX_PROVIDER,
         model: model.id,
-        ...model.reasoning?.defaultEffort === undefined ? {} : { reasoningEffort: model.reasoning.defaultEffort },
+        ...defaultEffort(model) === undefined ? {} : { reasoningEffort: defaultEffort(model) },
       })
     } finally {
       this.selectingDefault = false
@@ -162,48 +176,61 @@ type ComponentProps = Injected & {
 
 export function ModeModelSelect({ useModeModels, load, select }: ComponentProps) {
   const state = useModeModels(value => value)
+  const [open, setOpen] = useState<'model' | 'effort' | null>(null)
   useEffect(() => { load() }, [load])
+  useEffect(() => { setOpen(null) }, [state.preset])
   const entries = state.groups.flatMap(group => group.models.map(model => ({ group, model })))
   const selectedIndex = entries.findIndex(({ group, model }) => (
     state.current?.provider === group.id && state.current.model === model.id
   ))
   const current = selectedIndex < 0 ? undefined : entries[selectedIndex]
   const efforts = current?.model.reasoning?.efforts ?? []
+  const busy = state.status === 'loading' || state.status === 'selecting'
+  // Errors are published by the directory; never leave a rejected UI promise.
+  const choose = (selection: Selection) => { setOpen(null); void select(selection).catch(() => {}) }
+  const items: MenuEntry[] = state.groups.flatMap(group => [
+    { type: 'label' as const, id: `group:${group.id}`, text: group.name },
+    ...group.models.map(model => ({ id: `${group.id}\u0000${model.id}`, label: model.name })),
+  ])
+  const effort = state.current?.reasoningEffort ?? (current && defaultEffort(current.model))
   return <span data-aezy-mode-model style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-    <select
-      aria-label="Model"
-      disabled={state.status === 'loading' || state.status === 'selecting' || entries.length === 0}
-      value={selectedIndex < 0 ? '' : String(selectedIndex)}
-      title={state.error ?? `Mode: ${state.preset ?? 'unknown'}`}
-      onChange={(event) => {
-        const entry = entries[Number(event.target.value)]
+    <Menu open={open === 'model'} portal side="top" align="end" compact
+      anchor={<Button variant="toolbar" size="sm" aria-label="Model" aria-haspopup="menu"
+        aria-expanded={open === 'model'} disabled={busy}
+        title={current ? `${current.group.name} · ${current.model.name}` : 'Select model'}
+        onClick={() => setOpen(open === 'model' ? null : 'model')}>
+        <span style={{ maxWidth: 210, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {busy ? 'Loading…' : current?.model.name ?? 'Select model'}
+        </span><span aria-hidden="true">⌄</span>
+      </Button>}
+      items={items.length ? items : [{ type: 'label', id: 'empty', text: 'No models available' }]}
+      footer={[{ id: 'refresh', label: 'Refresh models' }]}
+      selectedId={current ? `${current.group.id}\u0000${current.model.id}` : undefined}
+      onClose={() => setOpen(null)}
+      onSelect={id => {
+        if (id === 'refresh') { setOpen(null); load(); return }
+        const entry = entries.find(({ group, model }) => `${group.id}\u0000${model.id}` === id)
         if (entry === undefined) return
-        void select({
+        choose({
           provider: entry.group.id,
           model: entry.model.id,
-          ...entry.model.reasoning?.defaultEffort === undefined
-            ? {} : { reasoningEffort: entry.model.reasoning.defaultEffort },
+          ...defaultEffort(entry.model) === undefined ? {} : { reasoningEffort: defaultEffort(entry.model) },
         })
       }}
-      style={{ maxWidth: 220, minHeight: 30, borderRadius: 7 }}
-    >
-      {selectedIndex < 0 && <option value="">Select model</option>}
-      {entries.map(({ group, model }, index) => <option key={`${group.id}:${model.id}`} value={String(index)}>
-        {group.name} · {model.name}
-      </option>)}
-    </select>
-    {efforts.length > 0 && <select
-      aria-label="Reasoning effort"
-      value={state.current?.reasoningEffort ?? current?.model.reasoning?.defaultEffort ?? ''}
-      disabled={state.status === 'selecting'}
-      onChange={(event) => {
+    />
+    {efforts.length > 0 && <Menu open={open === 'effort'} portal side="top" align="end" compact
+      anchor={<Button variant="toolbar" size="sm" aria-label="Reasoning effort" aria-haspopup="menu"
+        aria-expanded={open === 'effort'} disabled={busy}
+        onClick={() => setOpen(open === 'effort' ? null : 'effort')}>
+        {efforts.find(item => item.id === effort)?.name ?? 'Reasoning'}<span aria-hidden="true">⌄</span>
+      </Button>}
+      items={efforts.map(item => ({ id: item.id, label: item.name }))} selectedId={effort}
+      onClose={() => setOpen(null)} onSelect={id => {
         if (current === undefined) return
-        void select({ provider: current.group.id, model: current.model.id, reasoningEffort: event.target.value })
+        choose({ provider: current.group.id, model: current.model.id, reasoningEffort: id })
       }}
-      style={{ minHeight: 30, borderRadius: 7 }}
-    >
-      {efforts.map(effort => <option key={effort.id} value={effort.id}>{effort.name}</option>)}
-    </select>}
+    />}
+    {state.error && <span role="alert" style={{ color: 'var(--dsw-alias-state-error-primary, #d84848)', fontSize: 12, maxWidth: 280 }}>{state.error}</span>}
   </span>
 }
 
@@ -249,7 +276,9 @@ export function apply(ctx: Context): void {
         const directory = directoryFor(String(session.sessionId))
         const [provider, model] = option.id.split('\u0000', 2)
         if (provider === undefined || model === undefined) throw new Error('stale model option')
-        await directory.select({ provider, model })
+        const entry = directory.store.getSnapshot().groups.find(group => group.id === provider)?.models.find(item => item.id === model)
+        if (!entry) throw new Error('stale model option')
+        await directory.select({ provider, model, ...defaultEffort(entry) === undefined ? {} : { reasoningEffort: defaultEffort(entry) } })
       },
     },
   }), 'aezy-mode: /model projection')

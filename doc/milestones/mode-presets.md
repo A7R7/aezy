@@ -4,6 +4,25 @@
 > 日期：2026-09-05<br>
 > Runtime：DSH `0.1.2-rc.1` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
 
+## 2026-09-07：模型选择器修复
+
+Aezy 替换面板曾使用两个没有主题样式的原生 `<select>`，现改为公开 DSH `Menu` / `Button`：
+模型按 provider 分组，当前项选中，菜单以 portal 避免 composer 裁剪，带 refresh、错误提示、
+Escape/outside-click dismissal。推理强度来自模型能力，不自行补齐 Off；新选择和 `/model`
+均使用该模型的默认或首个受支持 effort。网络失败可重试，disposed Session 不接收晚到结果。
+
+Codex 与 native mode 的双向 provider fence 保持不变；`aezy-codex` 内的 GPT/DeepSeek
+属于同一种官方 Codex engine 的两个隔离通道，不开放 native provider 绕过模式门禁。
+目录/失败/销毁/样式契约由 `packages/aezy-mode/tests/directory.test.mjs` 覆盖；浏览器门禁为
+`scripts/verify-model-picker.mjs`，仅在隔离 profile 运行，不发送付费模型 Turn。
+
+2026-09-07T02:53:37.775Z 浏览器门禁通过：真实 standard→Codex preset 切换、Astra/五档
+effort、GPT/DeepSeek 同目录、选择 high、刷新、Escape、独立 GPT 登录按钮均通过，0 page
+errors。截图与 receipt：`.local/aezy-model-fixes-XqAlLV/dsh/aezy/model-picker-proof/`。
+Chromium 140 的最小 Linux runner 无法解析系统字体栈，测试浏览器显式加载 DejaVu Sans；
+这是记录在 receipt 的测试字体替代，不改变 Aezy 的字体/CSS。随后经用户授权已同步正式
+开发 profile；3091 双通道/目录 smoke 通过，开发访问恢复为原有 3090。
+
 ## 产品结果
 
 隔离 alpha runtime 重新启用了 DSH 原生 `ui-agent-preset`，新建 Session 可选择上游随包发布的

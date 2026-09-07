@@ -11,3 +11,9 @@ isolated runtime selector appends the overlay to the installed DSH release's
 authoritative `standard` composition, then stages the generated preset beside
 legacy `aezy`. DSH therefore remains the owner of version-specific tool, plan,
 compaction and subagent invariants; Aezy does not copy that composition.
+
+The composer uses the published DSH `Menu` / `Button` primitives, including
+theme tokens, a viewport-bounded portal, selected state, Escape/outside-click
+dismissal and a refresh footer. It contains no native model/effort `<select>`.
+Failed catalog/selection requests remain visible and retryable. `/model` and
+the composer use the same mode-filtered directory and supported default effort.

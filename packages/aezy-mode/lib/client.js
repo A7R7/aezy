@@ -5,10 +5,12 @@ window.__ModuleLoader__.load({
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 		let react = require("react");
+		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 		let react_jsx_runtime = require("react/jsx-runtime");
 		//#region src/client/index.tsx
 		const CODEX_APP_SERVER_PRESET = "codex-app-server";
 		const CODEX_PROVIDER = "aezy-codex";
+		const defaultEffort = (model) => model.reasoning?.defaultEffort ?? model.reasoning?.efforts[0]?.id;
 		function createSnapshotStore(initial) {
 			let snapshot = initial;
 			const listeners = /* @__PURE__ */ new Set();
@@ -69,42 +71,49 @@ window.__ModuleLoader__.load({
 					state.status = "loading";
 					state.error = null;
 				});
-				const result = await this.remote.modelCatalog();
-				if (!result.ok) {
-					this.store.update((state) => {
-						state.status = "error";
-						state.error = `${result.error.code}: ${result.error.message}`;
-					});
-					return;
+				try {
+					const result = await this.remote.modelCatalog();
+					if (this.disposed) return;
+					if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`);
+					this.catalog = result.value;
+					this.sync();
+					await this.ensureCodexDefault();
+				} catch (error) {
+					this.reportError(error);
 				}
-				this.catalog = result.value;
-				this.sync();
-				await this.ensureCodexDefault();
+			}
+			reportError(error) {
+				if (this.disposed) return;
+				this.store.update((state) => {
+					state.status = "error";
+					state.error = error instanceof Error ? error.message : String(error);
+				});
 			}
 			async select(selection) {
-				const preset = projection(this.presetProjection) ?? null;
-				const codexMode = preset === CODEX_APP_SERVER_PRESET;
-				if (selection.provider === "aezy-codex" !== codexMode) throw new Error(`provider ${selection.provider} is unavailable in preset ${preset ?? "(none)"}`);
-				this.store.update((state) => {
-					state.status = "selecting";
-					state.error = null;
-				});
-				const result = await this.remote.selectModel({
-					sessionId: this.sessionId,
-					...selection
-				});
-				if (!result.ok) {
+				if (this.disposed) return;
+				try {
+					const preset = projection(this.presetProjection) ?? null;
+					const codexMode = preset === CODEX_APP_SERVER_PRESET;
+					if (selection.provider === "aezy-codex" !== codexMode) throw new Error(`provider ${selection.provider} is unavailable in preset ${preset ?? "(none)"}`);
 					this.store.update((state) => {
-						state.status = "error";
-						state.error = `${result.error.code}: ${result.error.message}`;
+						state.status = "selecting";
+						state.error = null;
 					});
-					throw new Error(result.error.message);
+					const result = await this.remote.selectModel({
+						sessionId: this.sessionId,
+						...selection
+					});
+					if (this.disposed) return;
+					if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`);
+					this.store.update((state) => {
+						state.current = result.value.selected;
+						state.status = "ready";
+						state.error = null;
+					});
+				} catch (error) {
+					this.reportError(error);
+					throw error;
 				}
-				this.store.update((state) => {
-					state.current = result.value.selected;
-					state.status = "ready";
-					state.error = null;
-				});
 			}
 			dispose() {
 				this.disposed = true;
@@ -137,7 +146,7 @@ window.__ModuleLoader__.load({
 					await this.select({
 						provider: CODEX_PROVIDER,
 						model: model.id,
-						...model.reasoning?.defaultEffort === void 0 ? {} : { reasoningEffort: model.reasoning.defaultEffort }
+						...defaultEffort(model) === void 0 ? {} : { reasoningEffort: defaultEffort(model) }
 					});
 				} finally {
 					this.selectingDefault = false;
@@ -146,9 +155,13 @@ window.__ModuleLoader__.load({
 		};
 		function ModeModelSelect({ useModeModels, load, select }) {
 			const state = useModeModels((value) => value);
+			const [open, setOpen] = (0, react.useState)(null);
 			(0, react.useEffect)(() => {
 				load();
 			}, [load]);
+			(0, react.useEffect)(() => {
+				setOpen(null);
+			}, [state.preset]);
 			const entries = state.groups.flatMap((group) => group.models.map((model) => ({
 				group,
 				model
@@ -156,6 +169,20 @@ window.__ModuleLoader__.load({
 			const selectedIndex = entries.findIndex(({ group, model }) => state.current?.provider === group.id && state.current.model === model.id);
 			const current = selectedIndex < 0 ? void 0 : entries[selectedIndex];
 			const efforts = current?.model.reasoning?.efforts ?? [];
+			const busy = state.status === "loading" || state.status === "selecting";
+			const choose = (selection) => {
+				setOpen(null);
+				select(selection).catch(() => {});
+			};
+			const items = state.groups.flatMap((group) => [{
+				type: "label",
+				id: `group:${group.id}`,
+				text: group.name
+			}, ...group.models.map((model) => ({
+				id: `${group.id}\u0000${model.id}`,
+				label: model.name
+			}))]);
+			const effort = state.current?.reasoningEffort ?? (current && defaultEffort(current.model));
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 				"data-aezy-mode-model": true,
 				style: {
@@ -163,57 +190,105 @@ window.__ModuleLoader__.load({
 					gap: 6,
 					alignItems: "center"
 				},
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("select", {
-					"aria-label": "Model",
-					disabled: state.status === "loading" || state.status === "selecting" || entries.length === 0,
-					value: selectedIndex < 0 ? "" : String(selectedIndex),
-					title: state.error ?? `Mode: ${state.preset ?? "unknown"}`,
-					onChange: (event) => {
-						const entry = entries[Number(event.target.value)];
-						if (entry === void 0) return;
-						select({
-							provider: entry.group.id,
-							model: entry.model.id,
-							...entry.model.reasoning?.defaultEffort === void 0 ? {} : { reasoningEffort: entry.model.reasoning.defaultEffort }
-						});
-					},
-					style: {
-						maxWidth: 220,
-						minHeight: 30,
-						borderRadius: 7
-					},
-					children: [selectedIndex < 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
-						value: "",
-						children: "Select model"
-					}), entries.map(({ group, model }, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("option", {
-						value: String(index),
-						children: [
-							group.name,
-							" · ",
-							model.name
-						]
-					}, `${group.id}:${model.id}`))]
-				}), efforts.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("select", {
-					"aria-label": "Reasoning effort",
-					value: state.current?.reasoningEffort ?? current?.model.reasoning?.defaultEffort ?? "",
-					disabled: state.status === "selecting",
-					onChange: (event) => {
-						if (current === void 0) return;
-						select({
-							provider: current.group.id,
-							model: current.model.id,
-							reasoningEffort: event.target.value
-						});
-					},
-					style: {
-						minHeight: 30,
-						borderRadius: 7
-					},
-					children: efforts.map((effort) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("option", {
-						value: effort.id,
-						children: effort.name
-					}, effort.id))
-				})]
+				children: [
+					/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
+						open: open === "model",
+						portal: true,
+						side: "top",
+						align: "end",
+						compact: true,
+						anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+							variant: "toolbar",
+							size: "sm",
+							"aria-label": "Model",
+							"aria-haspopup": "menu",
+							"aria-expanded": open === "model",
+							disabled: busy,
+							title: current ? `${current.group.name} · ${current.model.name}` : "Select model",
+							onClick: () => setOpen(open === "model" ? null : "model"),
+							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								style: {
+									maxWidth: 210,
+									overflow: "hidden",
+									textOverflow: "ellipsis",
+									whiteSpace: "nowrap"
+								},
+								children: busy ? "Loading…" : current?.model.name ?? "Select model"
+							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								"aria-hidden": "true",
+								children: "⌄"
+							})]
+						}),
+						items: items.length ? items : [{
+							type: "label",
+							id: "empty",
+							text: "No models available"
+						}],
+						footer: [{
+							id: "refresh",
+							label: "Refresh models"
+						}],
+						selectedId: current ? `${current.group.id}\u0000${current.model.id}` : void 0,
+						onClose: () => setOpen(null),
+						onSelect: (id) => {
+							if (id === "refresh") {
+								setOpen(null);
+								load();
+								return;
+							}
+							const entry = entries.find(({ group, model }) => `${group.id}\u0000${model.id}` === id);
+							if (entry === void 0) return;
+							choose({
+								provider: entry.group.id,
+								model: entry.model.id,
+								...defaultEffort(entry.model) === void 0 ? {} : { reasoningEffort: defaultEffort(entry.model) }
+							});
+						}
+					}),
+					efforts.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
+						open: open === "effort",
+						portal: true,
+						side: "top",
+						align: "end",
+						compact: true,
+						anchor: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+							variant: "toolbar",
+							size: "sm",
+							"aria-label": "Reasoning effort",
+							"aria-haspopup": "menu",
+							"aria-expanded": open === "effort",
+							disabled: busy,
+							onClick: () => setOpen(open === "effort" ? null : "effort"),
+							children: [efforts.find((item) => item.id === effort)?.name ?? "Reasoning", /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+								"aria-hidden": "true",
+								children: "⌄"
+							})]
+						}),
+						items: efforts.map((item) => ({
+							id: item.id,
+							label: item.name
+						})),
+						selectedId: effort,
+						onClose: () => setOpen(null),
+						onSelect: (id) => {
+							if (current === void 0) return;
+							choose({
+								provider: current.group.id,
+								model: current.model.id,
+								reasoningEffort: id
+							});
+						}
+					}),
+					state.error && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+						role: "alert",
+						style: {
+							color: "var(--dsw-alias-state-error-primary, #d84848)",
+							fontSize: 12,
+							maxWidth: 280
+						},
+						children: state.error
+					})
+				]
 			});
 		}
 		const inject = [
@@ -259,9 +334,12 @@ window.__ModuleLoader__.load({
 						const directory = directoryFor(String(session.sessionId));
 						const [provider, model] = option.id.split("\0", 2);
 						if (provider === void 0 || model === void 0) throw new Error("stale model option");
+						const entry = directory.store.getSnapshot().groups.find((group) => group.id === provider)?.models.find((item) => item.id === model);
+						if (!entry) throw new Error("stale model option");
 						await directory.select({
 							provider,
-							model
+							model,
+							...defaultEffort(entry) === void 0 ? {} : { reasoningEffort: defaultEffort(entry) }
 						});
 					}
 				}
