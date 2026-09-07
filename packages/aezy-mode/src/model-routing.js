@@ -1,9 +1,10 @@
 // Presentation identities, not a provider registry or a second model catalog.
 // Only explicitly owned routes are aliases. Equal display names prove nothing.
+import { isRetiredPreset, retiredPresetMessage } from './preset-policy.js'
 export const CODEX_PROVIDER = 'aezy-codex'
 export const CODEX_APP_SERVER_PRESET = 'codex-app-server'
-export const engineForPreset = (preset, selected) => preset === CODEX_APP_SERVER_PRESET
-  || (preset === 'aezy' && selected?.provider === CODEX_PROVIDER) ? 'codex' : 'dsh'
+export const engineForPreset = preset => isRetiredPreset(preset) ? 'retired'
+  : preset === CODEX_APP_SERVER_PRESET ? 'codex' : 'dsh'
 export const engineForProvider = provider => provider === CODEX_PROVIDER ? 'codex' : 'dsh'
 
 export function modelIdentity(provider, model) {
@@ -36,7 +37,7 @@ export function resolveModelDirectory(catalog, preset, selected) {
     const routes = row.routes.filter(route => route.engine === engine)
     const route = routes.find(value => value.provider === selected?.provider && value.model === selected?.model)
       ?? (routes.length === 1 ? routes[0] : null)
-    const reason = route ? null : routes.length > 1 ? 'Ambiguous channels in the current catalog; no automatic route selected'
+    const reason = engine === 'retired' ? retiredPresetMessage : route ? null : routes.length > 1 ? 'Ambiguous channels in the current catalog; no automatic route selected'
       : `No ${engine === 'codex' ? 'Codex App Server' : 'DSH'} channel in the current catalog`
     const info = route?.info ?? row.routes[0]?.info
     const model = { id: row.id, name: row.name, description: info?.description,

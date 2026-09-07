@@ -95,6 +95,11 @@ profile lock 的 SHA-512 integrity；只有 12 个 Aezy 外置包使用本地 pa
 
 ## 独立 Codex / Aezy 内置模型网关
 
+2026-09-08：legacy `aezy` 模式已退役，运行方式只保留四个 DSH preset 与 Codex App Server。
+封存的 codex-inspired 不再有活动测试 Session 或正式 profile dogfood 入口。相关旧 Session
+已移出活动存储并保留可恢复清单；新会话不再恢复到不存在的 preset。详情见
+[`模式退役与清理记录`](doc/milestones/mode-presets.md)。
+
 部署状态（2026-09-07）：下述 GPT/Astra/选择器修复已在独立 profile 验证，随后经用户明确
 授权同步到开发 profile；3091 双通道 smoke 通过，保留原有 3090 开发访问端口。
 

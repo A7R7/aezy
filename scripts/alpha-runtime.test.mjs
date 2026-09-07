@@ -103,13 +103,16 @@ test('codex preset mounts its route fence after the authoritative DSH compositio
 test('codex-inspired stays absent by default and binds exact definition only for explicit dogfood', async () => {
   assert.equal(codexInspiredDogfoodEnabled({}), false)
   assert.equal(codexInspiredDogfoodEnabled({ AEZY_CODEX_INSPIRED_DOGFOOD: '0' }), false)
-  assert.equal(codexInspiredDogfoodEnabled({ AEZY_CODEX_INSPIRED_DOGFOOD: '1' }), true)
+  assert.throws(() => codexInspiredDogfoodEnabled({ AEZY_CODEX_INSPIRED_DOGFOOD: '1' }), /archived/)
+  assert.throws(() => codexInspiredDogfoodEnabled({ AEZY_CODEX_INSPIRED_DOGFOOD: '1', AEZY_ALPHA_DSH_HOME: '/home/aaron/.aezy-alpha/dsh', AEZY_ALPHA_PROFILE: 'proof' }), /archived/)
+  assert.equal(codexInspiredDogfoodEnabled({ AEZY_CODEX_INSPIRED_DOGFOOD: '1', AEZY_ALPHA_DSH_HOME: '/tmp/aezy-retired-proof', AEZY_ALPHA_PROFILE: 'proof' }), true)
   const [runtime, overlay] = await Promise.all([
     readFile(new URL('./lib/alpha-runtime.mjs', import.meta.url), 'utf8'),
     readFile(new URL('../packages/aezy-workflow/presets/codex-inspired/overlay.cordis.yml', import.meta.url), 'utf8'),
   ])
   assert.match(runtime, /\['@aezy\/workflow', 'packages\/aezy-workflow', false\]/)
   assert.match(runtime, /if \(codexInspiredDogfoodEnabled\(\)\)/)
+  assert.doesNotMatch(runtime, /join\(staging, 'aezy'\)/)
   assert.match(overlay, new RegExp(`digest: ${CODEX_INSPIRED_LOOP.digest}`))
   assert.match(overlay, new RegExp(`presetId: ${CODEX_INSPIRED_PRESET_ID}`))
   assert.match(overlay, /AEZY_CODEX_INSPIRED_DOGFOOD === '1'/)

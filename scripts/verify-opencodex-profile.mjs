@@ -73,6 +73,23 @@ try {
   const codexModels = catalogEnvelope.result.value.groups.find(group => group.id === 'aezy-codex').models.map(model => model.id)
   assert.ok(codexModels.some(id => id.startsWith('gpt-')) && codexModels.some(id => id.startsWith('deepseek/')))
   assert.ok(codexModels.includes('gpt-6-astra'))
+  let retirement = null
+  if (process.env.AEZY_VERIFY_PRESET_RETIREMENT === '1') {
+    const rpc = async (method, args) => {
+      const response = await fetch(`${base}/api/${method}`, { method: 'POST',
+        headers: { Cookie: cookie, 'content-type': 'application/json' },
+        body: JSON.stringify({ type: 'client-request', rpcId: `retirement-${method}`, method, payload: { args } }) })
+      const envelope = await response.json()
+      assert.equal(envelope.result?.ok, true)
+      return envelope.result.value
+    }
+    const presets = (await rpc('agentPresets/list', {})).presets.map(row => row.id).sort()
+    assert.deepEqual(presets, ['codex-app-server', 'cordis', 'minimal', 'ptc', 'standard'])
+    const sessions = (await rpc('session/list', { _request: {} })).items
+    assert.ok(sessions.every(row => row.projections.values.agentPreset !== 'aezy'
+      && !row.projections.values.agentPreset?.startsWith('codex-inspired')))
+    retirement = { presets, sessions: sessions.length, retiredSessionsAbsent: true }
+  }
   let astraTurn = null
   if (process.env.AEZY_ASTRA_REAL_PROOF === '1') {
     assert.ok(openai.account.type, 'Aezy GPT must already be logged in; this proof does not import credentials')
@@ -93,7 +110,7 @@ try {
   assert.equal(after?.mtimeMs, before?.mtimeMs, 'smoke must not modify the DSH credential document')
   console.log(JSON.stringify({ profile: alphaProfileName, dshHome: alphaDshHome, host: base, connection: result.connection.state, runtime: result.runtime, models: result.models.map(row => row.id),
     openai: { connection: openai.connection.state, runtime: openai.runtime, accountConfigured: Boolean(openai.account.type), models: openai.models.map(row => row.id) },
-    nativeModels, codexModels, credentialFileUnchanged: true, web: true, astraTurn,
+    nativeModels, codexModels, credentialFileUnchanged: true, web: true, astraTurn, retirement,
     ...(astraTurn ? { paidModelTurn: true } : { paidModelCalls: 0 }) }, null, 2))
 } finally {
   if (child.exitCode === null && child.signalCode === null) {

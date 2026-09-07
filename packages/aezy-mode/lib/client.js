@@ -7,8 +7,11 @@ window.__ModuleLoader__.load({
 		let react = require("react");
 		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 		let react_jsx_runtime = require("react/jsx-runtime");
+		//#region src/preset-policy.js
+		const isRetiredPreset = (id) => id === "aezy" || id === "codex-inspired" || /^codex-inspired-r\d+-[a-f0-9]{64}$/.test(id ?? "");
+		const retiredPresetMessage = "此运行方式已封存，请新建会话并选择标准模式或 Codex App Server。";
 		const CODEX_APP_SERVER_PRESET$1 = "codex-app-server";
-		const engineForPreset = (preset, selected) => preset === "codex-app-server" || preset === "aezy" && selected?.provider === "aezy-codex" ? "codex" : "dsh";
+		const engineForPreset = (preset) => isRetiredPreset(preset) ? "retired" : preset === "codex-app-server" ? "codex" : "dsh";
 		const engineForProvider = (provider) => provider === "aezy-codex" ? "codex" : "dsh";
 		function modelIdentity(provider, model) {
 			if (provider === "openai-codex" || provider === "aezy-codex" && model.startsWith("gpt-")) return `openai/${model}`;
@@ -49,7 +52,7 @@ window.__ModuleLoader__.load({
 			for (const row of identities.values()) {
 				const routes = row.routes.filter((route) => route.engine === engine);
 				const route = routes.find((value) => value.provider === selected?.provider && value.model === selected?.model) ?? (routes.length === 1 ? routes[0] : null);
-				const reason = route ? null : routes.length > 1 ? "Ambiguous channels in the current catalog; no automatic route selected" : `No ${engine === "codex" ? "Codex App Server" : "DSH"} channel in the current catalog`;
+				const reason = engine === "retired" ? retiredPresetMessage : route ? null : routes.length > 1 ? "Ambiguous channels in the current catalog; no automatic route selected" : `No ${engine === "codex" ? "Codex App Server" : "DSH"} channel in the current catalog`;
 				const info = route?.info ?? row.routes[0]?.info;
 				const model = {
 					id: row.id,
@@ -94,18 +97,28 @@ window.__ModuleLoader__.load({
 				if (state.introduce) introduced();
 			}, [state.introduce, introduced]);
 			if (!state.options.length) return null;
-			const chosen = state.options.find((option) => option.id === state.current);
+			const options = state.options.filter((option) => !isRetiredPreset(option.id));
+			const retired = isRetiredPreset(state.current);
+			const chosen = options.find((option) => option.id === state.current);
+			const failure = retired ? retiredPresetMessage : error || state.error;
 			const groups = [{
 				id: "dsh",
 				name: "DSH 工作预设",
-				options: state.options.filter((option) => option.id !== CODEX_APP_SERVER_PRESET$1)
+				options: options.filter((option) => option.id !== CODEX_APP_SERVER_PRESET$1)
 			}, {
 				id: "codex",
 				name: "Codex 执行引擎",
-				options: state.options.filter((option) => option.id === CODEX_APP_SERVER_PRESET$1)
+				options: options.filter((option) => option.id === CODEX_APP_SERVER_PRESET$1)
 			}];
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 				"data-aezy-run-method": true,
+				style: {
+					display: "inline-flex",
+					flexDirection: "column",
+					alignItems: "flex-start",
+					minWidth: 0,
+					maxWidth: "100%"
+				},
 				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Menu, {
 					open,
 					portal: true,
@@ -118,11 +131,11 @@ window.__ModuleLoader__.load({
 						"aria-haspopup": "menu",
 						"aria-expanded": open,
 						title: "运行方式：工作预设与执行引擎分组；开始运行后请新建会话切换",
-						disabled: state.busy,
+						disabled: state.busy || retired,
 						onClick: () => setOpen(!open),
 						children: [
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconAgentPresetOutline16, {}),
-							chosen?.name ?? state.current,
+							retired ? "已封存的运行方式" : chosen?.name ?? "选择运行方式",
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconChevronDownOutline14, {})
 						]
 					}),
@@ -141,9 +154,17 @@ window.__ModuleLoader__.load({
 						setError(null);
 						select(id).then((result) => setError(result ?? null)).catch((error) => setError(String(error)));
 					}
-				}), (error || state.error) && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+				}), failure && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 					role: "alert",
-					children: error || state.error
+					style: {
+						color: "var(--dsw-alias-state-error-primary, #d84848)",
+						fontSize: 12,
+						maxWidth: 360,
+						maxHeight: 144,
+						overflowY: "auto",
+						overflowWrap: "anywhere"
+					},
+					children: retired ? failure : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", { children: "运行方式切换失败；请重试或新建会话" }), failure] })
 				})]
 			});
 		}

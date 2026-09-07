@@ -4,7 +4,36 @@
 > 日期：2026-09-05<br>
 > Runtime：DSH `0.1.2-rc.1` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
 
-## 2026-09-07：统一模型身份与分组运行方式
+## 2026-09-08：退役 legacy aezy，清理封存 Session 与错误布局
+
+截图中的 codex-inspired 不是重新上架：旧 migration/dogfood Session 被新会话界面恢复，
+而其 exact preset 已不在普通 roster，导致 `resume failed / preset not found`。点击标准模式
+又对同一个旧 Session 发起 select；菜单的无界 inline 错误文本进一步挤坏布局。
+
+当前产品 roster 收口为 `standard / ptc / minimal / cordis / codex-app-server`。
+selector 不再暂存 legacy `aezy`，Codex overlay 不再允许它；源代码与早期历史证据不被改写。
+codex-inspired 的旧实现仅封存研究用途，显式 dogfood 必须另给独立 DSH_HOME/profile，
+正式开发 profile 不再接受开关。退役身份不分配模型 route、不自动 select/resume、不在菜单
+展示 digest；错误改为最大 360px 宽 / 144px 高的可展开详情，允许换行及滚动。DSH 仍持有 preset 状态机。
+
+一次性维护通过 `scripts/retire-legacy-sessions.mjs` 先按 durable header + 最后 preset event
+审计、通过公开 `workspace/archiveSession` 归档，停止 owner 后移出精确 Session 目录及其
+projection cache。处理 2 个 `aezy` + 10 个 codex-inspired Session，保留另外 19 个 Session，
+逐一验证原始文件 SHA-256 不变。可恢复备份与精确清单：
+`~/.aezy-alpha/dsh/aezy/retired-sessions/2026-09-08-KD4FuO/manifest.json`。
+正式冷启动还发现 `.agent-presets/aezy` 的历史用户级副本，已精确移到同一备份的
+`legacy-user-preset-aezy/`，没有关闭其他自定义 preset 的发现能力。
+没有删除工程文件、OAuth、Codex homes 或其他 profile；不是运行时 Session 删除实现。
+
+回归入口：mode/retirement 单元测试、`verify-model-picker.mjs` 的新会话标准模式与注入长错误
+布局/重试检查、`AEZY_VERIFY_PRESET_RETIREMENT=1` 的正式 profile 只读 roster/session smoke。
+165 项自动测试通过。浏览器 receipt `2026-09-07T16:29:26.081Z`（北京时间 09-08）证明
+五项菜单、新会话标准模式、长错误默认折叠/展开宽高上限/成功重试及 GPT/DeepSeek 选择回归，
+0 page errors、0 付费 Turn，测试字体替代沿用历史说明。
+正式 profile 的 3091 冷启动 smoke 随后确认实际 roster 精确五项、Session 总数 19、没有退役
+Session，GPT/DeepSeek 双通道 connected，登录和 DSH 凭据文件 mtime 保留；停止 3091 后恢复 3090。
+
+## 2026-09-07：统一模型身份与分组运行方式（历史记录）
 
 仅在现有“运行方式”菜单内区分 **DSH 工作预设** 与 **Codex 执行引擎**，不增加独立引擎
 选择框。外置 client 通过公开 slots `entries/subscribe/StoredEntry.inject` 复用原生 seat

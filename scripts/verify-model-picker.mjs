@@ -56,7 +56,9 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 950 }, colorScheme: 'dark' })
   const errors = []
   const persistedSelections = []
+  let presetEnvelope
   page.on('response', async response => {
+    if (new URL(response.url()).pathname === '/api/agentPresets/select') presetEnvelope = await response.json().catch(() => null)
     if (new URL(response.url()).pathname !== '/api/session/selectModel') return
     const result = (await response.json().catch(() => null))?.result
     if (result?.ok && result.value?.selected) persistedSelections.push(result.value.selected)
@@ -83,9 +85,11 @@ try {
   await preset.click()
   await page.getByText('DSH 工作预设', { exact: true }).waitFor()
   await page.getByText('Codex 执行引擎', { exact: true }).waitFor()
+  assert.equal(await page.getByRole('menuitem', { name: /^aezy$|codex-inspired/i }).count(), 0)
   assert.equal(await page.getByRole('button', { name: '运行方式', exact: true }).count(), 1)
   await page.screenshot({ path: join(artifacts, 'run-methods.png') })
   await page.getByRole('menuitem', { name: /^(Standard|标准)/ }).click()
+  assert.equal(await page.locator('[data-aezy-run-method] [role="alert"]').count(), 0)
   const model = page.getByRole('button', { name: 'Model', exact: true })
   await model.click()
   await page.getByRole('menuitem', { name: 'GPT-6 Astra', exact: true }).waitFor()
@@ -144,6 +148,32 @@ try {
   assert.ok(persistedSelections.some(row => row.provider === 'aezy-codex' && row.model === 'deepseek/deepseek-v4-flash'))
   assert.equal(await page.locator('[data-aezy-mode-model] [role="alert"]').count(), 0)
   await page.screenshot({ path: join(artifacts, 'deepseek-preserved.png') })
+  // Fault injection is UI-only: do not send an invalid preset to the Host or
+  // revive an archived Session just to reproduce the reported long error.
+  assert.ok(presetEnvelope?.result?.ok)
+  await page.route('**/api/agentPresets/select', route => {
+    const request = route.request().postDataJSON()
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+      ...presetEnvelope, rpcId: request.rpcId, result: { ok: false, error: {
+        code: 'gateway/internal', message: `Preset switch refused: ${'long-error-'.repeat(80)}`,
+        details: { reason: `Preset switch refused: ${'long-error-'.repeat(80)}` },
+      } },
+    }) })
+  })
+  await preset.click()
+  await page.getByRole('menuitem', { name: /^(Standard|标准)/ }).click()
+  const alert = page.locator('[data-aezy-run-method] [role="alert"]')
+  await alert.locator('summary').waitFor()
+  assert.equal(await alert.locator('details').getAttribute('open'), null)
+  assert.ok((await alert.boundingBox()).width <= 361)
+  await alert.locator('summary').click()
+  assert.ok(await alert.evaluate(node => node.scrollWidth <= node.clientWidth + 1))
+  assert.ok((await alert.boundingBox()).height <= 145)
+  await page.screenshot({ path: join(artifacts, 'preset-error-contained.png') })
+  await page.unroute('**/api/agentPresets/select')
+  await preset.click()
+  await page.getByRole('menuitem', { name: /^(Standard|标准)/ }).click()
+  await page.waitForFunction(() => !document.querySelector('[data-aezy-run-method] [role="alert"]'))
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByRole('button', { name: 'Codex', exact: true }).click()
   await page.getByRole('button', { name: 'Open browser login', exact: true }).waitFor()
@@ -154,7 +184,8 @@ try {
   const receipt = { timestamp: new Date().toISOString(), profile: alphaProfileName,
     paidModelCalls: 0, nativeSelectCount: 0, svgChevrons: true, standardAstra: true, codexAstra: true, astraEfforts: effortLabels,
     codexModels: codexLabels, selectionAndRefresh: true, groupedRunMethod: true, deepseekPreservedAcrossPresets: true,
-    persistedSelections, loginEntry: true, themedMenu: style, typography,
+    persistedSelections, retiredPresetsAbsent: true, presetErrorContainedAndRetryable: true,
+    loginEntry: true, themedMenu: style, typography,
     testFontSubstitution: Boolean(process.env.AEZY_QA_FONT_PATH), pageErrors: errors, artifacts }
   await writeFile(join(artifacts, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`)
   console.log(JSON.stringify(receipt, null, 2))

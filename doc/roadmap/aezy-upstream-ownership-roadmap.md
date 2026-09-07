@@ -279,6 +279,10 @@ contract，不为未来 Editor 提前泛化已签收切片。
 
 ### 6.5. Aezy 内置模型网关：模型与 Codex harness 解耦
 
+2026-09-08 产品收口：退役 legacy `aezy` 及其活动 Session，封存 codex-inspired 测试 Session，
+普通运行方式只有四项 DSH preset + Codex App Server。旧实现/证据留档，正式 profile 禁止
+dogfood 重装；只允许显式独立环境的历史研究验证，不恢复提示词级复刻路线。
+
 2026-09-07：模型身份与执行通道已做薄投影分离。单个“运行方式”菜单分组表达 DSH 工作
 预设与 Codex 执行引擎，暂不增加独立引擎选择框。跨空白会话 preset 保留同一模型身份，
 无兼容通道则禁用并说明，不消灭真实 capability/auth 差异。DSH 继续拥有 preset staging、

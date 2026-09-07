@@ -3,6 +3,7 @@ import { Button, IconAgentPresetOutline16, IconChevronDownOutline14, Menu } from
 import type { Context } from '@deepseek-ai/cordis'
 import type { StoredEntry } from '@deepseek-ai/dsh-client-ui-slots'
 import { CODEX_APP_SERVER_PRESET } from '../model-routing.js'
+import { isRetiredPreset, retiredPresetMessage } from '../preset-policy.js'
 
 type Option = { id: string; name?: string; description?: string }
 type Seat = { options: Option[]; current: string; busy: boolean; error: string | null; introduce: boolean }
@@ -22,17 +23,20 @@ export function RunMethodMenu({ useAgentPresetSeat, load, select, introduced }: 
   useEffect(() => { void load().catch(error => setError(String(error))) }, [load])
   useEffect(() => { if (state.introduce) introduced() }, [state.introduce, introduced])
   if (!state.options.length) return null
-  const chosen = state.options.find(option => option.id === state.current)
+  const options = state.options.filter(option => !isRetiredPreset(option.id))
+  const retired = isRetiredPreset(state.current)
+  const chosen = options.find(option => option.id === state.current)
+  const failure = retired ? retiredPresetMessage : error || state.error
   const groups = [
-    { id: 'dsh', name: 'DSH 工作预设', options: state.options.filter(option => option.id !== CODEX_APP_SERVER_PRESET) },
-    { id: 'codex', name: 'Codex 执行引擎', options: state.options.filter(option => option.id === CODEX_APP_SERVER_PRESET) },
+    { id: 'dsh', name: 'DSH 工作预设', options: options.filter(option => option.id !== CODEX_APP_SERVER_PRESET) },
+    { id: 'codex', name: 'Codex 执行引擎', options: options.filter(option => option.id === CODEX_APP_SERVER_PRESET) },
   ]
-  return <span data-aezy-run-method>
+  return <span data-aezy-run-method style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0, maxWidth: '100%' }}>
     <Menu open={open} portal side="bottom" align="start"
       anchor={<Button variant="toolbar" size="sm" aria-label="运行方式" aria-haspopup="menu" aria-expanded={open}
         title="运行方式：工作预设与执行引擎分组；开始运行后请新建会话切换"
-        disabled={state.busy} onClick={() => setOpen(!open)}>
-        <IconAgentPresetOutline16 />{chosen?.name ?? state.current}<IconChevronDownOutline14 />
+        disabled={state.busy || retired} onClick={() => setOpen(!open)}>
+        <IconAgentPresetOutline16 />{retired ? '已封存的运行方式' : chosen?.name ?? '选择运行方式'}<IconChevronDownOutline14 />
       </Button>}
       items={groups.filter(group => group.options.length).flatMap(group => [
         { type: 'label' as const, id: group.id, text: group.name },
@@ -43,7 +47,9 @@ export function RunMethodMenu({ useAgentPresetSeat, load, select, introduced }: 
         setError(null)
         void select(id).then(result => setError(result ?? null)).catch(error => setError(String(error)))
       }} />
-    {(error || state.error) && <span role="alert">{error || state.error}</span>}
+    {failure && <span role="alert" style={{ color: 'var(--dsw-alias-state-error-primary, #d84848)', fontSize: 12, maxWidth: 360, maxHeight: 144, overflowY: 'auto', overflowWrap: 'anywhere' }}>
+      {retired ? failure : <details><summary>运行方式切换失败；请重试或新建会话</summary>{failure}</details>}
+    </span>}
   </span>
 }
 

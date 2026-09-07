@@ -1,6 +1,6 @@
 # Aezy 项目交接
 
-> 更新日期：2026-09-07<br>
+> 更新日期：2026-09-08<br>
 > 仓库：`/home/aaron/repos/aezy-dsh-mvp`<br>
 > 分支：`main`（`alpha` 已 fast-forward 合入）<br>
 > 功能基线：Codex-backed Aezy self-development loop（Complete）；alpha DSH-native
@@ -10,6 +10,14 @@
 
 本文件只记录“下一位接手者现在必须知道的事实”。完整实现、测试和 dogfood 证据请沿
 链接阅读 milestone/report，不在这里重复。
+
+**2026-09-08 当前覆盖说明**：legacy `aezy` 已退役；普通菜单只保留 standard/PTC/minimal/
+创造模式与 Codex App Server。codex-inspired 路线封存，不可重新放回正式 profile；dogfood
+只能显式指定独立 DSH_HOME/profile。2 个 legacy 与 10 个封存测试 Session 已通过 DSH 归档后
+移出活动存储，另外 19 个 Session 字节不变。可恢复清单位于
+`~/.aezy-alpha/dsh/aezy/retired-sessions/2026-09-08-KD4FuO/manifest.json`。
+旧 Session 引发的缺失 preset 恢复错误及菜单长错误挤坏布局已修复，见 mode milestone。
+下文提到 legacy 恢复和六项 roster 的内容是此前的历史阶段，不得据此重新安装它们。
 
 ## 1. 不可破坏的边界
 

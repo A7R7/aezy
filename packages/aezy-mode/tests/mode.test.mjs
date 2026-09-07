@@ -74,6 +74,7 @@ test('mode package ships only the clickable codex-app-server system preset', asy
   assert.match(composition, /enforceCodex: true/)
   assert.match(patch, /id: ui-agent-preset/)
   assert.match(patch, /id: ui-model-selection\n  disabled: true/)
+  assert.match(patch, /legacyAgentPresets: \[\]/)
   assert.doesNotMatch(`${preset}\n${composition}\n${patch}`, /codex-inspired/)
 })
 

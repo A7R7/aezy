@@ -42,10 +42,11 @@ test('a stale selected model is retained as unavailable, never substituted', () 
   assert.throws(() => compatibleSelection(groups[0].models[0]), /No DSH channel/)
 })
 
-test('legacy aezy Sessions keep their existing Codex execution ownership', () => {
+test('retired presets have no execution channel and cannot be silently migrated', () => {
   const selected = { provider: 'aezy-codex', model: 'gpt-6-astra' }
-  assert.equal(engineForPreset('aezy', selected), 'codex')
+  assert.equal(engineForPreset('aezy', selected), 'retired')
   const groups = resolveModelDirectory(catalog, 'aezy', selected)
-  assert.equal(groups.flatMap(group => group.models).find(row => row.id === 'openai/gpt-6-astra').route.provider, 'aezy-codex')
-  assert.equal(engineForPreset('aezy', { provider: 'deepseek-official', model: flash }), 'dsh')
+  assert.ok(groups.flatMap(group => group.models).every(row => row.route === null))
+  assert.equal(engineForPreset('aezy', { provider: 'deepseek-official', model: flash }), 'retired')
+  assert.equal(engineForPreset(`codex-inspired-r1-${'a'.repeat(64)}`), 'retired')
 })

@@ -1,10 +1,16 @@
 # Codex-inspired Agent Loop
 
-> 状态：**既有 E1 internal dogfood / governed write 已验证；新增 parity 暂停；不可点击**<br>
+> 状态：**路线封存；以下为既有 E1 dogfood / governed write 历史证据；不可点击**<br>
 > 日期：2026-09-04<br>
 > Runtime：DSH `0.1.2-rc.1` / `~/.aezy-alpha/dsh` / `aezy-alpha` / 3091
 
 ## 当前产品结果
+
+2026-09-08：正式开发 profile 的 10 个 codex-inspired 测试 Session 已归档并移出活动存储，
+修复新会话页恢复到缺失 preset 的错误。历史实现与 digest 保留，不恢复提示词级复刻。
+dogfood 开关只允许显式独立 DSH_HOME 和独立 profile，不能用于正式开发 profile。
+legacy `aezy` 模式与 2 个对应 Session 同时退役，现有 roster 只有四个 DSH preset 与
+Codex App Server。备份、清单和验证见 [`mode-presets.md`](mode-presets.md)。下文为历史事实。
 
 2026-09-05 路线调整：revision 1 与下述历史证据保持不变，不继续提示词级 Codex loop 复刻。
 优先通过 Aezy-owned 模型网关将不同模型接入官方 Codex App Server 的真实 agent loop；

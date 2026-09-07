@@ -209,6 +209,7 @@ function prepareAlphaHome() {
 
 export function alphaRuntimeEnv(extra = {}) {
   const environment = { ...process.env }
+  codexInspiredDogfoodEnabled({ ...environment, ...extra })
   delete environment.NODE_OPTIONS
   delete environment.NODE_PATH
   const proxy = environment.HTTPS_PROXY
@@ -320,17 +321,19 @@ export function workspaceSettings(dshPackages, aezyPacked = new Map()) {
 }
 
 export function codexInspiredDogfoodEnabled(environment = process.env) {
-  return environment.AEZY_CODEX_INSPIRED_DOGFOOD === '1'
+  if (environment.AEZY_CODEX_INSPIRED_DOGFOOD !== '1') return false
+  const home = environment.AEZY_ALPHA_DSH_HOME && resolve(expandHome(environment.AEZY_ALPHA_DSH_HOME))
+  const development = resolve(expandHome(alphaMetadata.isolation.developmentDshHome))
+  if (!home || home === development || home.startsWith(`${development}/`)
+    || !environment.AEZY_ALPHA_PROFILE || environment.AEZY_ALPHA_PROFILE === alphaMetadata.isolation.developmentProfile) {
+    throw new Error('Codex-inspired is archived: dogfood requires an explicit isolated DSH_HOME and profile, never the development profile')
+  }
+  return true
 }
 
 function syncSystemPresets() {
   const staging = mkdtempSync(join(alphaDshHome, '.system-presets-'))
   try {
-    cpSync(
-      join(alphaProfileDir, 'node_modules', '@aezy', 'base', 'presets', 'aezy'),
-      join(staging, 'aezy'),
-      { recursive: true },
-    )
     cpSync(
       join(alphaProfileDir, 'node_modules', '@aezy', 'mode', 'presets', 'codex-app-server'),
       join(staging, 'codex-app-server'),

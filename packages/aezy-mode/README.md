@@ -27,6 +27,14 @@ There is still one run-method menu, grouped into DSH work presets and the Codex
 execution engine. Only presentation changes: the public slot's injected business
 face is reused, and the shipped controller owns staging, blank-session checks,
 creator drafts, and durable selection. There is no separate engine selector or
-new preset state machine. Started Sessions retain DSH's preset lock, historical
-`aezy` Codex Sessions retain their engine, and Codex Thread/runtime channel fences
-are unchanged. Model identity does not share authentication or migrate Threads.
+new preset state machine. Started Sessions retain DSH's preset lock, and Codex
+Thread/runtime channel fences are unchanged. Model identity does not share
+authentication or migrate Threads.
+
+Legacy `aezy` is retired from the development roster and Codex provider allowance.
+Archived codex-inspired revisions have no product execution channel. A stale
+retired Session displays a short retirement notice, never its digest as a mode
+choice, and model projection cannot trigger automatic resume/selection. Preset
+errors are bounded, wrapping details rather than unbounded text beside the chip.
+One-time removal of retired development Sessions is recorded separately in the
+mode milestone; this client does not delete or rewrite Session history.

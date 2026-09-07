@@ -13,7 +13,7 @@
   disabled: false
 
 # The upstream catalog is Host-global. Aezy replaces only its browser selector
-# projection so provider rows can be filtered by the current Session preset.
+# projection so model identities resolve to compatible execution channels.
 - id: ui-model-selection
   disabled: true
 
@@ -21,8 +21,7 @@
   config:
     allowedAgentPresets:
       - codex-app-server
-    legacyAgentPresets:
-      - aezy
+    legacyAgentPresets: []
 
 - insert:
     - id: aezy-mode

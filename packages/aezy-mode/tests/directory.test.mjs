@@ -20,6 +20,19 @@ const catalog = { default: { provider: 'openai-codex', model: 'gpt-6-astra' }, g
 ] }
 const create = (remote, preset = 'standard') => new client.ModeModelDirectory(remote, 'test', face(preset), face(null))
 
+test('retired Session projection never triggers an automatic selectModel/resume request', async () => {
+  for (const preset of ['aezy', `codex-inspired-r1-${'a'.repeat(64)}`]) {
+    let writes = 0
+    const directory = create({ modelCatalog: async () => ({ ok: true, value: catalog }),
+      selectModel: async () => { writes++; throw new Error('must not resume') } }, preset)
+    await directory.load()
+    assert.equal(writes, 0)
+    assert.match(directory.store.getSnapshot().error, /已封存/)
+    assert.ok(directory.store.getSnapshot().groups.flatMap(group => group.models).every(row => !row.route))
+    directory.dispose()
+  }
+})
+
 test('identical model identities remain visible in both engines with compatible routes', async () => {
   for (const preset of ['standard', 'codex-app-server']) {
     const directory = create({ modelCatalog: async () => ({ ok: true, value: catalog }),
