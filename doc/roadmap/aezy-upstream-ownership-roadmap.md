@@ -118,6 +118,7 @@ dsh plugin --profile <name> add <package-or-git-spec>
 | M3 Worktree/Handoff | Complete | [`m3.md`](../milestones/m3.md) |
 | M4 Review/Files/Context | Complete | [`m4.md`](../milestones/m4.md) |
 | Integrated Terminal | Complete | [`terminal.md`](../milestones/terminal.md) |
+| Logs & Debug / Usage | Complete; authorized 3090 deployment | [`observability.md`](../milestones/observability.md) |
 | Codex-backed self-development loop | Complete | [`codex.md`](../milestones/codex.md) |
 | Agent modes / Codex App Server preset | Complete on alpha candidate | [`mode-presets.md`](../milestones/mode-presets.md) |
 | DSH-native Codex provider | Complete on alpha candidate | [`native-provider.md`](../milestones/native-provider.md) |

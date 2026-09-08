@@ -26,9 +26,11 @@
 用量缺失不作零、GPT 未验证价格不估账单。真实与浏览器证据、部署状态只在
 `doc/milestones/observability.md` 维护。复验入口为 `pnpm test:observability` 和显式隔离环境的
 `pnpm test:observability:profile`；外置 package 数现为 13。
-本切片已通过隔离真实 DeepSeek/24 项浏览器/冷重启和 179 项自动测试；但安全审批拒绝停止
-现有 3090，故 **正式 profile 尚未同步，3090 保持原版运行**。必须先取得本次重启授权，再
-部署并执行真实 Astra usage gate；不得把隔离验收写成正式部署成功。
+本切片已通过隔离真实 DeepSeek/24 项浏览器/冷重启和 179 项自动测试。此前部署因缺少
+服务重启授权而暂停；用户随后明确“允许”，现已同步正式 profile 并恢复新版 **3090**。
+真实 Astra 受治理只读 Turn 的 3 条官方 usage 通知共 46,243 tokens，重启前后汇总完全相同；
+正式 3090 的 24 项页面检查也已通过。凭据文件不变、仅本次测试 Session 被归档，Debug
+开关恢复关闭，3091/3197 测试 Host 已停止。详细 receipt 见 observability milestone。
 
 ## 1. 不可破坏的边界
 

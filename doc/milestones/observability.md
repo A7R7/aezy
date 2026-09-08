@@ -1,4 +1,4 @@
-# Logs & Debug / Usage — Isolated verified; deployment pending approval
+# Logs & Debug / Usage — Complete
 
 Reference: local OpenCodex v2.33.0 (`ec51e42d745d2645bcb22cb67855fa053ba1778e`),
 live dashboard `localhost:10100`, inspected 2026-09-08. MIT-attributed bounded UI
@@ -75,25 +75,50 @@ Pre-install Session/rollout history is not imported; retention loss is disclosed
   24 stored requests and totals survived restart exactly. Isolated profile
   artifact signature: `d42741ba9207abf1f4e35fd6aaab99ca2d458a0994785f56fb70c64e1b14dc9c`.
 
-## Deployment gate
+## Authorized deployment and official Astra proof
 
-The security reviewer rejected SIGTERM of the live 3090 development Host because
-this feature request did not explicitly authorize interrupting that service.
-**No stop or production profile sync was executed.** The existing 3090 Host was
-left running unchanged; all test Hosts on 3197 were stopped by their owners.
+The first deployment attempt was rejected for missing service-interruption
+authority; no stop/sync happened then. The user subsequently explicitly replied
+“允许” to restarting 3090, deploying this plugin and running a real Astra read
+proof. On 2026-09-08 the exact `aezy-alpha` Host PID/profile was rechecked, all
+20 existing Sessions had no unfinished Turn, and only that Host received normal
+SIGTERM. No active lock was deleted and no personal OAuth/config was imported.
 
-Pending explicit restart approval:
+`pnpm profile:sync` installed the official same-version rc.1 family plus the
+13 Aezy packages into the existing development profile. Artifact signature:
+`1351a23a92a6b14a084da6eed1c3e275318ca93e49cdc372df45ada382ca14aa`.
 
-1. Recheck 3090 PID/profile and active Turns; stop only that verified Host normally.
-2. `pnpm profile:sync` to the existing `aezy-alpha` profile, preserving credentials,
-   Sessions and Codex homes. Do not remove locks or import personal OAuth.
-3. `AEZY_ASTRA_REAL_PROOF=1 AEZY_OBSERVABILITY_PROOF=1
-   AEZY_ASTRA_PROOF_RECEIPT=/tmp/aezy-observability-astra.json
-   pnpm test:opencodex:profile` on 3091. The gate requires real usage rows whose
-   hashed conversation matches the newly created Astra Session, and archives
-   only that proof Session. This gate is implemented but **not yet run**.
-4. Restore development Host on 3090 and verify both pages and persisted usage.
+The enhanced real gate passed on 3091:
 
-Official App Server usage is covered by unit/protocol projection tests, not yet
-by a real Astra observation for this feature. This pending evidence is not an
-excuse to read/copy OAuth or attach to personal OpenCodex.
+```bash
+AEZY_ASTRA_REAL_PROOF=1 AEZY_OBSERVABILITY_PROOF=1 \
+AEZY_VERIFY_PRESET_RETIREMENT=1 \
+AEZY_ASTRA_PROOF_RECEIPT=/tmp/aezy-observability-astra.json \
+pnpm test:opencodex:profile
+```
+
+- Receipt: `2026-09-08T00:40:58.618Z`, `/tmp/aezy-observability-astra.json`.
+- Actual `gpt-6-astra` Turn called DSH `read` once in its temporary workspace,
+  returned the correct marker, and respected the started-preset lock.
+- Three official usage notifications matched that new Session's hashed
+  conversation, including its auxiliary call: input 46,162, output 81,
+  total **46,243**, cache read **18,816**. No cumulative total double counting.
+- All three are measured but unpriced; no GPT price or subscription bill was
+  invented. The proof Session alone was archived after successful verification.
+- Both GPT and DeepSeek channels were connected; native and App Server catalogs
+  contained Astra. The five allowed presets remained exact; no retired Sessions
+  reappeared. DSH credential file mtime was unchanged, no OAuth file was read.
+
+Development Host was restored on **3090**. `/tmp/aezy-observability-production-restart.json`
+at `2026-09-08T00:41:58.954Z` proves the complete usage summary exactly matches
+the pre-restart real receipt and unauthenticated requests are rejected.
+The 24-check browser suite then passed on this actual 3090 Host with
+`fixtureSurface=Codex App Server`, `fixtureModel=gpt-6-astra`, `browserErrors=[]`:
+`/tmp/aezy-observability-production-proof/browser.json`, timestamp
+`2026-09-08T00:42:03.103Z`. This directory also holds the actual page screenshots.
+All four Debug flags were verified off after testing. Full regression again
+passed **179/179**, with no skips; 3091 and 3197 test Hosts are stopped.
+
+The browser verifier accepts `AEZY_OBSERVABILITY_TEST_SURFACE` and
+`AEZY_OBSERVABILITY_TEST_MODEL` to test whichever real observations exist;
+defaults remain the isolated native DeepSeek fixture. It does not seed fake data.

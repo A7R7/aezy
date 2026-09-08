@@ -98,9 +98,10 @@ profile lock 的 SHA-512 integrity；只有 13 个 Aezy 外置包使用本地 pa
 
 ## 独立 Codex / Aezy 内置模型网关
 
-Logs & Debug / Usage 新切片已通过隔离 profile 验证，代码提供 Settings 上方入口；
-**现有 3090 部署仍等待本次服务重启授权，尚未同步**。动态 surfaces、用量覆盖、隐私边界与
-验证/部署门槛见 [`observability milestone`](doc/milestones/observability.md)。
+Logs & Debug / Usage 已在用户明确授权后部署到 **3090**，两个入口位于 Settings 上方。
+隔离 DeepSeek 与正式 Astra 的真实用量、冷重启、24 项浏览器交互和 179 项回归均已通过。
+动态 surfaces、用量覆盖、隐私边界与部署证据见
+[`observability milestone`](doc/milestones/observability.md)。
 
 2026-09-08：legacy `aezy` 模式已退役，运行方式只保留四个 DSH preset 与 Codex App Server。
 封存的 codex-inspired 不再有活动测试 Session 或正式 profile dogfood 入口。相关旧 Session

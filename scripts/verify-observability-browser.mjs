@@ -12,6 +12,8 @@ const { chromium } = await import(pathToFileURL(modulePath).href)
 const browser = await chromium.launch({ executablePath: resolve(process.env.AEZY_CHROMIUM ?? '.local/aezy-model-fixes-XqAlLV/browsers/chromium_headless_shell-1187/chrome-linux/headless_shell'), headless: true, args: ['--no-sandbox'] })
 const directory = process.env.AEZY_OBSERVABILITY_RECEIPTS ?? '/tmp/aezy-observability-proof'
 const checks = []
+const fixtureSurface = process.env.AEZY_OBSERVABILITY_TEST_SURFACE ?? 'DSH native'
+const fixtureModel = process.env.AEZY_OBSERVABILITY_TEST_MODEL ?? 'deepseek'
 let diagnosticPage
 try {
   await mkdir(directory, { recursive: true })
@@ -36,9 +38,9 @@ try {
   await panel.getByRole('heading', { name: 'Logs & Debug', exact: true }).waitFor()
   await panel.getByRole('radio', { name: 'Codex gateway', exact: true }).waitFor()
   assert.equal(await panel.getByRole('radio', { name: /Claude|Grok/ }).count(), 0)
-  await panel.getByRole('radio', { name: 'DSH native', exact: true }).click()
+  await panel.getByRole('radio', { name: fixtureSurface, exact: true }).click()
   await panel.getByRole('button', { name: /^Details:/ }).first().waitFor()
-  assert.ok((await panel.locator('tbody').innerText()).includes('DSH native'))
+  assert.ok((await panel.locator('tbody').innerText()).includes(fixtureSurface))
   await panel.getByRole('radio', { name: 'All', exact: true }).click()
   await panel.getByRole('checkbox', { name: 'Auto-refresh' }).uncheck()
   await panel.getByRole('button', { name: /^Details:/ }).first().click()
@@ -58,7 +60,7 @@ try {
   await panel.getByRole('button', { name: /Clear/ }).click()
   await panel.getByRole('checkbox', { name: 'Auto-refresh' }).check()
   await page.screenshot({ path: `${directory}/logs-dark.png` })
-  checks.push('sidebar-above-settings', 'dynamic-surfaces', 'native-filter', 'details-dialog', 'conversation-filter-clear', 'auto-refresh')
+  checks.push('sidebar-above-settings', 'dynamic-surfaces', 'owner-surface-filter', 'details-dialog', 'conversation-filter-clear', 'auto-refresh')
 
   await panel.getByRole('tab', { name: 'Debug', exact: true }).click()
   assert.equal(new URL(page.url()).searchParams.get('aezyTab'), 'debug')
@@ -92,12 +94,13 @@ try {
   assert.equal(await panel.locator('.daybar').count(), 7)
   await panel.getByRole('button', { name: 'Available history', exact: true }).click()
   await panel.locator('.heatmap-grid').waitFor()
-  await panel.getByRole('button', { name: 'DSH native', exact: true }).click()
+  await panel.getByRole('button', { name: fixtureSurface, exact: true }).click()
   await panel.getByRole('tab', { name: /^Models/ }).click()
   const search = panel.getByRole('textbox', { name: /Search models/ })
   await search.fill('no-such-model')
   assert.equal(await panel.locator('#usage-models-title').locator('..').locator('tbody tr').count(), 0)
-  await search.fill('deepseek')
+  await search.fill(fixtureModel)
+  await panel.locator('#usage-models-title').locator('..').locator('tbody tr').first().waitFor()
   await panel.getByRole('button', { name: 'All', exact: true }).click()
   await panel.getByRole('tab', { name: /^Overview/ }).click()
   await page.waitForTimeout(300)
@@ -124,7 +127,7 @@ try {
   assert.equal(await panel.count(), 0)
   checks.push('light-dark', 'narrow', 'return-to-session')
   assert.deepEqual(errors, [])
-  const receipt = { timestamp: new Date().toISOString(), base: new URL(url).origin, checks, browserErrors: errors }
+  const receipt = { timestamp: new Date().toISOString(), base: new URL(url).origin, fixtureSurface, fixtureModel, checks, browserErrors: errors }
   await writeFile(`${directory}/browser.json`, `${JSON.stringify(receipt, null, 2)}\n`)
   console.log(JSON.stringify(receipt, null, 2))
 } catch(error) {
