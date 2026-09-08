@@ -26,7 +26,7 @@
 | Agent modes、模型/推理选择器 | [`milestones/mode-presets.md`](milestones/mode-presets.md) |
 | Logs & Debug / Usage | [`milestones/observability.md`](milestones/observability.md) |
 | E0 / CI.0 read-only Loop Inspector | [`milestones/loop-inspector.md`](milestones/loop-inspector.md) |
-| E1 internal Codex-inspired Agent Loop | [`milestones/codex-inspired.md`](milestones/codex-inspired.md) |
+| 已封存的 E1 Codex-inspired 历史证据 | [`milestones/codex-inspired.md`](milestones/codex-inspired.md) |
 
 Milestone 维护已签收事实与明确的剩余门槛；未完成项必须在标题状态中标明 pending。不要把
 其中的历史 Session ID、浏览器坐标或旧测试流水账复制回 HANDOFF/README；需要追溯时在原
@@ -35,9 +35,9 @@ milestone 阅读。
 ## 当前活动路线
 
 - [`roadmap/loop-inspector-workflow-editor.md`](roadmap/loop-inspector-workflow-editor.md)：
-  E0/CI.0 已交付静态 backend logic graph corrected candidate，等待产品验收；E1 已重新开始
-  internal codex-inspired dogfood 的既有证据保留，新增 parity 复刻暂停且不可点击；当前优先受管
-  Aezy 内置网关的模型/harness 解耦（见 Codex milestone），不再依赖 OpenCodex/Bun。E2/E3 暂停，不包含 E4。
+  E0/CI.0 revision 3 仍等待产品验收；codex-inspired 路线已封存，revision 1 的历史证据保留，
+  不代表新对话应恢复 parity 开发。Aezy 内置网关的模型/harness 解耦与 Logs/Debug/Usage 已
+  交付（见 Codex、Observability milestone）。E2/E3 暂停，不包含 E4；下一项工作由用户决定。
 
 ## 长期参考
 

@@ -186,7 +186,7 @@ tool、approval、Security、Journal/Review、usage 与 restart-resume gate，�
 model 或 `codex-app-server` 的 `aezy-codex` route。证据见
 [`native-provider.md`](doc/milestones/native-provider.md)。
 
-## 已完成能力
+## 能力与当前状态
 
 | 切片 | 产品能力 | 记录 |
 | --- | --- | --- |
@@ -199,10 +199,11 @@ model 或 `codex-app-server` 的 `aezy-codex` route。证据见
 | M4.2 | `@directory`、Working/Historical `@diff` 与 Contextual Ask | [`m4.md`](doc/milestones/m4.md) |
 | Terminal | 多标签、Session-scoped DSH line PTY side panel | [`terminal.md`](doc/milestones/terminal.md) |
 | Codex loop | Managed ChatGPT、DSH dynamic tools 与 Aezy 自开发闭环 | [`codex.md`](doc/milestones/codex.md) |
-| Agent modes | 原生四模式、legacy `aezy`、Codex App Server preset 与双门禁 | [`mode-presets.md`](doc/milestones/mode-presets.md) |
+| Agent modes | 四个 DSH preset + Codex App Server；统一模型身份，legacy `aezy` 已退役 | [`mode-presets.md`](doc/milestones/mode-presets.md) |
 | Native provider | DSH-owned OAuth、OpenAI/Codex models 与原生 agent loop parity | [`native-provider.md`](doc/milestones/native-provider.md) |
-| Loop Inspector | 静态 backend logic graph、durable trace overlay、Timeline 与 restart rebuild | [`loop-inspector.md`](doc/milestones/loop-inspector.md) |
-| Codex-inspired | 内部 immutable macro loop + DSH hook compiler；governed write 已验证，完整 parity pending、不可点击 | [`codex-inspired.md`](doc/milestones/codex-inspired.md) |
+| Logs & Debug / Usage | 已部署 3090；动态 surfaces、脱敏诊断、真实用量与 restart 验收通过 | [`observability.md`](doc/milestones/observability.md) |
+| Loop Inspector | revision 3 candidate：静态 blueprint、durable overlay、Timeline；等待产品验收 | [`loop-inspector.md`](doc/milestones/loop-inspector.md) |
+| Codex-inspired | 路线封存；内部 revision 1 及既有 governed-write 证据仅留档，不恢复正式入口 | [`codex-inspired.md`](doc/milestones/codex-inspired.md) |
 
 关键语义：
 
@@ -305,27 +306,16 @@ tool event 与 Journal 的薄投影；Codex 原生权限固定 read-only，原�
 [`codex.md`](doc/milestones/codex.md)，Relay 兼容性证据见
 [`relay-dsh-plugin-codex-0.1.2-compatibility.md`](doc/reference/relay-dsh-plugin-codex-0.1.2-compatibility.md)。
 
-rc.1 开发 runtime 保持上游 Agent preset UI，并把 Codex App Server 收口为独立 system preset，
-完成统一模型身份/兼容通道投影、Host 执行门禁与 Session header 模式显示；证据见
-[`mode-presets.md`](doc/milestones/mode-presets.md)。alpha.4 合入 main 后，rc.1 又以独立
-runtime migration 通过隔离 3395 与正式 3091 smoke；完整 codex-inspired parity 仍是进入可点击产品面的
-release gate。已完成闭环只按真实 dogfood 故障做 Worktree dependency bootstrap 与 App Server
-contract hardening。当前 DSH-owned `openai-codex` 已完成 OAuth、真实
-standard Turn、tool/approval/Security/Journal/usage 与 restart-resume gate。E0/CI.0 Loop Inspector
-已有 durable Session event projector、只读 Session header、Timeline 与双 backend live/cold/restart
-trace accuracy；但原 Graph 只是同一 runtime span log 的树形缩略版，不满足静态 agent-loop 逻辑图
-目标，因此 E0 已纠正为 backend-specific node/edge/guard/owner/source blueprint 主图，runtime trace
-只叠加 active/visited/count/usage/duration；Codex App Server 不公开的内部控制流显示为 opaque。
-实现与双 backend restart gate 已通过，当前等待产品验收。旧 E1–E3 实现已 revert，原 Git 历史
-保留；E1 已按新的宏观 workflow 边界重新开始，internal `codex-inspired` revision 1 已完成真实
-Turn、restart continuation，以及 Security ask → Remote allowed-once → durable structured write →
-Journal/Review/usage 的 governed write vertical slice；完整 parity 仍 pending 且不可点击；E2/E3
-继续暂停，不包含 E4。
-Inspector 不驱动 loop，
-且不得展示 reasoning、secret 或未脱敏 tool arguments。
+当前模式与模型菜单、Aezy 内置 Node 网关，以及 Logs & Debug / Usage 已部署到 3090。
+原生 DSH 和 Codex 两条 DeepSeek 开发路径已有真实证据；独立 GPT/Astra 已验证受治理只读
+任务和官方用量，GPT 写闭环仍未签收。179 项回归与最近正式页面/restart 证据见
+[Observability milestone](doc/milestones/observability.md)。
 
-已实现的 Activity dashboard 实验已经通过三笔独立 revert 全部撤销，不再作为后续基础。
-Traffic Board 与 Task Board 暂缓；Browser integration 暂停并默认使用外部浏览器。当前
-DSH-native Codex-inspired 首个 internal dogfood slice 通过外置 immutable definition 与公共
-Agent hooks 编译宏观 coding policy，DSH 继续持有 Session/Subagent/Task/PTY/compaction/approval
-内核；在完整 parity gate 前保持不可点击。
+Loop Inspector revision 3 仍是等待产品验收的 candidate；其固定源码 blueprint 不等于当前
+所有 runtime 路径都已执行或已验证。Codex-inspired 路线已封存，revision 1 历史实现和证据
+保留，不再恢复提示词级 parity 复刻。旧 Activity 实验已撤销，E2/E3、Browser、Boards、
+多 runtime/DAG、Cloud/Remote/PR、Side Chat 与 merge-back 不属于当前待办。
+
+新对话从 HANDOFF 中的当前事实和用户的新目标开始，不自动继续旧 milestone 的历史计划。
+目前仍是本机验证的早期开发版本；新机器安装、无凭据 CI、根许可证和公开前审计是开源
+准备候选工作，不代表已决定开源、已授权发布或已达到通用发行版成熟度。
